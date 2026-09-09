@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: wfm-planning-scheduling
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # URL de connexion Supabase, à définir manuellement dans Render
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DAILY_HOURS
+        value: "8"
+      - key: WEEKLY_HOURS
+        value: "40"
+      - key: WORKING_DAYS
+        value: "5"
+      - key: INTERVAL_MINUTES
+        value: "30"

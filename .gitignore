@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Variables d'environnement
+.env
+
+# Bases de données locales
+*.db
+*.sqlite3
+
+# Editeurs / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Tests / couverture
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic (les fichiers de migration eux-mêmes restent versionnés)
+*.pyc
