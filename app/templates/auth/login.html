@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Se connecter — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <div class="auth-brand">
+        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+        <div class="auth-brand__pitch">
+            <h1>Un seul plan de reference, du mois a l'intervalle.</h1>
+            <p>Forecast, capacity planning et suivi operationnel pour votre centre de contacts — sans ecraser une seule version de vos previsions.</p>
+            {% include "partials/interval_strip.html" %}
+        </div>
+    </div>
+    <div class="auth-form-pane">
+        <form class="auth-form" method="post" action="/login">
+            <h2>Se connecter</h2>
+            <p class="subtitle">Accedez a votre espace WFM.</p>
+
+            {% if error %}
+            <div class="error-banner">{{ error }}</div>
+            {% endif %}
+
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="field">
+                <label for="email">Adresse email</label>
+                <input type="email" id="email" name="email" value="{{ email or '' }}" required autofocus>
+            </div>
+
+            <div class="field">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn-primary">Se connecter</button>
+
+            <p class="auth-form__footer">Compte cree par un administrateur. Pas d'inscription libre en V1.</p>
+        </form>
+    </div>
+</div>
+{% endblock %}

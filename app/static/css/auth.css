@@ -1,0 +1,121 @@
+/*
+  Pages d'authentification — layout deux panneaux.
+
+  Panneau gauche : identité produit + motif "intervalles intraday" (ancrage
+  dans le domaine WFM, cf. §10 du cahier des charges).
+  Panneau droit : formulaire, aligné à gauche (pas de héros centré générique).
+*/
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+}
+
+.auth-brand {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: var(--space-8) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.auth-brand__mark {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-brand__pitch {
+  max-width: 380px;
+}
+
+.auth-brand__pitch h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  margin-bottom: var(--space-3);
+}
+
+.auth-brand__pitch p {
+  font-size: 15px;
+}
+
+.interval-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 96px;
+  margin-top: var(--space-6);
+}
+
+.interval-strip__bar {
+  flex: 1;
+  background: var(--border);
+  border-radius: 1px 1px 0 0;
+}
+
+.interval-strip__bar--peak {
+  background: var(--accent);
+}
+
+.interval-strip__caption {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+.auth-form-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 360px;
+}
+
+.auth-form h2 {
+  font-size: 22px;
+  margin-bottom: var(--space-1);
+}
+
+.auth-form .subtitle {
+  margin-bottom: var(--space-6);
+  font-size: 14px;
+}
+
+.auth-form__footer {
+  margin-top: var(--space-5);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.totp-code-input {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-brand {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-6) var(--space-5);
+  }
+
+  .interval-strip {
+    height: 56px;
+    margin-top: var(--space-4);
+  }
+}

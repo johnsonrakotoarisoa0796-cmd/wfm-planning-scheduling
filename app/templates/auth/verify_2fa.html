@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Verification — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <div class="auth-brand">
+        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+        <div class="auth-brand__pitch">
+            <h1>Verification en deux etapes.</h1>
+            <p>Ouvrez votre application d'authentification et saisissez le code a 6 chiffres genere pour ce compte.</p>
+            {% include "partials/interval_strip.html" %}
+        </div>
+    </div>
+    <div class="auth-form-pane">
+        <form class="auth-form" method="post" action="/login/verify">
+            <h2>Code de verification</h2>
+            <p class="subtitle">Valide 30 secondes, renouvele automatiquement.</p>
+
+            {% if error %}
+            <div class="error-banner">{{ error }}</div>
+            {% endif %}
+
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="field">
+                <label for="code">Code a 6 chiffres</label>
+                <input
+                    type="text"
+                    id="code"
+                    name="code"
+                    class="totp-code-input"
+                    inputmode="numeric"
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    autocomplete="one-time-code"
+                    required
+                    autofocus>
+            </div>
+
+            <button type="submit" class="btn-primary">Valider</button>
+
+            <p class="auth-form__footer">Session de connexion valide 5 minutes.</p>
+        </form>
+    </div>
+</div>
+{% endblock %}

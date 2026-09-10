@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     working_days: int = 5
     interval_minutes: int = 30
 
+    # Sécurité / sessions
+    session_max_age_seconds: int = 60 * 60 * 12  # 12h
+    pending_2fa_max_age_seconds: int = 60 * 5  # 5 min, cf. §8
+    secure_cookies: bool = True  # False uniquement en dev local (http)
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

@@ -47,6 +47,7 @@ L'application démarre sur `http://127.0.0.1:8000`. Vérifier `/health`.
 | `ENV` | `development` ou `production` | `development` |
 | `DATABASE_URL` | URL de connexion PostgreSQL (Supabase) | — |
 | `SECRET_KEY` | Clé secrète pour les sessions | — |
+| `SECURE_COOKIES` | `true` en prod (https), `false` en dev local (http) | `true` |
 | `DAILY_HOURS` | Heures de travail par jour | `8` |
 | `WEEKLY_HOURS` | Heures de travail par semaine | `40` |
 | `WORKING_DAYS` | Jours travaillés par semaine | `5` |
@@ -62,8 +63,24 @@ première migration seront ajoutés au commit 02.
 
 ## Authentification
 
-Sessions cookie + hashing bcrypt + RBAC (`admin / wfm_analyst / team_lead /
-viewer`) + TOTP (2FA) dès la V1. Implémentation au commit 03.
+Sessions cookie signées (`itsdangerous`) + hashing bcrypt (`passlib`) + RBAC
+(`admin / wfm_analyst / team_lead / viewer`) + TOTP (2FA) obligatoire dès la
+V1. Pas d'inscription libre : les comptes sont créés par un administrateur.
+
+**Créer le premier compte admin** (après `alembic upgrade head`) :
+```bash
+python -m app.scripts.create_admin
+```
+Le script demande email + mot de passe, puis affiche un QR code ASCII à
+scanner avec Google Authenticator / Authy (ou la clé à saisir manuellement).
+
+**Connexion** : `/login` (email + mot de passe) → `/login/verify` (code à 6
+chiffres) → session ouverte. CSRF protégé sur tous les formulaires POST
+(pattern double-submit cookie, sans stockage serveur).
+
+**RBAC** : les routes protégées utilisent les dependencies FastAPI
+`require_login` et `require_role(...)` (voir `app/core/security.py`), jamais
+de vérification de rôle inline dans les routers.
 
 ## Tests
 

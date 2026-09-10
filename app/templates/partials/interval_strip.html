@@ -1,0 +1,15 @@
+{# Motif decoratif : silhouette d'une courbe de volume d'appels sur une
+   journee (pic du matin, creux dejeuner, pic d'apres-midi) — ancre le
+   design dans le domaine WFM plutot qu'un visuel generique. #}
+{% set heights = [14, 20, 28, 40, 54, 68, 79, 88, 84, 70, 58, 56, 63, 76, 87, 94, 89, 74, 57, 37, 23, 13] %}
+{% set peak_indices = [7, 15] %}
+<div class="interval-strip" role="img" aria-label="Illustration d'une courbe de volume d'appels sur une journee">
+    {% for h in heights %}
+    <div class="interval-strip__bar{% if loop.index0 in peak_indices %} interval-strip__bar--peak{% endif %}" style="height: {{ h }}%;"></div>
+    {% endfor %}
+</div>
+<div class="interval-strip__caption">
+    <span>00:00</span>
+    <span>12:00</span>
+    <span>23:30</span>
+</div>
