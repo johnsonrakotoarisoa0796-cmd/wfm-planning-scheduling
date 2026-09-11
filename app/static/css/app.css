@@ -1,0 +1,343 @@
+/*
+  Coquille applicative — sidebar fixe + contenu. Reprend les tokens de
+  base.css (palette sombre, IBM Plex). Tables et formulaires sont partages
+  par tous les modules a venir (LTF, STF, Daily, Capacity...).
+*/
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+/* --- Sidebar --- */
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) 0;
+}
+
+.sidebar__brand {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 0 var(--space-5) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+
+.sidebar__nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-3);
+}
+
+.sidebar__link {
+  display: block;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar__link:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sidebar__link--active {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.sidebar__footer {
+  padding: var(--space-4) var(--space-5) 0;
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-4);
+}
+
+.sidebar__user {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+  word-break: break-all;
+}
+
+.sidebar__user strong {
+  display: block;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 100%;
+  padding: 8px var(--space-3);
+  font-size: 13px;
+  border-radius: var(--radius);
+}
+
+.btn-logout:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* --- Contenu principal --- */
+
+.main-content {
+  padding: var(--space-6) var(--space-7);
+  max-width: 1280px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+}
+
+.page-header h1 {
+  font-size: 24px;
+}
+
+.page-header__meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+.btn-secondary {
+  display: inline-block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px var(--space-4);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+}
+
+/* --- Barre de filtres --- */
+
+.filter-bar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.filter-bar .field {
+  margin-bottom: 0;
+  min-width: 160px;
+}
+
+.filter-bar select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 9px var(--space-3);
+}
+
+.filter-bar button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px var(--space-4);
+  border-radius: var(--radius);
+}
+
+.filter-bar button:hover {
+  background: var(--surface-hover);
+}
+
+/* --- Tables --- */
+
+.data-table-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: var(--panel);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.data-table td.numeric,
+.data-table th.numeric {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: var(--surface);
+}
+
+.data-table a {
+  text-decoration: none;
+}
+
+.empty-state {
+  padding: var(--space-7);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* --- Formulaires en carte --- */
+
+.form-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  max-width: 720px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-5);
+}
+
+.form-grid .field--full {
+  grid-column: 1 / -1;
+}
+
+.field__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.form-actions .btn-primary {
+  width: auto;
+  padding: 11px var(--space-6);
+}
+
+textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  padding: 11px var(--space-3);
+  resize: vertical;
+  min-height: 72px;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-5);
+}
+
+fieldset legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0;
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
+  width: 100%;
+}
+
+/* --- Statuts KPI (reutilise par le Dashboard, commit 13) --- */
+
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-pill--on_target {
+  background: #14332e;
+  color: #4fd8b8;
+}
+
+.status-pill--warning {
+  background: #332a14;
+  color: #e0a63e;
+}
+
+.status-pill--critical {
+  background: var(--danger-bg);
+  color: #f4b8ac;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    padding: var(--space-5);
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

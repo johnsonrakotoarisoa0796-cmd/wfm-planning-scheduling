@@ -115,37 +115,15 @@ async def verify_csrf(request: Request) -> None:
     """Dependency à ajouter sur toute route POST qui traite un formulaire HTML.
 
     Compare le cookie csrf_token à la valeur soumise dans le champ caché du
-    formulaire (pattern double-submit). Aucun état serveur nécessaire.
+    formulaire (pattern double-submit). Le cookie lui-même est posé par
+    CSRFCookieMiddleware (app/core/middleware.py) sur toute requête, jamais
+    par cette fonction.
     """
     form = await request.form()
     cookie_value = request.cookies.get(CSRF_COOKIE_NAME)
     form_value = form.get("csrf_token")
     if not cookie_value or not form_value or cookie_value != form_value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSRF token invalide.")
-
-
-def csrf_token_for_request(request: Request) -> str:
-    """Retourne le token CSRF déjà présent en cookie, ou en génère un nouveau.
-
-    Ne pose PAS le cookie — la valeur doit être injectée dans le contexte du
-    template AVANT de construire le TemplateResponse (qui rend le HTML
-    immédiatement). Voir `attach_csrf_cookie_if_needed` pour poser le cookie
-    une fois la réponse construite.
-    """
-    return request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
-
-
-def attach_csrf_cookie_if_needed(request: Request, response, token: str) -> None:
-    """Pose le cookie csrf_token sur la réponse s'il n'existait pas déjà
-    dans la requête (évite de le régénérer à chaque page)."""
-    if not request.cookies.get(CSRF_COOKIE_NAME):
-        response.set_cookie(
-            CSRF_COOKIE_NAME,
-            token,
-            httponly=True,
-            secure=settings.secure_cookies,
-            samesite="lax",
-        )
 
 
 # --- Dépendances d'authentification / RBAC --------------------------------

@@ -102,6 +102,29 @@ Formules vérifiées contre un calculateur Erlang C tiers indépendant : 100
 appels/30 min, AHT 180s = 10 Erlangs, 14 agents → 88.84% de service level
 et ~7.8s d'ASA (13 agents → 79.56%, sous la cible). 22 tests unitaires.
 
+## Module LTF Monthly
+
+Premier module métier avec UI complète (`/ltf`) : liste filtrable (année,
+campagne, skill), création, détail avec historique des versions. Réservé
+en écriture aux rôles `admin`/`wfm_analyst` ; lecture ouverte à tous les
+connectés.
+
+**Pipeline de calcul** (`app/services/forecast_service.py`), jamais de
+formule inline dans le router ou le template :
+Workload Hours → Net Required HC (formule agrégée, pas Erlang C — voir
+`kpi_service.required_hc_aggregate`) → Gross Required HC (shrinkage
+appliqué via `erlang_service.apply_shrinkage`) → Paid/Productive/Production
+Hours. `staffing_gap` et `overtime_required_hours` restent à 0 à la
+création : ils seront calculés par Capacity Planning (commit 09) et
+Overtime (commit 11), qui ont besoin de l'effectif réel.
+
+**Versioning (§9)** : créer un LTF pour une période déjà existante ne
+l'écrase jamais — une nouvelle version est créée, l'ancienne passe
+`is_current=False` mais reste consultable via l'historique.
+
+Pas encore de page d'administration Campaigns/Skills : utiliser
+`python -m app.scripts.seed_demo_data` pour créer des données de test.
+
 ## Tests
 
 ```bash

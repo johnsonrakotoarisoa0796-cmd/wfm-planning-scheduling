@@ -2,6 +2,10 @@
 et logout. Aucune inscription libre en V1 — les comptes sont créés par un
 administrateur via app/scripts/create_admin.py (ou une future page Settings
 > Utilisateurs réservée au rôle admin).
+
+Le jeton CSRF est géré globalement par CSRFCookieMiddleware et injecté dans
+chaque template par le context_processor de app/core/templating.py — les
+routes ci-dessous n'ont plus besoin de le manipuler explicitement.
 """
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -13,10 +17,8 @@ from app.core.database import get_session
 from app.core.security import (
     PENDING_2FA_COOKIE_NAME,
     SESSION_COOKIE_NAME,
-    attach_csrf_cookie_if_needed,
     create_pending_2fa_token,
     create_session_token,
-    csrf_token_for_request,
     get_current_user,
     read_pending_2fa_token,
     verify_csrf,
@@ -34,13 +36,7 @@ settings = get_settings()
 def login_form(request: Request, session: Session = Depends(get_session)):
     if get_current_user(session=session, session_token=request.cookies.get(SESSION_COOKIE_NAME)):
         return RedirectResponse(url="/", status_code=303)
-
-    csrf_token = csrf_token_for_request(request)
-    response = templates.TemplateResponse(
-        request, "auth/login.html", {"error": None, "email": None, "csrf_token": csrf_token}
-    )
-    attach_csrf_cookie_if_needed(request, response, csrf_token)
-    return response
+    return templates.TemplateResponse(request, "auth/login.html", {"error": None, "email": None})
 
 
 @router.post("/login", dependencies=[Depends(verify_csrf)])
@@ -50,14 +46,13 @@ def login_submit(
     password: str = Form(...),
     session: Session = Depends(get_session),
 ):
-    csrf_token = request.cookies.get("csrf_token", "")
     user = session.exec(select(User).where(User.email == email)).first()
 
     if user is None or not user.is_active or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             request,
             "auth/login.html",
-            {"error": "Email ou mot de passe incorrect.", "email": email, "csrf_token": csrf_token},
+            {"error": "Email ou mot de passe incorrect.", "email": email},
             status_code=400,
         )
 
@@ -78,13 +73,7 @@ def verify_2fa_form(request: Request):
     pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
     if not pending_token or read_pending_2fa_token(pending_token) is None:
         return RedirectResponse(url="/login", status_code=303)
-
-    csrf_token = csrf_token_for_request(request)
-    response = templates.TemplateResponse(
-        request, "auth/verify_2fa.html", {"error": None, "csrf_token": csrf_token}
-    )
-    attach_csrf_cookie_if_needed(request, response, csrf_token)
-    return response
+    return templates.TemplateResponse(request, "auth/verify_2fa.html", {"error": None})
 
 
 @router.post("/login/verify", dependencies=[Depends(verify_csrf)])
@@ -93,7 +82,6 @@ def verify_2fa_submit(
     code: str = Form(...),
     session: Session = Depends(get_session),
 ):
-    csrf_token = request.cookies.get("csrf_token", "")
     pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
     user_id = read_pending_2fa_token(pending_token) if pending_token else None
 
@@ -106,7 +94,7 @@ def verify_2fa_submit(
         return templates.TemplateResponse(
             request,
             "auth/verify_2fa.html",
-            {"error": "Code invalide ou expiré.", "csrf_token": csrf_token},
+            {"error": "Code invalide ou expiré."},
             status_code=400,
         )
 

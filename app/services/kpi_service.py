@@ -95,6 +95,30 @@ def paid_hours(employee_count: float, daily_hours: float, working_days: float) -
     return employee_count * daily_hours * working_days
 
 
+def workload_hours(volume_contacts: float, aht_seconds: float) -> float:
+    """Charge de travail totale (heures) = Volume x AHT / 3600 (secondes -> heures)."""
+    return (volume_contacts * aht_seconds) / 3600
+
+
+def required_hc_aggregate(
+    workload_hours_value: float,
+    available_hours_per_agent: float,
+    occupancy_target_pct: float,
+) -> float:
+    """Net Required HC agrégé (niveau LTF/STF) = charge de travail totale /
+    (heures disponibles par agent x occupancy cible).
+
+    À la différence de erlang_service.find_required_agents (qui résout la
+    file d'attente sur un intervalle court où l'arrivée des appels minute
+    par minute compte), cette formule agrégée convient à un horizon
+    mensuel/hebdomadaire : c'est le ratio standard de l'industrie pour le
+    capacity planning long terme. Le dimensionnement Erlang C précis
+    n'intervient qu'au niveau Daily/Intraday (commit 08).
+    """
+    available_capacity_hours = available_hours_per_agent * (occupancy_target_pct / 100)
+    return _safe_ratio(workload_hours_value, available_capacity_hours)
+
+
 def productive_hours(paid_hours_value: float, total_shrinkage_hours: float) -> float:
     """Productive Hours = Paid Hours - Total Shrinkage Hours."""
     return paid_hours_value - total_shrinkage_hours

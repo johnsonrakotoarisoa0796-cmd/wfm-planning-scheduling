@@ -1,0 +1,115 @@
+{% extends "app_base.html" %}
+{% block title %}Nouveau forecast LTF — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Nouveau forecast LTF</h1>
+        <p class="page-header__meta">Crée une nouvelle version — un forecast existant pour cette période n'est jamais écrasé.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/ltf/new">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Période &amp; périmètre</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="period">Mois</label>
+                    <input type="month" id="period" name="period" value="{{ values.period or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="campaign_id">Campagne</label>
+                    <select id="campaign_id" name="campaign_id" required>
+                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+                        {% for c in campaigns %}
+                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="skill_id">Skill</label>
+                    <select id="skill_id" name="skill_id" required>
+                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+                        {% for s in skills %}
+                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Volume &amp; AHT</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="forecast_volume">Volume prévisionnel (contacts)</label>
+                    <input type="number" id="forecast_volume" name="forecast_volume" min="0" step="1" value="{{ values.forecast_volume or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="forecast_aht_seconds">AHT prévisionnel (secondes)</label>
+                    <input type="number" id="forecast_aht_seconds" name="forecast_aht_seconds" min="1" step="1" value="{{ values.forecast_aht_seconds or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="aht_required_seconds">AHT Required (secondes)</label>
+                    <input type="number" id="aht_required_seconds" name="aht_required_seconds" min="1" step="1" value="{{ values.aht_required_seconds or '' }}" required>
+                    <div class="field__hint">Cible fixée par le WFM, comparée à l'AHT forecast/actual (§13).</div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Cibles de service</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="occupancy_required_pct">Occupancy cible (%)</label>
+                    <input type="number" id="occupancy_required_pct" name="occupancy_required_pct" min="1" max="100" step="0.1" value="{{ values.occupancy_required_pct or '85' }}" required>
+                </div>
+                <div class="field">
+                    <label for="service_level_target_pct">Service Level cible (%)</label>
+                    <input type="number" id="service_level_target_pct" name="service_level_target_pct" min="0" max="100" step="0.1" value="{{ values.service_level_target_pct or '80' }}" required>
+                </div>
+                <div class="field">
+                    <label for="asa_target_seconds">ASA cible (secondes)</label>
+                    <input type="number" id="asa_target_seconds" name="asa_target_seconds" min="0" step="1" value="{{ values.asa_target_seconds or '20' }}" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Shrinkage prévisionnel</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="indoor_shrinkage_pct">Indoor (%)</label>
+                    <input type="number" id="indoor_shrinkage_pct" name="indoor_shrinkage_pct" min="0" max="100" step="0.1" value="{{ values.indoor_shrinkage_pct or '' }}" required>
+                    <div class="field__hint">Pause, réunion, formation, projet, temps personnel, panne.</div>
+                </div>
+                <div class="field">
+                    <label for="outdoor_shrinkage_pct">Outdoor (%)</label>
+                    <input type="number" id="outdoor_shrinkage_pct" name="outdoor_shrinkage_pct" min="0" max="100" step="0.1" value="{{ values.outdoor_shrinkage_pct or '' }}" required>
+                    <div class="field__hint">Congés, absentéisme.</div>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Notes</legend>
+            <div class="field field--full">
+                <textarea name="notes" placeholder="Contexte de cette prévision, hypothèses retenues...">{{ values.notes or '' }}</textarea>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Créer le forecast</button>
+            <a href="/ltf" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

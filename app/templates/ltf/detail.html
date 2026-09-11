@@ -1,0 +1,101 @@
+{% extends "app_base.html" %}
+{% block title %}{{ month_label }} {{ ltf.year }} — LTF — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ month_label }} {{ ltf.year }}</h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+    </div>
+    <a href="/ltf" class="btn-secondary">&larr; Retour à la liste</a>
+</div>
+
+<fieldset>
+    <legend>Volume &amp; AHT</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Forecast Volume</td><td class="numeric">{{ "{:,.0f}".format(ltf.forecast_volume).replace(",", " ") }} contacts</td></tr>
+                <tr><td>Forecast AHT</td><td class="numeric">{{ "%.0f"|format(ltf.forecast_aht_seconds) }} s</td></tr>
+                <tr><td>AHT Required</td><td class="numeric">{{ "%.0f"|format(ltf.aht_required_seconds) }} s</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Cibles de service</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Occupancy Required</td><td class="numeric">{{ "%.1f"|format(ltf.occupancy_required_pct) }}%</td></tr>
+                <tr><td>Service Level Target</td><td class="numeric">{{ "%.1f"|format(ltf.service_level_target_pct) }}%</td></tr>
+                <tr><td>ASA Target</td><td class="numeric">{{ "%.0f"|format(ltf.asa_target_seconds) }} s</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Staffing &amp; heures (calculés)</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Headcount Required (gross)</td><td class="numeric">{{ "%.1f"|format(ltf.headcount_required) }}</td></tr>
+                <tr><td>Paid Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.paid_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Productive Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.productive_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Production Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.production_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Waiting Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.waiting_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Available Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.available_hours).replace(",", " ") }} h</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Shrinkage</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Indoor</td><td class="numeric">{{ "%.1f"|format(ltf.indoor_shrinkage_pct) }}%</td></tr>
+                <tr><td>Outdoor</td><td class="numeric">{{ "%.1f"|format(ltf.outdoor_shrinkage_pct) }}%</td></tr>
+                <tr><td>Total</td><td class="numeric">{{ "%.1f"|format(ltf.total_shrinkage_pct) }}%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Capacity &amp; Overtime</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Staffing Gap</td><td class="numeric">{{ "%.1f"|format(ltf.staffing_gap) }}</td></tr>
+                <tr><td>Overtime Required</td><td class="numeric">{{ "%.1f"|format(ltf.overtime_required_hours) }} h</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="field__hint">Calculés précisément par les modules Capacity Planning et Overtime (à venir) une fois l'effectif réel connu.</p>
+</fieldset>
+
+{% if history|length > 1 %}
+<fieldset>
+    <legend>Historique des versions ({{ history|length }})</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Volume</th><th class="numeric">HC Requis</th><th class="numeric">Shrinkage</th></tr>
+            </thead>
+            <tbody>
+                {% for v in history %}
+                <tr>
+                    <td class="numeric">{{ "{:,.0f}".format(v.forecast_volume).replace(",", " ") }}</td>
+                    <td class="numeric">{{ "%.1f"|format(v.headcount_required) }}</td>
+                    <td class="numeric">{{ "%.1f"|format(v.total_shrinkage_pct) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+{% endblock %}
