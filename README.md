@@ -91,6 +91,17 @@ Hours, Forecast Accuracy, Staffing Gap, et un statut générique
 37 tests unitaires couvrent chaque formule, y compris les cas de division
 par zéro (période sans activité).
 
+## Moteur Erlang C
+
+`app/services/erlang_service.py` — calcul du Required HC (§18), isolé,
+sans dépendance DB/FastAPI. Erlang B par récurrence (jamais la formule
+factorielle classique, qui déborde numériquement bien avant les effectifs
+réels d'un centre de contacts — validé jusqu'à 800+ Erlangs sans problème).
+
+Formules vérifiées contre un calculateur Erlang C tiers indépendant : 100
+appels/30 min, AHT 180s = 10 Erlangs, 14 agents → 88.84% de service level
+et ~7.8s d'ASA (13 agents → 79.56%, sous la cible). 22 tests unitaires.
+
 ## Tests
 
 ```bash
