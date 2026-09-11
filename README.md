@@ -82,6 +82,15 @@ chiffres) → session ouverte. CSRF protégé sur tous les formulaires POST
 `require_login` et `require_role(...)` (voir `app/core/security.py`), jamais
 de vérification de rôle inline dans les routers.
 
+## Moteur KPI
+
+Toutes les formules WFM (`app/services/kpi_service.py`) : AHT, Handle Time,
+Occupancy, Service Level, ASA, Shrinkage %, Paid/Productive/Production
+Hours, Forecast Accuracy, Staffing Gap, et un statut générique
+(`on_target` / `warning` / `critical`) pour l'affichage Dashboard (§5).
+37 tests unitaires couvrent chaque formule, y compris les cas de division
+par zéro (période sans activité).
+
 ## Tests
 
 ```bash
