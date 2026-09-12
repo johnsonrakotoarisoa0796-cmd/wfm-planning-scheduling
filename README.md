@@ -181,7 +181,22 @@ pytest tests/integration   # DB, API, Dashboard, Forecast
 2. Créer une base Supabase et récupérer la connection string.
 3. Renseigner les variables d'environnement (`DATABASE_URL`, `SECRET_KEY`, ...).
 4. Render utilise `render.yaml` pour la configuration du build/start et le
-   health check (`/health`).
+   health check (`/health`). Le start command lance `alembic upgrade head`
+   avant `uvicorn` à chaque déploiement — nécessaire car le plan free de
+   Render n'offre pas d'accès shell pour lancer les migrations à la main.
+
+### Créer le premier compte admin sans accès shell
+
+Deux options :
+- **Local** (si vous avez un accès direct à `DATABASE_URL`) :
+  `python -m app.scripts.create_admin` (voir section Authentification).
+- **Sans accès shell (Render free)** : définir `BOOTSTRAP_ADMIN_EMAIL` et
+  `BOOTSTRAP_ADMIN_PASSWORD` dans les variables d'environnement Render, puis
+  redéployer. Un compte admin est créé automatiquement au démarrage
+  (`app/main.py:bootstrap_admin_if_configured`), et le secret TOTP (QR code
+  ASCII + clé manuelle) s'affiche dans les logs Render (Dashboard > Logs).
+  Idempotent — les variables peuvent rester en place ou être retirées après
+  coup, sans risque de recréer/réinitialiser le compte à chaque redémarrage.
 
 ## Historique d'implémentation
 

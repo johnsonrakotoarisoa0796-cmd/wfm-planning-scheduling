@@ -4,7 +4,11 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # alembic upgrade head tourne a chaque deploiement, avant de demarrer le
+    # serveur : necessaire car le plan free de Render n'offre pas d'acces
+    # shell pour lancer les migrations a la main. Idempotent (aucun effet
+    # si la base est deja a jour), donc sans danger sur les redeploiements.
+    startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
       - key: ENV
@@ -21,3 +25,13 @@ services:
         value: "5"
       - key: INTERVAL_MINUTES
         value: "30"
+      # Optionnel : si les deux sont renseignés ET qu'aucun compte n'existe
+      # encore avec cet email, un compte admin est créé automatiquement au
+      # démarrage (voir app/main.py bootstrap_admin_if_configured) — pensé
+      # pour un plan Render sans accès shell. Le secret TOTP s'affiche dans
+      # les logs Render (Dashboard > Logs), pas besoin de terminal.
+      # Peuvent être retirés une fois le compte créé.
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
