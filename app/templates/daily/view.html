@@ -1,0 +1,66 @@
+{% extends "app_base.html" %}
+{% block title %}{{ target_date }} — Daily — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ target_date }}</h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+    </div>
+    <a href="/daily" class="btn-secondary">&larr; Retour à la liste</a>
+</div>
+
+<fieldset>
+    <legend>Résumé de la journée</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Volume forecast (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.forecast_volume).replace(",", " ") }}</td></tr>
+                <tr><td>Volume actual (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.actual_volume).replace(",", " ") if summary.actual_volume is not none else "—" }}</td></tr>
+                <tr><td>Pic Required HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_required_hc) }}</td></tr>
+                <tr><td>Pic Scheduled HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_scheduled_hc) }}</td></tr>
+                <tr><td>Pic Actual HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_actual_hc) if summary.peak_actual_hc is not none else "—" }}</td></tr>
+                <tr><td>Service Level moyen (estimé)</td><td class="numeric">{{ "%.1f"|format(summary.avg_service_level_pct) + "%" if summary.avg_service_level_pct is not none else "—" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Intervalles (30 min)</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Heure</th>
+                    <th class="numeric">Forecast</th>
+                    <th class="numeric">Actual</th>
+                    <th class="numeric">Required HC</th>
+                    <th class="numeric">Scheduled HC</th>
+                    <th class="numeric">Actual HC</th>
+                    <th class="numeric">Gap</th>
+                    <th class="numeric">SL</th>
+                    <th class="numeric">Occupancy</th>
+                    {% if can_update %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in intervals %}
+                <tr>
+                    <td>{{ i.interval_start.strftime("%H:%M") }}</td>
+                    <td class="numeric">{{ "%.0f"|format(i.forecast_volume) }}</td>
+                    <td class="numeric">{{ "%.0f"|format(i.actual_volume) if i.actual_volume is not none else "—" }}</td>
+                    <td class="numeric">{{ "%.1f"|format(i.required_hc) }}</td>
+                    <td class="numeric">{{ "%.1f"|format(i.scheduled_hc) }}</td>
+                    <td class="numeric">{{ "%.1f"|format(i.actual_hc) if i.actual_hc is not none else "—" }}</td>
+                    <td class="numeric">{{ "%+.1f"|format(i.staffing_gap) if i.staffing_gap is not none else "—" }}</td>
+                    <td class="numeric">{{ "%.0f"|format(i.service_level_pct) + "%" if i.service_level_pct is not none else "—" }}</td>
+                    <td class="numeric">{{ "%.0f"|format(i.occupancy_pct) + "%" if i.occupancy_pct is not none else "—" }}</td>
+                    {% if can_update %}<td><a href="/daily/interval/{{ i.id }}/edit">Modifier</a></td>{% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="field__hint">SL/ASA/Occupancy "actuals" sont des estimations Erlang C à partir du volume/AHT/HC réels saisis — la V1 n'a pas d'intégration ACD pour mesurer ces valeurs directement.</p>
+</fieldset>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "app_base.html" %}
+{% block title %}Daily / Intraday — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Daily / Intraday</h1>
+        <p class="page-header__meta">Granularité 30 minutes — Erlang C appliqué intervalle par intervalle.</p>
+    </div>
+    {% if can_generate %}
+    <a href="/daily/new" class="btn-secondary">+ Générer une journée</a>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="/daily">
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if rows %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Campagne</th>
+                <th>Skill</th>
+                <th class="numeric">Volume forecast</th>
+                <th class="numeric">Volume actual</th>
+                <th class="numeric">Pic HC requis</th>
+                <th class="numeric">SL moyen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td><a href="/daily/view?target_date={{ row.date }}&campaign_id={{ row.campaign_id }}&skill_id={{ row.skill_id }}">{{ row.date }}</a></td>
+                <td>{{ row.campaign_name }}</td>
+                <td>{{ row.skill_name }}</td>
+                <td class="numeric">{{ "{:,.0f}".format(row.summary.forecast_volume).replace(",", " ") }}</td>
+                <td class="numeric">{{ "{:,.0f}".format(row.summary.actual_volume).replace(",", " ") if row.summary.actual_volume is not none else "—" }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.summary.peak_required_hc) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.summary.avg_service_level_pct) + "%" if row.summary.avg_service_level_pct is not none else "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper">
+    <div class="empty-state">
+        Aucune journée générée pour ces filtres.
+        {% if can_generate %}<br><a href="/daily/new">Générer la première journée</a>.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -78,6 +78,11 @@ def average_speed_of_answer_seconds(total_wait_time_seconds: float, answered_con
     return _safe_ratio(total_wait_time_seconds, answered_contacts)
 
 
+def abandon_rate_pct(abandoned_contacts: float, offered_contacts: float) -> float:
+    """Abandon Rate = contacts abandonnés / contacts offerts x 100 (§10)."""
+    return _safe_ratio(abandoned_contacts, offered_contacts) * 100
+
+
 # --- Shrinkage / Paid / Productive / Production Hours (§19-§22, §24) ---------
 
 def shrinkage_pct(total_shrinkage_hours: float, paid_hours: float) -> float:

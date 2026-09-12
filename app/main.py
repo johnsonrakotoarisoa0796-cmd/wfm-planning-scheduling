@@ -15,7 +15,7 @@ from app.core.middleware import CSRFCookieMiddleware
 from app.core.security import NotAuthenticatedError, require_login, require_role
 from app.models.enums import UserRole
 from app.models.user import User
-from app.routers import auth, ltf, stf
+from app.routers import auth, daily, ltf, stf
 
 settings = get_settings()
 
@@ -33,6 +33,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(auth.router)
 app.include_router(ltf.router)
 app.include_router(stf.router)
+app.include_router(daily.router)
 
 
 @app.exception_handler(NotAuthenticatedError)

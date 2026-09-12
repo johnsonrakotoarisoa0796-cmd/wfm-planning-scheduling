@@ -11,6 +11,7 @@ from app.services.kpi_service import (
     KPIComparison,
     KPIStatus,
     StaffingStatus,
+    abandon_rate_pct,
     aht_variance_pct,
     aht_variance_seconds,
     average_handle_time_seconds,
@@ -97,6 +98,14 @@ def test_average_speed_of_answer_seconds():
 
 def test_average_speed_of_answer_seconds_zero_answered_returns_zero():
     assert average_speed_of_answer_seconds(total_wait_time_seconds=0, answered_contacts=0) == 0.0
+
+
+def test_abandon_rate_pct():
+    assert abandon_rate_pct(abandoned_contacts=50, offered_contacts=1000) == pytest.approx(5.0)
+
+
+def test_abandon_rate_pct_zero_offered_returns_zero():
+    assert abandon_rate_pct(abandoned_contacts=0, offered_contacts=0) == 0.0
 
 
 # --- Shrinkage / Paid / Productive / Production Hours -----------------------------

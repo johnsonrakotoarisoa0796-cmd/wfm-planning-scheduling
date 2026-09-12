@@ -1,0 +1,92 @@
+{% extends "app_base.html" %}
+{% block title %}Générer une journée — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Générer une journée</h1>
+        <p class="page-header__meta">Répartit le volume sur 48 tranches de 30 min via un profil type, puis calcule le HC requis par Erlang C pour chacune.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/daily/new">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Période &amp; périmètre</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="target_date">Date</label>
+                    <input type="date" id="target_date" name="target_date" value="{{ values.target_date or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="campaign_id">Campagne</label>
+                    <select id="campaign_id" name="campaign_id" required>
+                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+                        {% for c in campaigns %}
+                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="skill_id">Skill</label>
+                    <select id="skill_id" name="skill_id" required>
+                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+                        {% for s in skills %}
+                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Volume &amp; AHT (journée entière)</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="daily_volume">Volume journalier (contacts)</label>
+                    <input type="number" id="daily_volume" name="daily_volume" min="0" step="1" value="{{ values.daily_volume or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="daily_aht_seconds">AHT (secondes)</label>
+                    <input type="number" id="daily_aht_seconds" name="daily_aht_seconds" min="1" step="1" value="{{ values.daily_aht_seconds or '' }}" required>
+                </div>
+            </div>
+            <p class="field__hint">Réparti automatiquement sur 48 intervalles via un profil type (pic matin/après-midi) — pas de saisie manuelle intervalle par intervalle.</p>
+        </fieldset>
+
+        <fieldset>
+            <legend>Cibles Erlang C</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="service_level_target_pct">Service Level cible (%)</label>
+                    <input type="number" id="service_level_target_pct" name="service_level_target_pct" min="0" max="100" step="0.1" value="{{ values.service_level_target_pct or '80' }}" required>
+                </div>
+                <div class="field">
+                    <label for="answer_time_target_seconds">Seuil de réponse (secondes)</label>
+                    <input type="number" id="answer_time_target_seconds" name="answer_time_target_seconds" min="0" step="1" value="{{ values.answer_time_target_seconds or '20' }}" required>
+                </div>
+                <div class="field">
+                    <label for="occupancy_target_pct">Occupancy plafond (%)</label>
+                    <input type="number" id="occupancy_target_pct" name="occupancy_target_pct" min="1" max="100" step="0.1" value="{{ values.occupancy_target_pct or '85' }}" required>
+                </div>
+                <div class="field">
+                    <label for="shrinkage_pct">Shrinkage (%)</label>
+                    <input type="number" id="shrinkage_pct" name="shrinkage_pct" min="0" max="99.9" step="0.1" value="{{ values.shrinkage_pct or '' }}" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Générer les 48 intervalles</button>
+            <a href="/daily" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

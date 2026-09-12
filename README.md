@@ -141,6 +141,33 @@ STF liés.
 Même règle de versioning que le LTF : un second STF pour la même semaine
 ISO ne remplace jamais le premier.
 
+## Module Daily / Intraday
+
+`/daily` — granularité 30 minutes (§10). **C'est ici qu'Erlang C
+(`erlang_service.find_required_agents`) s'applique enfin intervalle par
+intervalle**, contrairement au LTF/STF qui utilisent une formule agrégée
+(la dynamique d'arrivée des appels sur une fenêtre courte justifie
+réellement la théorie des files d'attente à ce niveau — voir le docstring
+de `intraday_service.py`).
+
+**Génération** : un volume + AHT journaliers sont répartis sur 48 tranches
+via un profil de distribution par défaut (deux pics matin/après-midi,
+somme exactement 100%, voir `default_intraday_profile_pct()`) — pas de
+saisie manuelle de 48 valeurs. Le HC requis est recalculé par Erlang C
+pour *chaque* intervalle, donc varie réellement avec le trafic (testé
+explicitement : le pic a un required_hc supérieur au creux).
+
+**Actuals** : Service Level/ASA/Occupancy "atteints" sont des **estimations
+via Erlang C appliquée aux valeurs réelles** (volume/AHT/HC saisis), pas
+une mesure ACD directe — la V1 n'a pas d'intégration avec un vrai
+distributeur d'appels (l'import de données du §36 viendra plus tard).
+Modification réservée à `admin`/`wfm_analyst`/`team_lead` (le pilotage
+opérationnel au jour le jour n'exige pas de construire les forecasts long
+terme) ; génération réservée à `admin`/`wfm_analyst`.
+
+Régénérer une journée déjà générée échoue explicitement — pas d'écrasement
+silencieux.
+
 ## Tests
 
 ```bash

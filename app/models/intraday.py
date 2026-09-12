@@ -45,6 +45,11 @@ class IntervalForecast(SQLModel, table=True):
     required_hc: float = Field(default=0)
     scheduled_hc: float = Field(default=0)
     actual_hc: Optional[float] = Field(default=None)
+    # Cibles utilisées lors du calcul Erlang C initial (§10) — conservées
+    # sur l'intervalle pour pouvoir recalculer un Service Level/ASA "atteint"
+    # cohérent une fois les actuals connus (même seuil de temps de réponse).
+    service_level_target_pct: float = Field(default=0)
+    answer_time_target_seconds: float = Field(default=0)
     service_level_pct: Optional[float] = Field(default=None)
     asa_seconds: Optional[float] = Field(default=None)
     occupancy_pct: Optional[float] = Field(default=None)

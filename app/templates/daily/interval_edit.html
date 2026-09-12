@@ -1,0 +1,60 @@
+{% extends "app_base.html" %}
+{% block title %}Modifier {{ interval.interval_start.strftime("%H:%M") }} — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ interval.date }} — {{ interval.interval_start.strftime("%H:%M") }}</h1>
+        <p class="page-header__meta">Forecast : {{ "%.0f"|format(interval.forecast_volume) }} contacts, Required HC {{ "%.1f"|format(interval.required_hc) }}</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/daily/interval/{{ interval.id }}/edit">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Planning réel</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="scheduled_hc">Scheduled HC</label>
+                    <input type="number" id="scheduled_hc" name="scheduled_hc" min="0" step="0.5" value="{{ interval.scheduled_hc or '' }}">
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Actuals (une fois la journée passée)</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="actual_volume">Volume réel (contacts)</label>
+                    <input type="number" id="actual_volume" name="actual_volume" min="0" step="1" value="{{ interval.actual_volume if interval.actual_volume is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="actual_aht_seconds">AHT réel (secondes)</label>
+                    <input type="number" id="actual_aht_seconds" name="actual_aht_seconds" min="1" step="1" value="{{ interval.actual_aht_seconds if interval.actual_aht_seconds is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="actual_hc">HC réellement présent</label>
+                    <input type="number" id="actual_hc" name="actual_hc" min="0" step="0.5" value="{{ interval.actual_hc if interval.actual_hc is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="abandoned_contacts">Contacts abandonnés</label>
+                    <input type="number" id="abandoned_contacts" name="abandoned_contacts" min="0" step="1" value="">
+                </div>
+            </div>
+            <p class="field__hint">Renseigner Volume + AHT + HC réels recalcule automatiquement le Service Level/ASA/Occupancy estimés (via Erlang C, pas une mesure ACD directe).</p>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Enregistrer</button>
+            <a href="/daily/view?target_date={{ interval.date }}&campaign_id={{ interval.campaign_id }}&skill_id={{ interval.skill_id }}" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
