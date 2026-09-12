@@ -1,0 +1,84 @@
+{% extends "app_base.html" %}
+{% block title %}STF Weekly — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>STF Weekly</h1>
+        <p class="page-header__meta">Réajustement hebdomadaire du LTF — chaque semaine crée sa propre version, jamais un écrasement.</p>
+    </div>
+    {% if can_edit %}
+    <a href="/stf/new" class="btn-secondary">+ Nouveau réajustement</a>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="/stf">
+    <div class="field">
+        <label for="iso_year">Année</label>
+        <select id="iso_year" name="iso_year">
+            <option value="">Toutes</option>
+            {% for y in range(2024, 2029) %}
+            <option value="{{ y }}" {% if filters.iso_year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if rows %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Semaine</th>
+                <th>Campagne</th>
+                <th>Skill</th>
+                <th class="numeric">Volume</th>
+                <th class="numeric">AHT (s)</th>
+                <th class="numeric">Occupancy</th>
+                <th class="numeric">Shrinkage</th>
+                <th class="numeric">HC requis</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td><a href="/stf/{{ row.forecast.id }}">Semaine {{ row.forecast.iso_week }} — {{ row.forecast.iso_year }}</a></td>
+                <td>{{ row.campaign_name }}</td>
+                <td>{{ row.skill_name }}</td>
+                <td class="numeric">{{ "{:,.0f}".format(row.forecast.volume).replace(",", " ") }}</td>
+                <td class="numeric">{{ "%.0f"|format(row.forecast.aht_seconds) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.forecast.occupancy_pct) }}%</td>
+                <td class="numeric">{{ "%.1f"|format(row.forecast.shrinkage_pct) }}%</td>
+                <td class="numeric">{{ "%.1f"|format(row.forecast.headcount_required) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper">
+    <div class="empty-state">
+        Aucun forecast STF pour ces filtres.
+        {% if can_edit %}<br><a href="/stf/new">Créer le premier réajustement</a>.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

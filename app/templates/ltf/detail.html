@@ -77,6 +77,28 @@
     <p class="field__hint">Calculés précisément par les modules Capacity Planning et Overtime (à venir) une fois l'effectif réel connu.</p>
 </fieldset>
 
+{% if stf_weeks %}
+<fieldset>
+    <legend>Réajustements STF liés ({{ stf_weeks|length }})</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Semaine</th><th class="numeric">Volume</th><th class="numeric">HC Requis</th></tr>
+            </thead>
+            <tbody>
+                {% for stf in stf_weeks %}
+                <tr>
+                    <td><a href="/stf/{{ stf.id }}">Semaine {{ stf.iso_week }}</a></td>
+                    <td class="numeric">{{ "{:,.0f}".format(stf.volume).replace(",", " ") }}</td>
+                    <td class="numeric">{{ "%.1f"|format(stf.headcount_required) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+
 {% if history|length > 1 %}
 <fieldset>
     <legend>Historique des versions ({{ history|length }})</legend>

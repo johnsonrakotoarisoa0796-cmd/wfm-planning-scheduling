@@ -1,0 +1,88 @@
+{% extends "app_base.html" %}
+{% block title %}Semaine {{ stf.iso_week }} — STF — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Semaine {{ stf.iso_week }} — {{ stf.iso_year }}</h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }} · débute le {{ stf.week_start_date }}</p>
+    </div>
+    <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>
+</div>
+
+{% if comparison %}
+<fieldset>
+    <legend>LTF vs STF vs Variance</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Métrique</th>
+                    <th class="numeric">LTF</th>
+                    <th class="numeric">STF</th>
+                    <th class="numeric">Adjustment</th>
+                    <th class="numeric">Adjustment %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in comparison %}
+                <tr>
+                    <td>{{ row.metric }}</td>
+                    <td class="numeric">{{ "{:,.1f}".format(row.ltf_value).replace(",", " ") }} {{ row.unit }}</td>
+                    <td class="numeric">{{ "{:,.1f}".format(row.stf_value).replace(",", " ") }} {{ row.unit }}</td>
+                    <td class="numeric">{{ "%+.1f"|format(row.adjustment) }} {{ row.unit }}</td>
+                    <td class="numeric">{{ "%+.1f"|format(row.adjustment_pct) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="field__hint">
+        Adjustment = STF − LTF · Adjustment % = (STF − LTF) / LTF × 100 (§8).
+        LTF de référence : <a href="/ltf/{{ parent_ltf.id }}">{{ parent_ltf.year }}-{{ '%02d'|format(parent_ltf.month) }}</a>
+    </p>
+</fieldset>
+{% else %}
+<div class="error-banner">
+    Aucun LTF actif trouvé pour ce mois — ce STF a été créé alors qu'un LTF existait, mais il a peut-être depuis été retiré. Comparaison indisponible.
+</div>
+{% endif %}
+
+<fieldset>
+    <legend>Staffing &amp; heures (calculés)</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Headcount Required (gross)</td><td class="numeric">{{ "%.1f"|format(stf.headcount_required) }}</td></tr>
+                <tr><td>Paid Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.paid_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Productive Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.productive_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Production Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.production_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Waiting Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.waiting_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Overtime Required</td><td class="numeric">{{ "%.1f"|format(stf.overtime_required_hours) }} h</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="field__hint">Overtime Required calculé précisément par le module dédié (commit 11) une fois l'effectif réel connu.</p>
+</fieldset>
+
+{% if history|length > 1 %}
+<fieldset>
+    <legend>Historique des versions ({{ history|length }})</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Volume</th><th class="numeric">HC Requis</th><th class="numeric">Shrinkage</th></tr>
+            </thead>
+            <tbody>
+                {% for v in history %}
+                <tr>
+                    <td class="numeric">{{ "{:,.0f}".format(v.volume).replace(",", " ") }}</td>
+                    <td class="numeric">{{ "%.1f"|format(v.headcount_required) }}</td>
+                    <td class="numeric">{{ "%.1f"|format(v.shrinkage_pct) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+{% endblock %}

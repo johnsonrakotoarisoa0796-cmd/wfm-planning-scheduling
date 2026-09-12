@@ -125,6 +125,22 @@ l'écrase jamais — une nouvelle version est créée, l'ancienne passe
 Pas encore de page d'administration Campaigns/Skills : utiliser
 `python -m app.scripts.seed_demo_data` pour créer des données de test.
 
+## Module STF Weekly
+
+`/stf` — réajustement hebdomadaire d'un LTF déjà existant (§8). La création
+échoue explicitement si aucun LTF actif ne couvre le mois de la semaine ISO
+choisie ("créez d'abord un LTF pour ce mois") : le STF n'existe pas seul,
+il réajuste toujours un plan de référence.
+
+La page de détail affiche le tableau **LTF vs STF vs Variance** de
+l'exemple du cahier des charges (`Adjustment = STF − LTF`,
+`Adjustment % = (STF − LTF) / LTF × 100`) — testé mot pour mot contre cet
+exemple chiffré. Le LTF affiche en retour la liste de ses réajustements
+STF liés.
+
+Même règle de versioning que le LTF : un second STF pour la même semaine
+ISO ne remplace jamais le premier.
+
 ## Tests
 
 ```bash
