@@ -184,6 +184,25 @@ principe de dépendance explicite que le STF. La fiche détail affiche le
 Gap actuel *et* projeté, chacun avec un statut visuel
 (overstaffed/balanced/understaffed).
 
+## Module Shrinkage
+
+`/shrinkage` — enregistrement + rapport (§23-§25). Indoor (Break, Meeting,
+Personal Time, Outage, Project, Training) et Outdoor (Leave, Absenteeism)
+sont créées par défaut au démarrage (`bootstrap_shrinkage_categories`,
+inconditionnel — contrairement aux bootstraps admin/démo, ce sont des
+catégories de référence standard, pas des données de démonstration).
+
+**Une seule page de rapport** sert les trois granularités du cahier des
+charges (Monthly/Weekly/Daily) : l'utilisateur choisit une plage de dates
+libre plutôt que trois pages qui feraient le même calcul. Paid Hours est
+basé sur l'effectif **actif réellement rattaché au skill** (via
+EmployeeSkill), pas le HC théorique d'un forecast LTF/STF.
+
+Contrairement au LTF/STF/Capacity, aucune contrainte d'unicité : un même
+employé peut avoir plusieurs enregistrements le même jour (une pause ET
+une réunion). Enregistrement ouvert à `admin`/`wfm_analyst`/`team_lead`
+(même RBAC que les actuals Daily/Intraday).
+
 ## Tests
 
 ```bash

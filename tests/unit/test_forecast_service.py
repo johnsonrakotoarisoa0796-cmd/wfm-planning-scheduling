@@ -11,7 +11,7 @@ from datetime import date
 import pytest
 
 from app.models.forecast import LTFForecast, STFForecast
-from app.services.forecast_service import compare_ltf_stf, working_days_in_month
+from app.services.forecast_service import compare_ltf_stf, count_weekdays_in_range, working_days_in_month
 
 
 def test_working_days_in_month_matches_independent_reference():
@@ -25,6 +25,30 @@ def test_working_days_in_month_matches_independent_reference():
 def test_working_days_in_month_leap_year_february():
     # 2024 est bissextile (29 jours) ; le comptage ne doit pas planter sur le 29.
     assert working_days_in_month(2024, 2) == 21
+
+
+def test_count_weekdays_in_range_single_full_week():
+    # Lundi 7 septembre 2026 a dimanche 13 septembre 2026 -> 5 jours ouvres.
+    assert count_weekdays_in_range(date(2026, 9, 7), date(2026, 9, 13)) == 5
+
+
+def test_count_weekdays_in_range_single_weekday():
+    assert count_weekdays_in_range(date(2026, 9, 7), date(2026, 9, 7)) == 1  # lundi
+
+
+def test_count_weekdays_in_range_single_weekend_day():
+    assert count_weekdays_in_range(date(2026, 9, 12), date(2026, 9, 12)) == 0  # samedi
+
+
+def test_count_weekdays_in_range_matches_working_days_in_month():
+    # working_days_in_month delegue desormais a count_weekdays_in_range :
+    # les deux doivent rester coherents pour un mois complet.
+    assert count_weekdays_in_range(date(2026, 9, 1), date(2026, 9, 30)) == working_days_in_month(2026, 9)
+
+
+def test_count_weekdays_in_range_rejects_end_before_start():
+    with pytest.raises(ValueError):
+        count_weekdays_in_range(date(2026, 9, 10), date(2026, 9, 1))
 
 
 # --- compare_ltf_stf : reproduit exactement l'exemple chiffré du §8 --------------

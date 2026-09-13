@@ -8,9 +8,14 @@ import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlalchemy.pool import StaticPool
 
-from app.main import bootstrap_admin_if_configured, bootstrap_demo_data_if_configured
+from app.main import (
+    bootstrap_admin_if_configured,
+    bootstrap_demo_data_if_configured,
+    bootstrap_shrinkage_categories,
+)
 from app.models.campaign import Campaign
-from app.models.enums import UserRole
+from app.models.enums import ShrinkageType, UserRole
+from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
 
@@ -119,3 +124,43 @@ def test_demo_data_skips_if_campaign_already_exists_manually(engine, monkeypatch
         campaigns = session.exec(select(Campaign)).all()
         assert len(campaigns) == 1
         assert campaigns[0].code == "EXIST"
+
+
+# --- bootstrap_shrinkage_categories ---------------------------------------------
+
+def test_shrinkage_categories_creates_8_default_categories(engine):
+    bootstrap_shrinkage_categories(db_engine=engine)
+    with Session(engine) as session:
+        categories = session.exec(select(ShrinkageCategory)).all()
+        assert len(categories) == 8
+        codes = {c.code for c in categories}
+        assert codes == {
+            "BREAK", "MEETING", "PERSONAL", "OUTAGE", "PROJECT", "TRAINING",
+            "LEAVE", "ABSENTEEISM",
+        }
+
+
+def test_shrinkage_categories_split_indoor_outdoor_correctly(engine):
+    bootstrap_shrinkage_categories(db_engine=engine)
+    with Session(engine) as session:
+        indoor = session.exec(select(ShrinkageCategory).where(ShrinkageCategory.type == ShrinkageType.INDOOR)).all()
+        outdoor = session.exec(select(ShrinkageCategory).where(ShrinkageCategory.type == ShrinkageType.OUTDOOR)).all()
+        assert {c.code for c in indoor} == {"BREAK", "MEETING", "PERSONAL", "OUTAGE", "PROJECT", "TRAINING"}
+        assert {c.code for c in outdoor} == {"LEAVE", "ABSENTEEISM"}
+
+
+def test_shrinkage_categories_is_idempotent(engine):
+    bootstrap_shrinkage_categories(db_engine=engine)
+    bootstrap_shrinkage_categories(db_engine=engine)
+    with Session(engine) as session:
+        assert len(session.exec(select(ShrinkageCategory)).all()) == 8
+
+
+def test_shrinkage_categories_runs_unconditionally_no_env_var_needed(engine, monkeypatch):
+    # Contrairement au bootstrap admin/demo, aucune variable d'environnement
+    # n'est necessaire - ce sont des categories de reference standard.
+    for var in ("BOOTSTRAP_ADMIN_EMAIL", "BOOTSTRAP_ADMIN_PASSWORD", "BOOTSTRAP_DEMO_DATA"):
+        monkeypatch.delenv(var, raising=False)
+    bootstrap_shrinkage_categories(db_engine=engine)
+    with Session(engine) as session:
+        assert len(session.exec(select(ShrinkageCategory)).all()) == 8

@@ -8,6 +8,7 @@ seront ajoutés progressivement.
 
 import os
 from contextlib import asynccontextmanager
+from datetime import date
 
 import qrcode
 from fastapi import Depends, FastAPI, Request
@@ -27,10 +28,12 @@ from app.core.security import (
     totp_provisioning_uri,
 )
 from app.models.campaign import Campaign
-from app.models.enums import Channel, UserRole
+from app.models.employee import Employee, EmployeeSkill
+from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
+from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import auth, capacity, daily, ltf, stf
+from app.routers import auth, capacity, daily, ltf, stf, shrinkage
 
 settings = get_settings()
 
@@ -84,9 +87,9 @@ def bootstrap_admin_if_configured(*, db_engine=None) -> None:
 
 
 def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
-    """Crée une campagne + skill de démonstration au démarrage si
-    BOOTSTRAP_DEMO_DATA=true est défini ET qu'aucune campagne n'existe
-    encore en base.
+    """Crée une campagne + skill + quelques employés de démonstration au
+    démarrage si BOOTSTRAP_DEMO_DATA=true est défini ET qu'aucune campagne
+    n'existe encore en base.
 
     Même logique que bootstrap_admin_if_configured : pensé pour un
     déploiement Render sans accès shell, où `python -m
@@ -112,6 +115,27 @@ def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
         skill = Skill(campaign_id=campaign.id, name="Voix Niveau 1", channel=Channel.VOICE)
         session.add(skill)
         session.commit()
+        session.refresh(skill)
+
+        demo_employees = [
+            ("EMP001", "Alice", "Randrianasolo"),
+            ("EMP002", "Bao", "Rakoto"),
+            ("EMP003", "Chris", "Andria"),
+        ]
+        for code, first_name, last_name in demo_employees:
+            employee = Employee(
+                employee_code=code,
+                first_name=first_name,
+                last_name=last_name,
+                campaign_id=campaign.id,
+                hire_date=date(2025, 1, 1),
+                status=EmployeeStatus.ACTIVE,
+            )
+            session.add(employee)
+            session.commit()
+            session.refresh(employee)
+            session.add(EmployeeSkill(employee_id=employee.id, skill_id=skill.id, is_primary=True))
+        session.commit()
 
         campaign_name, campaign_code = campaign.name, campaign.code
         skill_name, skill_channel = skill.name, skill.channel.value
@@ -119,13 +143,52 @@ def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
     print("=" * 70)
     print(f"[bootstrap] Campagne de démo créée : {campaign_name} (code={campaign_code})")
     print(f"[bootstrap] Skill de démo créée : {skill_name} ({skill_channel})")
+    print(f"[bootstrap] {len(demo_employees)} employés de démo créés et rattachés au skill")
     print("=" * 70)
+
+
+def bootstrap_shrinkage_categories(*, db_engine=None) -> None:
+    """Crée les catégories Shrinkage par défaut (§23) si aucune n'existe
+    encore — Indoor (Break, Meeting, Personal Time, Outage, Project,
+    Training) et Outdoor (Leave, Absenteeism).
+
+    Contrairement au bootstrap admin/démo, ceci s'exécute TOUJOURS (pas de
+    variable d'environnement) : ce sont des catégories de référence
+    standard qu'un déploiement réel voudrait dès le départ, pas des
+    données de démonstration à activer explicitement. L'administrateur
+    pourra les modifier plus tard depuis une page Settings dédiée (pas
+    encore construite) — ce bootstrap ne fait que poser un point de
+    départ raisonnable, idempotent.
+    """
+    db_engine = db_engine or engine
+
+    with Session(db_engine) as session:
+        existing = session.exec(select(ShrinkageCategory)).first()
+        if existing is not None:
+            return
+
+        default_categories = [
+            ("Break", ShrinkageType.INDOOR, "BREAK"),
+            ("Meeting", ShrinkageType.INDOOR, "MEETING"),
+            ("Personal Time", ShrinkageType.INDOOR, "PERSONAL"),
+            ("Outage", ShrinkageType.INDOOR, "OUTAGE"),
+            ("Project", ShrinkageType.INDOOR, "PROJECT"),
+            ("Training", ShrinkageType.INDOOR, "TRAINING"),
+            ("Leave", ShrinkageType.OUTDOOR, "LEAVE"),
+            ("Absenteeism", ShrinkageType.OUTDOOR, "ABSENTEEISM"),
+        ]
+        for name, shrinkage_type, code in default_categories:
+            session.add(ShrinkageCategory(name=name, type=shrinkage_type, code=code))
+        session.commit()
+
+    print(f"[bootstrap] {len(default_categories)} catégories Shrinkage par défaut créées.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bootstrap_admin_if_configured()
     bootstrap_demo_data_if_configured()
+    bootstrap_shrinkage_categories()
     yield
 
 
@@ -146,6 +209,7 @@ app.include_router(ltf.router)
 app.include_router(stf.router)
 app.include_router(daily.router)
 app.include_router(capacity.router)
+app.include_router(shrinkage.router)
 
 
 @app.exception_handler(NotAuthenticatedError)

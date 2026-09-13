@@ -1,40 +1,25 @@
-"""Crée des données de référence minimales (Campaign + Skill).
+"""Crée des données de référence minimales (Campaign + Skill + employés +
+catégories Shrinkage) pour un usage LOCAL avec accès direct à DATABASE_URL.
 
-Il n'existe pas encore de page d'administration Campaigns/Skills — à
-ajouter au module Settings quand il sera construit. En attendant, ce script
-débloque les tests manuels des modules LTF/STF/Daily.
+Délègue aux mêmes fonctions que le bootstrap cloud (app/main.py) plutôt
+que de dupliquer la logique — une seule source de vérité pour les données
+de démo, qu'on soit en local ou sur Render sans accès shell (voir
+BOOTSTRAP_DEMO_DATA dans le README).
 
 Usage :
     python -m app.scripts.seed_demo_data
 """
 
-from sqlmodel import Session, select
+import os
 
-from app.core.database import engine
-from app.models.campaign import Campaign
-from app.models.enums import Channel
-from app.models.skill import Skill
+os.environ.setdefault("BOOTSTRAP_DEMO_DATA", "true")
+
+from app.main import bootstrap_demo_data_if_configured, bootstrap_shrinkage_categories  # noqa: E402
 
 
 def main() -> None:
-    with Session(engine) as session:
-        existing = session.exec(select(Campaign)).first()
-        if existing:
-            print("Des campagnes existent déjà en base — rien à faire.")
-            return
-
-        campaign = Campaign(name="Support Client FR", code="SUP-FR")
-        session.add(campaign)
-        session.commit()
-        session.refresh(campaign)
-
-        skill = Skill(campaign_id=campaign.id, name="Voix Niveau 1", channel=Channel.VOICE)
-        session.add(skill)
-        session.commit()
-        session.refresh(skill)
-
-        print(f"Campagne créée : {campaign.name} (id={campaign.id}, code={campaign.code})")
-        print(f"Skill créée : {skill.name} (id={skill.id}, channel={skill.channel.value})")
+    bootstrap_demo_data_if_configured()
+    bootstrap_shrinkage_categories()
 
 
 if __name__ == "__main__":

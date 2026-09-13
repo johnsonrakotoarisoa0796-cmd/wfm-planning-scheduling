@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from sqlmodel import Session, select
@@ -32,6 +32,20 @@ MONTH_NAMES_FR = [
 ]
 
 
+def count_weekdays_in_range(start_date: date, end_date: date) -> int:
+    """Nombre de jours ouvrés (lundi-vendredi) entre deux dates incluses.
+
+    Généralisation de working_days_in_month (ci-dessous, qui délègue
+    désormais à cette fonction) — réutilisée par le module Shrinkage pour
+    calculer des Paid Hours sur une période arbitraire (jour/semaine/mois,
+    §25), pas seulement un mois calendaire complet.
+    """
+    if end_date < start_date:
+        raise ValueError("end_date doit être postérieure ou égale à start_date.")
+    total_days = (end_date - start_date).days + 1
+    return sum(1 for offset in range(total_days) if (start_date + timedelta(days=offset)).weekday() < 5)
+
+
 def working_days_in_month(year: int, month: int) -> int:
     """Nombre de jours ouvrés (lundi-vendredi) dans le mois donné.
 
@@ -41,7 +55,7 @@ def working_days_in_month(year: int, month: int) -> int:
     calcul spécifique — hors périmètre V1.
     """
     _, days_in_month = calendar.monthrange(year, month)
-    return sum(1 for day in range(1, days_in_month + 1) if date(year, month, day).weekday() < 5)
+    return count_weekdays_in_range(date(year, month, 1), date(year, month, days_in_month))
 
 
 def _mark_previous_version_as_not_current(session: Session, data: LTFCreateInput) -> None:

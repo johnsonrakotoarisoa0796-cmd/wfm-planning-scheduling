@@ -1,0 +1,110 @@
+{% extends "app_base.html" %}
+{% block title %}Shrinkage — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Shrinkage</h1>
+        <p class="page-header__meta">Choisissez une plage de dates — un jour, une semaine ou un mois complet (§25).</p>
+    </div>
+    {% if can_record %}
+    <a href="/shrinkage/new" class="btn-secondary">+ Enregistrer une occurrence</a>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="/shrinkage">
+    <div class="field">
+        <label for="start_date">Du</label>
+        <input type="date" id="start_date" name="start_date" value="{{ filters.start_date }}">
+    </div>
+    <div class="field">
+        <label for="end_date">Au</label>
+        <input type="date" id="end_date" name="end_date" value="{{ filters.end_date }}">
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if summary %}
+<fieldset>
+    <legend>Résumé ({{ filters.start_date }} au {{ filters.end_date }})</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Paid Hours</td><td class="numeric">{{ "%.1f"|format(summary.paid_hours) }} h</td></tr>
+                <tr><td>Indoor Shrinkage</td><td class="numeric">{{ "%.1f"|format(summary.indoor_hours) }} h</td></tr>
+                <tr><td>Outdoor Shrinkage</td><td class="numeric">{{ "%.1f"|format(summary.outdoor_hours) }} h</td></tr>
+                <tr><td>Total Shrinkage</td><td class="numeric">{{ "%.1f"|format(summary.total_hours) }} h ({{ "%.1f"|format(summary.total_pct) }}%)</td></tr>
+                <tr><td>Available Hours</td><td class="numeric">{{ "%.1f"|format(summary.available_hours) }} h</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+{% if summary.by_category_pct %}
+<fieldset>
+    <legend>Répartition par catégorie</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Catégorie</th><th class="numeric">Heures</th><th class="numeric">% des Paid Hours</th></tr></thead>
+            <tbody>
+                {% for code, hours in summary.by_category_hours.items() %}
+                <tr>
+                    <td>{{ code }}</td>
+                    <td class="numeric">{{ "%.1f"|format(hours) }} h</td>
+                    <td class="numeric">{{ "%.2f"|format(summary.by_category_pct[code]) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+{% else %}
+<div class="error-banner">Choisissez un skill dans les filtres pour voir le résumé (le calcul de Paid Hours dépend de l'effectif rattaché à un skill précis).</div>
+{% endif %}
+
+<fieldset>
+    <legend>Détail des enregistrements ({{ detail_rows|length }})</legend>
+    {% if detail_rows %}
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Date</th><th>Employé</th><th>Catégorie</th><th class="numeric">Heures</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                {% for row in detail_rows %}
+                <tr>
+                    <td>{{ row.record.date }}</td>
+                    <td>{{ row.employee_name }}</td>
+                    <td>{{ row.category_name }}</td>
+                    <td class="numeric">{{ "%.1f"|format(row.record.hours) }}</td>
+                    <td>{{ row.record.notes or "" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="data-table-wrapper">
+        <div class="empty-state">Aucun enregistrement pour ces filtres.</div>
+    </div>
+    {% endif %}
+</fieldset>
+{% endblock %}
