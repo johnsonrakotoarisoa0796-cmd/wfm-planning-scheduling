@@ -214,6 +214,14 @@ Deux options :
   Idempotent — les variables peuvent rester en place ou être retirées après
   coup, sans risque de recréer/réinitialiser le compte à chaque redémarrage.
 
+### Créer une campagne/skill de démo sans accès shell
+
+Même principe : définir `BOOTSTRAP_DEMO_DATA=true` dans les variables
+d'environnement Render, puis redéployer. Crée une campagne + skill de
+démo (`app/main.py:bootstrap_demo_data_if_configured`) si aucune campagne
+n'existe encore — idempotent, ne duplique rien si une campagne a déjà été
+créée (manuellement ou par un déploiement précédent).
+
 ## Historique d'implémentation
 
 Voir `WFM_ARCHITECTURE_PLAN.md` section 11 pour le détail des 16 commits

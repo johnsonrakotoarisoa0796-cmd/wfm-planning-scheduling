@@ -26,7 +26,9 @@ from app.core.security import (
     require_role,
     totp_provisioning_uri,
 )
-from app.models.enums import UserRole
+from app.models.campaign import Campaign
+from app.models.enums import Channel, UserRole
+from app.models.skill import Skill
 from app.models.user import User
 from app.routers import auth, capacity, daily, ltf, stf
 
@@ -81,9 +83,49 @@ def bootstrap_admin_if_configured(*, db_engine=None) -> None:
     print("=" * 70)
 
 
+def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
+    """Crée une campagne + skill de démonstration au démarrage si
+    BOOTSTRAP_DEMO_DATA=true est défini ET qu'aucune campagne n'existe
+    encore en base.
+
+    Même logique que bootstrap_admin_if_configured : pensé pour un
+    déploiement Render sans accès shell, où `python -m
+    app.scripts.seed_demo_data` n'est pas exécutable directement.
+    Idempotent — ne recrée rien si une campagne existe déjà (y compris une
+    créée manuellement depuis l'app une fois le module Settings disponible).
+    """
+    if os.environ.get("BOOTSTRAP_DEMO_DATA", "").lower() not in ("1", "true", "yes"):
+        return
+
+    db_engine = db_engine or engine
+
+    with Session(db_engine) as session:
+        existing = session.exec(select(Campaign)).first()
+        if existing is not None:
+            return
+
+        campaign = Campaign(name="Support Client FR", code="SUP-FR")
+        session.add(campaign)
+        session.commit()
+        session.refresh(campaign)
+
+        skill = Skill(campaign_id=campaign.id, name="Voix Niveau 1", channel=Channel.VOICE)
+        session.add(skill)
+        session.commit()
+
+        campaign_name, campaign_code = campaign.name, campaign.code
+        skill_name, skill_channel = skill.name, skill.channel.value
+
+    print("=" * 70)
+    print(f"[bootstrap] Campagne de démo créée : {campaign_name} (code={campaign_code})")
+    print(f"[bootstrap] Skill de démo créée : {skill_name} ({skill_channel})")
+    print("=" * 70)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bootstrap_admin_if_configured()
+    bootstrap_demo_data_if_configured()
     yield
 
 
