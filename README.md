@@ -168,6 +168,22 @@ terme) ; génération réservée à `admin`/`wfm_analyst`.
 Régénérer une journée déjà générée échoue explicitement — pas d'écrasement
 silencieux.
 
+## Module Capacity Planning
+
+`/capacity` — projection HC (§31). Contrairement au LTF/STF, **pas de
+versioning** : ré-enregistrer un plan pour la même période/campagne/skill
+met à jour l'existant plutôt que d'empiler des versions (même logique que
+la saisie d'actuals en Daily/Intraday) — c'est un suivi opérationnel de
+l'état RH courant, pas un forecast.
+
+`Future HC = Current HC + Recrutements + Transferts entrants − Transferts
+sortants − Attrition − Absentéisme` (les deux derniers en % du Current
+HC). Le Required HC est extrait du LTF actif de la période (instantané au
+moment de l'enregistrement) — la création échoue sans LTF actif, même
+principe de dépendance explicite que le STF. La fiche détail affiche le
+Gap actuel *et* projeté, chacun avec un statut visuel
+(overstaffed/balanced/understaffed).
+
 ## Tests
 
 ```bash

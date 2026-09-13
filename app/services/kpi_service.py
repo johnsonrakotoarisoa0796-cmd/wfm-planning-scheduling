@@ -181,6 +181,24 @@ def staffing_gap(available_hc: float, required_hc: float) -> float:
     return available_hc - required_hc
 
 
+def projected_headcount(
+    current_hc: float,
+    hiring: float,
+    transfers_in: float,
+    transfers_out: float,
+    attrition_pct: float,
+    absenteeism_pct: float,
+) -> float:
+    """Future HC = Current HC + Hiring + Transfers In - Transfers Out
+    - Attrition - Absenteeism (§31).
+
+    attrition_pct et absenteeism_pct sont des taux (%) appliqués au Current
+    HC (perte attendue sur l'effectif actuel), pas des valeurs absolues.
+    """
+    losses = current_hc * (attrition_pct / 100) + current_hc * (absenteeism_pct / 100)
+    return current_hc + hiring + transfers_in - transfers_out - losses
+
+
 def staffing_status(gap: float, balanced_tolerance_hc: float = 0.5) -> StaffingStatus:
     """Classifie un écart de staffing en overstaffed/balanced/understaffed.
 

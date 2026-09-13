@@ -324,6 +324,23 @@ fieldset legend {
   color: #f4b8ac;
 }
 
+/* Alias semantique pour le Staffing Status (§32) - meme palette que les
+   statuts KPI generiques ci-dessus, noms adaptes au contexte HC. */
+.status-pill--balanced {
+  background: #14332e;
+  color: #4fd8b8;
+}
+
+.status-pill--understaffed {
+  background: var(--danger-bg);
+  color: #f4b8ac;
+}
+
+.status-pill--overstaffed {
+  background: #332a14;
+  color: #e0a63e;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;

@@ -1,0 +1,100 @@
+{% extends "app_base.html" %}
+{% block title %}Nouveau plan de capacité — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Plan de capacité</h1>
+        <p class="page-header__meta">Ré-enregistrer pour la même période/campagne/skill met à jour le plan existant — pas de nouvelle version créée.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/capacity/new">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Période &amp; périmètre</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="period">Mois</label>
+                    <input type="month" id="period" name="period" value="{{ values.period or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="campaign_id">Campagne</label>
+                    <select id="campaign_id" name="campaign_id" required>
+                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+                        {% for c in campaigns %}
+                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="skill_id">Skill</label>
+                    <select id="skill_id" name="skill_id" required>
+                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+                        {% for s in skills %}
+                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <p class="field__hint">Un LTF actif doit déjà exister pour ce mois — le Required HC en est extrait automatiquement.</p>
+        </fieldset>
+
+        <fieldset>
+            <legend>Effectif actuel</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="current_hc">Current HC</label>
+                    <input type="number" id="current_hc" name="current_hc" min="0" step="0.5" value="{{ values.current_hc or '' }}" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Mouvements prévus (projection)</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="hiring">Recrutements</label>
+                    <input type="number" id="hiring" name="hiring" min="0" step="0.5" value="{{ values.hiring or '0' }}">
+                </div>
+                <div class="field">
+                    <label for="transfers_in">Transferts entrants</label>
+                    <input type="number" id="transfers_in" name="transfers_in" min="0" step="0.5" value="{{ values.transfers_in or '0' }}">
+                </div>
+                <div class="field">
+                    <label for="transfers_out">Transferts sortants</label>
+                    <input type="number" id="transfers_out" name="transfers_out" min="0" step="0.5" value="{{ values.transfers_out or '0' }}">
+                </div>
+                <div class="field">
+                    <label for="attrition_pct">Attrition (%)</label>
+                    <input type="number" id="attrition_pct" name="attrition_pct" min="0" max="100" step="0.1" value="{{ values.attrition_pct or '0' }}">
+                </div>
+                <div class="field">
+                    <label for="absenteeism_pct">Absentéisme (%)</label>
+                    <input type="number" id="absenteeism_pct" name="absenteeism_pct" min="0" max="100" step="0.1" value="{{ values.absenteeism_pct or '0' }}">
+                </div>
+            </div>
+            <p class="field__hint">Future HC = Current HC + Recrutements + Transferts entrants − Transferts sortants − Attrition − Absentéisme (les deux derniers en % du Current HC).</p>
+        </fieldset>
+
+        <fieldset>
+            <legend>Notes</legend>
+            <div class="field field--full">
+                <textarea name="notes" placeholder="Contexte RH (departs annonces, campagne de recrutement en cours...)">{{ values.notes or '' }}</textarea>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Enregistrer</button>
+            <a href="/capacity" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

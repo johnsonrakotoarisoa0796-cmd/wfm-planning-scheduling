@@ -1,0 +1,54 @@
+{% extends "app_base.html" %}
+{% block title %}{{ plan.period }} — Capacity — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ plan.period }}</h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+    </div>
+    <a href="/capacity" class="btn-secondary">&larr; Retour à la liste</a>
+</div>
+
+<fieldset>
+    <legend>Effectif &amp; Gap</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Required HC (LTF)</td><td class="numeric">{{ "%.1f"|format(plan.required_hc) }}</td></tr>
+                <tr><td>Current HC</td><td class="numeric">{{ "%.1f"|format(plan.current_hc) }}</td></tr>
+                <tr>
+                    <td>Gap actuel</td>
+                    <td class="numeric">
+                        {{ "%+.1f"|format(current_gap) }}
+                        <span class="status-pill status-pill--{{ current_status }}">{{ current_status }}</span>
+                    </td>
+                </tr>
+                <tr><td>Projected HC (Future)</td><td class="numeric">{{ "%.1f"|format(plan.projected_hc) }}</td></tr>
+                <tr>
+                    <td>Gap projeté</td>
+                    <td class="numeric">
+                        {{ "%+.1f"|format(projected_gap) }}
+                        <span class="status-pill status-pill--{{ projected_status }}">{{ projected_status }}</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Mouvements pris en compte</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Recrutements</td><td class="numeric">+{{ "%.1f"|format(plan.hiring) }}</td></tr>
+                <tr><td>Transferts entrants</td><td class="numeric">+{{ "%.1f"|format(plan.transfers_in) }}</td></tr>
+                <tr><td>Transferts sortants</td><td class="numeric">−{{ "%.1f"|format(plan.transfers_out) }}</td></tr>
+                <tr><td>Attrition</td><td class="numeric">{{ "%.1f"|format(plan.attrition_pct) }}%</td></tr>
+                <tr><td>Absentéisme</td><td class="numeric">{{ "%.1f"|format(plan.absenteeism_pct) }}%</td></tr>
+            </tbody>
+        </table>
+    </div>
+    {% if plan.notes %}<p class="field__hint">{{ plan.notes }}</p>{% endif %}
+</fieldset>
+{% endblock %}

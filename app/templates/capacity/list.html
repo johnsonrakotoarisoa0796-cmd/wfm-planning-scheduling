@@ -1,0 +1,75 @@
+{% extends "app_base.html" %}
+{% block title %}Capacity Planning — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Capacity Planning</h1>
+        <p class="page-header__meta">Projection HC (§31) — mis à jour au fil de l'eau, pas versionné comme le LTF/STF.</p>
+    </div>
+    {% if can_edit %}
+    <a href="/capacity/new" class="btn-secondary">+ Nouveau plan</a>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="/capacity">
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if rows %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Période</th>
+                <th>Campagne</th>
+                <th>Skill</th>
+                <th class="numeric">Current HC</th>
+                <th class="numeric">Required HC</th>
+                <th class="numeric">Projected HC</th>
+                <th class="numeric">Gap projeté</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td><a href="/capacity/{{ row.plan.id }}">{{ row.plan.period }}</a></td>
+                <td>{{ row.campaign_name }}</td>
+                <td>{{ row.skill_name }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.current_hc) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.required_hc) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.projected_hc) }}</td>
+                <td class="numeric">{{ "%+.1f"|format(row.gap) }}</td>
+                <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper">
+    <div class="empty-state">
+        Aucun plan de capacité pour ces filtres.
+        {% if can_edit %}<br><a href="/capacity/new">Créer le premier plan</a>.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

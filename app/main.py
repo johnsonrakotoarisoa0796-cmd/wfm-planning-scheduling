@@ -28,7 +28,7 @@ from app.core.security import (
 )
 from app.models.enums import UserRole
 from app.models.user import User
-from app.routers import auth, daily, ltf, stf
+from app.routers import auth, capacity, daily, ltf, stf
 
 settings = get_settings()
 
@@ -103,6 +103,7 @@ app.include_router(auth.router)
 app.include_router(ltf.router)
 app.include_router(stf.router)
 app.include_router(daily.router)
+app.include_router(capacity.router)
 
 
 @app.exception_handler(NotAuthenticatedError)
