@@ -203,6 +203,28 @@ employé peut avoir plusieurs enregistrements le même jour (une pause ET
 une réunion). Enregistrement ouvert à `admin`/`wfm_analyst`/`team_lead`
 (même RBAC que les actuals Daily/Intraday).
 
+## Module Overtime
+
+`/overtime` — Required OT calculé, Actual OT saisi séparément, **jamais
+confondus** (§30, exactement comme promis depuis les commits 06/07).
+
+Required Hours et Available Hours viennent directement des intervalles
+Daily/Intraday déjà générés (`somme(Required HC × 0,5h)` et
+`somme(Scheduled HC × 0,5h)`) — **une seule fonction de calcul** sur une
+plage de dates arbitraire sert Daily/Weekly/Monthly (§27-29), même
+principe que le rapport Shrinkage. `OT Required = max(0, Required −
+Available)` ; jamais négatif, un excédent est un problème de sur-staffing
+(Capacity Planning), pas un "OT négatif".
+
+**Premier vrai graphique Chart.js de l'app** : la fiche détail affiche OT
+Required par jour (§29) quand la période couvre plusieurs jours.
+
+Actual OT (une fois connu — pas d'intégration paie en V1) se saisit
+séparément et ne modifie jamais Required ; la fiche détail calcule alors
+OT Variance = Actual − Required. Saisie ouverte à
+`admin`/`wfm_analyst`/`team_lead` ; création d'un plan réservée à
+`admin`/`wfm_analyst`.
+
 ## Tests
 
 ```bash

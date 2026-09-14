@@ -1,0 +1,81 @@
+{% extends "app_base.html" %}
+{% block title %}{{ plan.period_key }} — Overtime — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ plan.period_key }} <span style="color: var(--text-muted); font-size: 16px;">({{ plan.period_type.value }})</span></h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+    </div>
+    <a href="/overtime" class="btn-secondary">&larr; Retour à la liste</a>
+</div>
+
+<fieldset>
+    <legend>Required vs Available vs OT</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Required Hours</td><td class="numeric">{{ "%.1f"|format(plan.required_hours) }} h</td></tr>
+                <tr><td>Available Hours</td><td class="numeric">{{ "%.1f"|format(plan.available_hours) }} h</td></tr>
+                <tr><td>Gap</td><td class="numeric">{{ "%+.1f"|format(plan.gap_hours) }} h</td></tr>
+                <tr><td>OT Required</td><td class="numeric">{{ "%.1f"|format(plan.ot_required_hours) }} h</td></tr>
+                <tr>
+                    <td>OT Actual</td>
+                    <td class="numeric">{{ "%.1f"|format(plan.ot_actual_hours) + " h" if plan.ot_actual_hours is not none else "Pas encore saisi" }}</td>
+                </tr>
+                {% if variance is not none %}
+                <tr><td>OT Variance</td><td class="numeric">{{ "%+.1f"|format(variance) }} h</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% if plan.notes %}<p class="field__hint">{{ plan.notes }}</p>{% endif %}
+</fieldset>
+
+{% if chart_labels|length > 1 %}
+<fieldset>
+    <legend>OT Required par jour</legend>
+    <canvas id="otChart" height="90"></canvas>
+</fieldset>
+<script>
+(function () {
+    const ctx = document.getElementById('otChart');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                label: 'OT Required (h)',
+                data: {{ chart_values|tojson }},
+                backgroundColor: '#34b8a8',
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#7c8798' }, grid: { color: '#2a3341' } },
+                x: { ticks: { color: '#7c8798' }, grid: { display: false } },
+            },
+        },
+    });
+})();
+</script>
+{% endif %}
+
+{% if can_enter_actual %}
+<fieldset>
+    <legend>Saisir l'OT réellement effectué</legend>
+    <form method="post" action="/overtime/{{ plan.id }}/actual" class="form-card" style="max-width: 400px; padding: var(--space-5);">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="field">
+            <label for="ot_actual_hours">OT Actual (heures)</label>
+            <input type="number" id="ot_actual_hours" name="ot_actual_hours" min="0" step="0.5" value="{{ plan.ot_actual_hours if plan.ot_actual_hours is not none else '' }}" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+    </form>
+</fieldset>
+{% endif %}
+{% endblock %}

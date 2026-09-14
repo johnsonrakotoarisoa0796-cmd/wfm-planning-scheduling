@@ -33,7 +33,7 @@ from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
 from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import auth, capacity, daily, ltf, stf, shrinkage
+from app.routers import auth, capacity, daily, ltf, overtime, stf, shrinkage
 
 settings = get_settings()
 
@@ -210,6 +210,7 @@ app.include_router(stf.router)
 app.include_router(daily.router)
 app.include_router(capacity.router)
 app.include_router(shrinkage.router)
+app.include_router(overtime.router)
 
 
 @app.exception_handler(NotAuthenticatedError)

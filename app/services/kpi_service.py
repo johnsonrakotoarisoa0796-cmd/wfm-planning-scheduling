@@ -181,6 +181,26 @@ def staffing_gap(available_hc: float, required_hc: float) -> float:
     return available_hc - required_hc
 
 
+def overtime_required_hours(required_hours: float, available_hours: float) -> float:
+    """OT Required = max(0, Required Hours - Available Hours) (§27).
+
+    Jamais négatif : un excédent d'heures disponibles est un problème de
+    sur-staffing (Capacity Planning, §31), pas un OT "négatif".
+    """
+    return max(0.0, required_hours - available_hours)
+
+
+def overtime_variance(required_ot_hours: float, actual_ot_hours: float) -> float:
+    """OT Variance = Actual OT - Required OT (§30).
+
+    Ne jamais confondre le besoin théorique (Required) avec l'OT
+    réellement réalisé (Actual) — ce sont deux données distinctes,
+    stockées séparément (voir OvertimePlan.ot_required_hours /
+    ot_actual_hours).
+    """
+    return actual_ot_hours - required_ot_hours
+
+
 def projected_headcount(
     current_hc: float,
     hiring: float,

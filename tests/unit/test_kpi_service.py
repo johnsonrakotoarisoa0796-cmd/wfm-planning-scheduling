@@ -24,6 +24,8 @@ from app.services.kpi_service import (
     kpi_status,
     kpi_variance,
     occupancy_pct,
+    overtime_required_hours,
+    overtime_variance,
     paid_hours,
     production_hours,
     productive_hours,
@@ -216,6 +218,20 @@ def test_projected_headcount_no_movement_with_zero_rates():
         attrition_pct=0, absenteeism_pct=0,
     )
     assert result == 50
+
+
+def test_overtime_required_hours_matches_brief_example():
+    # §27 : Demand Required 820h, Available 780h -> OT Required 40h.
+    assert overtime_required_hours(required_hours=820, available_hours=780) == 40
+
+
+def test_overtime_required_hours_never_negative_when_overstaffed():
+    assert overtime_required_hours(required_hours=700, available_hours=780) == 0.0
+
+
+def test_overtime_variance_matches_brief_example():
+    # §30 : Required OT 80h, Actual OT 65h -> OT Gap -15h.
+    assert overtime_variance(required_ot_hours=80, actual_ot_hours=65) == -15
 
 
 # --- Statut générique KPI (Dashboard) ---------------------------------------------------

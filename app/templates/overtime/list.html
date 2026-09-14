@@ -1,0 +1,86 @@
+{% extends "app_base.html" %}
+{% block title %}Overtime — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Overtime</h1>
+        <p class="page-header__meta">Required OT calculé depuis Daily/Intraday ; Actual OT saisi séparément (§30) — jamais confondus.</p>
+    </div>
+    {% if can_edit %}
+    <a href="/overtime/new" class="btn-secondary">+ Nouveau plan</a>
+    {% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="/overtime">
+    <div class="field">
+        <label for="period_type">Granularité</label>
+        <select id="period_type" name="period_type">
+            <option value="">Toutes</option>
+            <option value="daily" {% if filters.period_type == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if filters.period_type == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if filters.period_type == 'monthly' %}selected{% endif %}>Monthly</option>
+        </select>
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if rows %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Période</th>
+                <th>Type</th>
+                <th>Campagne</th>
+                <th>Skill</th>
+                <th class="numeric">Required Hours</th>
+                <th class="numeric">Available Hours</th>
+                <th class="numeric">OT Required</th>
+                <th class="numeric">OT Actual</th>
+                <th class="numeric">Variance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td><a href="/overtime/{{ row.plan.id }}">{{ row.plan.period_key }}</a></td>
+                <td>{{ row.plan.period_type.value }}</td>
+                <td>{{ row.campaign_name }}</td>
+                <td>{{ row.skill_name }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.required_hours) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.available_hours) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.ot_required_hours) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.ot_actual_hours) if row.plan.ot_actual_hours is not none else "—" }}</td>
+                <td class="numeric">{{ "%+.1f"|format(row.variance) if row.variance is not none else "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper">
+    <div class="empty-state">
+        Aucun plan Overtime pour ces filtres.
+        {% if can_edit %}<br><a href="/overtime/new">Créer le premier plan</a>.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

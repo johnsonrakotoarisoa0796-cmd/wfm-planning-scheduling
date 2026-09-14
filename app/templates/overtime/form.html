@@ -1,0 +1,76 @@
+{% extends "app_base.html" %}
+{% block title %}Nouveau plan Overtime — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Nouveau plan Overtime</h1>
+        <p class="page-header__meta">Calculé à partir des intervalles Daily/Intraday déjà générés sur la plage choisie.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/overtime/new">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Plage &amp; granularité</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="period_type">Type</label>
+                    <select id="period_type" name="period_type" required>
+                        <option value="daily" {% if values.period_type == 'daily' %}selected{% endif %}>Daily (un seul jour)</option>
+                        <option value="weekly" {% if values.period_type == 'weekly' %}selected{% endif %}>Weekly (lundi à dimanche)</option>
+                        <option value="monthly" {% if values.period_type == 'monthly' %}selected{% endif %}>Monthly (mois complet)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="start_date">Date de début</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ values.start_date or '' }}" required>
+                    <div class="field__hint">Détermine aussi la période enregistrée (jour/semaine/mois contenant cette date).</div>
+                </div>
+                <div class="field">
+                    <label for="end_date">Date de fin</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ values.end_date or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="campaign_id">Campagne</label>
+                    <select id="campaign_id" name="campaign_id" required>
+                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+                        {% for c in campaigns %}
+                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="skill_id">Skill</label>
+                    <select id="skill_id" name="skill_id" required>
+                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+                        {% for s in skills %}
+                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <p class="field__hint">Required Hours = somme(Required HC × 0,5h) et Available Hours = somme(Scheduled HC × 0,5h) sur les intervalles Daily/Intraday de la plage choisie.</p>
+        </fieldset>
+
+        <fieldset>
+            <legend>Notes</legend>
+            <div class="field field--full">
+                <textarea name="notes" placeholder="Contexte optionnel">{{ values.notes or '' }}</textarea>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Calculer &amp; enregistrer</button>
+            <a href="/overtime" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
