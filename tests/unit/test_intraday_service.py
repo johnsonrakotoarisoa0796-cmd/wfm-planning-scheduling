@@ -10,7 +10,7 @@ import pytest
 
 from app.services.intraday_service import (
     SLOTS_PER_DAY,
-    _slot_bounds,
+    slot_bounds,
     default_intraday_profile_pct,
 )
 
@@ -36,20 +36,20 @@ def test_profile_night_hours_lower_than_midday():
 
 
 def test_slot_bounds_first_slot():
-    start, end = _slot_bounds(0)
+    start, end = slot_bounds(0)
     assert start == time(0, 0)
     assert end == time(0, 30)
 
 
 def test_slot_bounds_last_slot_ends_at_235959_not_midnight():
     # time() ne represente pas minuit comme 24:00:00.
-    start, end = _slot_bounds(47)
+    start, end = slot_bounds(47)
     assert start == time(23, 30)
     assert end == time(23, 59, 59)
 
 
 def test_slot_bounds_are_contiguous():
     for slot in range(SLOTS_PER_DAY - 1):
-        _, end = _slot_bounds(slot)
-        next_start, _ = _slot_bounds(slot + 1)
+        _, end = slot_bounds(slot)
+        next_start, _ = slot_bounds(slot + 1)
         assert end == next_start

@@ -70,7 +70,7 @@ def default_intraday_profile_pct() -> list[float]:
     return [w / total * 100 for w in raw]
 
 
-def _slot_bounds(slot_index: int) -> tuple[time, time]:
+def slot_bounds(slot_index: int) -> tuple[time, time]:
     """Bornes horaires d'un slot de 30 min (0 -> 00:00-00:30, ..., 47 ->
     23:30-24:00). Le dernier slot se termine à 23:59:59 : le type `time`
     Python ne représente pas minuit comme 24:00:00."""
@@ -114,7 +114,7 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
     created: list[IntervalForecast] = []
 
     for slot_index, pct in enumerate(profile_pct):
-        interval_start, interval_end = _slot_bounds(slot_index)
+        interval_start, interval_end = slot_bounds(slot_index)
         interval_volume = data.daily_volume * (pct / 100)
 
         result = find_required_agents(

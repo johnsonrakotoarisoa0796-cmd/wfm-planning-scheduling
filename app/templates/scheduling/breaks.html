@@ -1,0 +1,78 @@
+{% extends "app_base.html" %}
+{% block title %}Impact des pauses — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Impact des pauses</h1>
+        <p class="page-header__meta">Available HC avant/après pause, comparé au Required HC — identifie les intervalles sous-staffés à cause du placement des pauses (§34).</p>
+    </div>
+    <a href="/scheduling" class="btn-secondary">&larr; Retour au planning</a>
+</div>
+
+<form class="filter-bar" method="get" action="/scheduling/breaks">
+    <div class="field">
+        <label for="target_date">Date</label>
+        <input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}">
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id" required>
+            <option value="" disabled {% if not filters.campaign_id %}selected{% endif %}>Choisir...</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id" required>
+            <option value="" disabled {% if not filters.skill_id %}selected{% endif %}>Choisir...</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Analyser</button>
+</form>
+
+{% if report %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Heure</th>
+                <th class="numeric">Required HC</th>
+                <th class="numeric">Available avant pause</th>
+                <th class="numeric">Available après pause</th>
+                <th class="numeric">Gap après pause</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for point in report %}
+            <tr>
+                <td>{{ point.interval_start.strftime("%H:%M") }}</td>
+                <td class="numeric">{{ "%.1f"|format(point.required_hc) }}</td>
+                <td class="numeric">{{ point.available_before_break }}</td>
+                <td class="numeric">{{ point.available_after_break }}</td>
+                <td class="numeric">{{ "%+.1f"|format(point.gap_after_break) }}</td>
+                <td>
+                    {% if point.available_after_break < point.available_before_break and point.gap_after_break < 0 %}
+                    <span class="status-pill status-pill--understaffed">pause = sous-staffing</span>
+                    {% elif point.gap_after_break < 0 %}
+                    <span class="status-pill status-pill--understaffed">understaffed</span>
+                    {% else %}
+                    <span class="status-pill status-pill--balanced">ok</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif filters.campaign_id and filters.skill_id %}
+<div class="data-table-wrapper"><div class="empty-state">Aucune affectation pour cette date/campagne/skill.</div></div>
+{% else %}
+<div class="error-banner">Choisissez une campagne et un skill pour lancer l'analyse.</div>
+{% endif %}
+{% endblock %}

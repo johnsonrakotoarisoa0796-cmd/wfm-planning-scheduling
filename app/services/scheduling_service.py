@@ -1,0 +1,177 @@
+"""Service métier pour le module Scheduling (§33-§34 du cahier des charges).
+
+Le calcul d'impact des pauses (§34) réutilise volontairement la même
+grille de 48 intervalles de 30 min que Daily/Intraday (commit 08) —
+`intraday_service.slot_bounds` / `SLOTS_PER_DAY` sont partagés plutôt que
+dupliqués, pour que "l'intervalle 09:00-09:30" désigne toujours exactement
+la même tranche horaire dans tout le système.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, time
+from typing import Optional
+
+from sqlmodel import Session, select
+
+from app.models.schedule import ScheduleEntry
+from app.models.shift import Shift
+from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
+from app.services import intraday_service, kpi_service
+
+
+# ============================================================================
+# Shifts (§33)
+# ============================================================================
+
+def create_shift(session: Session, data: ShiftInput) -> Shift:
+    shift = Shift(
+        name=data.name,
+        start_time=data.start_time,
+        end_time=data.end_time,
+        break_minutes=data.break_minutes,
+        lunch_minutes=data.lunch_minutes,
+    )
+    session.add(shift)
+    session.commit()
+    session.refresh(shift)
+    return shift
+
+
+def list_shifts(session: Session, *, active_only: bool = True) -> list[Shift]:
+    query = select(Shift)
+    if active_only:
+        query = query.where(Shift.is_active == True)  # noqa: E712
+    return list(session.exec(query.order_by(Shift.start_time)).all())
+
+
+# ============================================================================
+# Affectations (ScheduleEntry)
+# ============================================================================
+
+def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> ScheduleEntry:
+    """Crée ou met à jour l'affectation d'un employé pour une date donnée.
+
+    Upsert sur (employee_id, entry_date) : un agent a un seul planning par
+    jour — contrairement au Shrinkage, où plusieurs occurrences peuvent
+    coexister le même jour.
+    """
+    existing = session.exec(
+        select(ScheduleEntry).where(
+            ScheduleEntry.employee_id == data.employee_id,
+            ScheduleEntry.date == data.entry_date,
+        )
+    ).first()
+
+    entry = existing or ScheduleEntry(employee_id=data.employee_id, date=data.entry_date)
+    entry.campaign_id = data.campaign_id
+    entry.skill_id = data.skill_id
+    entry.is_day_off = data.is_day_off
+    entry.shift_id = None if data.is_day_off else data.shift_id
+    entry.break_start = None if data.is_day_off else data.break_start
+    entry.break_end = None if data.is_day_off else data.break_end
+    entry.lunch_start = None if data.is_day_off else data.lunch_start
+    entry.lunch_end = None if data.is_day_off else data.lunch_end
+
+    session.add(entry)
+    session.commit()
+    session.refresh(entry)
+    return entry
+
+
+def list_schedule_entries(
+    session: Session, *, target_date: date, campaign_id: Optional[int] = None, skill_id: Optional[int] = None
+) -> list[ScheduleEntry]:
+    query = select(ScheduleEntry).where(ScheduleEntry.date == target_date)
+    if campaign_id is not None:
+        query = query.where(ScheduleEntry.campaign_id == campaign_id)
+    if skill_id is not None:
+        query = query.where(ScheduleEntry.skill_id == skill_id)
+    return list(session.exec(query).all())
+
+
+# ============================================================================
+# Impact des pauses sur le staffing (§34)
+# ============================================================================
+
+def _shift_covers_interval(shift: Shift, interval_start: time, interval_end: time) -> bool:
+    """Vrai si le shift couvre cet intervalle de 30 min.
+
+    Gère les shifts qui chevauchent minuit (ex: 17:00-02:00, cité en
+    exemple au §33) : start_time > end_time signale ce cas.
+    """
+    if shift.start_time <= shift.end_time:
+        return shift.start_time <= interval_start < shift.end_time
+    return interval_start >= shift.start_time or interval_start < shift.end_time
+
+
+def _overlaps(period_start: Optional[time], period_end: Optional[time], interval_start: time, interval_end: time) -> bool:
+    if period_start is None or period_end is None:
+        return False
+    return period_start < interval_end and interval_start < period_end
+
+
+def _entry_on_break_during_interval(entry: ScheduleEntry, interval_start: time, interval_end: time) -> bool:
+    """Vrai si l'employé est en pause OU en déjeuner durant cet intervalle."""
+    return _overlaps(entry.break_start, entry.break_end, interval_start, interval_end) or _overlaps(
+        entry.lunch_start, entry.lunch_end, interval_start, interval_end
+    )
+
+
+@dataclass(frozen=True)
+class IntervalStaffing:
+    """Une ligne du rapport d'impact des pauses (§34)."""
+
+    interval_start: time
+    interval_end: time
+    required_hc: float
+    available_before_break: int
+    available_after_break: int
+    gap_after_break: float
+
+
+def compute_break_impact(
+    session: Session, *, target_date: date, campaign_id: int, skill_id: int
+) -> list[IntervalStaffing]:
+    """Pour chaque intervalle de 30 min de la journée : Available HC avant
+    pause, après pause, comparé au Required HC (issu du forecast Daily/
+    Intraday s'il existe déjà pour ce jour) — identifie les intervalles où
+    le placement des pauses crée un sous-staffing (§34).
+    """
+    entries = [
+        e for e in list_schedule_entries(session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id)
+        if not e.is_day_off
+    ]
+    shifts_by_id = {s.id: s for s in list_shifts(session, active_only=False)}
+
+    forecast_intervals = intraday_service.list_intervals_for_day(
+        session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
+    )
+    required_by_start = {i.interval_start: i.required_hc for i in forecast_intervals}
+
+    results = []
+    for slot_index in range(intraday_service.SLOTS_PER_DAY):
+        interval_start, interval_end = intraday_service.slot_bounds(slot_index)
+
+        before = 0
+        after = 0
+        for entry in entries:
+            shift = shifts_by_id.get(entry.shift_id)
+            if shift is not None and _shift_covers_interval(shift, interval_start, interval_end):
+                before += 1
+                if not _entry_on_break_during_interval(entry, interval_start, interval_end):
+                    after += 1
+
+        required = required_by_start.get(interval_start, 0.0)
+        results.append(
+            IntervalStaffing(
+                interval_start=interval_start,
+                interval_end=interval_end,
+                required_hc=required,
+                available_before_break=before,
+                available_after_break=after,
+                gap_after_break=kpi_service.staffing_gap(after, required),
+            )
+        )
+    return results

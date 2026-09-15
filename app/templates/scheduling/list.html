@@ -1,0 +1,69 @@
+{% extends "app_base.html" %}
+{% block title %}Scheduling — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Scheduling</h1>
+        <p class="page-header__meta">Planning journalier par agent (§33).</p>
+    </div>
+    <div style="display:flex; gap: var(--space-3);">
+        <a href="/scheduling/shifts" class="btn-secondary">Gérer les shifts</a>
+        <a href="/scheduling/breaks" class="btn-secondary">Impact des pauses</a>
+        {% if can_edit %}<a href="/scheduling/new" class="btn-secondary">+ Nouvelle affectation</a>{% endif %}
+    </div>
+</div>
+
+<form class="filter-bar" method="get" action="/scheduling">
+    <div class="field">
+        <label for="target_date">Date</label>
+        <input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}">
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            <option value="">Toutes</option>
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            <option value="">Tous</option>
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Filtrer</button>
+</form>
+
+{% if rows %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr><th>Employé</th><th>Shift</th><th>Pause</th><th>Déjeuner</th><th>Jour off</th></tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.employee_name }}</td>
+                <td>{{ row.shift_name or "—" }}</td>
+                <td>{{ row.entry.break_start.strftime("%H:%M") ~ "–" ~ row.entry.break_end.strftime("%H:%M") if row.entry.break_start else "—" }}</td>
+                <td>{{ row.entry.lunch_start.strftime("%H:%M") ~ "–" ~ row.entry.lunch_end.strftime("%H:%M") if row.entry.lunch_start else "—" }}</td>
+                <td>{{ "Oui" if row.entry.is_day_off else "Non" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper">
+    <div class="empty-state">
+        Aucune affectation pour ces filtres.
+        {% if can_edit %}<br><a href="/scheduling/new">Créer la première affectation</a>.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

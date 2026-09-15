@@ -1,0 +1,106 @@
+{% extends "app_base.html" %}
+{% block title %}Nouvelle affectation — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Nouvelle affectation</h1>
+        <p class="page-header__meta">Un agent a un seul planning par jour — ré-enregistrer pour la même date le met à jour.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/scheduling/new">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <fieldset>
+            <legend>Qui, quand</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="employee_id">Employé</label>
+                    <select id="employee_id" name="employee_id" required>
+                        <option value="" disabled {% if not values.employee_id %}selected{% endif %}>Choisir...</option>
+                        {% for e in employees %}
+                        <option value="{{ e.id }}" {% if values.employee_id == e.id %}selected{% endif %}>{{ e.first_name }} {{ e.last_name }} ({{ e.employee_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="entry_date">Date</label>
+                    <input type="date" id="entry_date" name="entry_date" value="{{ values.entry_date or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="campaign_id">Campagne</label>
+                    <select id="campaign_id" name="campaign_id" required>
+                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+                        {% for c in campaigns %}
+                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="skill_id">Skill</label>
+                    <select id="skill_id" name="skill_id" required>
+                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+                        {% for s in skills %}
+                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Jour de repos ?</legend>
+            <div class="field">
+                <label style="display:flex; align-items:center; gap: var(--space-2); text-transform:none; font-size:14px; color: var(--text);">
+                    <input type="checkbox" name="is_day_off" value="true" style="width:auto;">
+                    Jour de repos (ignore le shift et les pauses ci-dessous)
+                </label>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Shift &amp; pauses</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="shift_id">Shift</label>
+                    <select id="shift_id" name="shift_id">
+                        <option value="">Choisir...</option>
+                        {% for sh in shifts %}
+                        <option value="{{ sh.id }}" {% if values.shift_id == sh.id %}selected{% endif %}>{{ sh.name }} ({{ sh.start_time.strftime("%H:%M") }}–{{ sh.end_time.strftime("%H:%M") }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="break_start">Début pause</label>
+                    <input type="time" id="break_start" name="break_start" value="{{ values.break_start or '' }}">
+                </div>
+                <div class="field">
+                    <label for="break_end">Fin pause</label>
+                    <input type="time" id="break_end" name="break_end" value="{{ values.break_end or '' }}">
+                </div>
+                <div class="field">
+                    <label for="lunch_start">Début déjeuner</label>
+                    <input type="time" id="lunch_start" name="lunch_start" value="{{ values.lunch_start or '' }}">
+                </div>
+                <div class="field">
+                    <label for="lunch_end">Fin déjeuner</label>
+                    <input type="time" id="lunch_end" name="lunch_end" value="{{ values.lunch_end or '' }}">
+                </div>
+            </div>
+            <p class="field__hint">Étaler les pauses entre agents d'un même shift évite les sous-staffing simultanés — voir la page "Impact des pauses".</p>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Enregistrer</button>
+            <a href="/scheduling" class="btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

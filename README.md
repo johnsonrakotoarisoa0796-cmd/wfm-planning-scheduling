@@ -225,6 +225,27 @@ OT Variance = Actual − Required. Saisie ouverte à
 `admin`/`wfm_analyst`/`team_lead` ; création d'un plan réservée à
 `admin`/`wfm_analyst`.
 
+## Module Scheduling
+
+`/scheduling` — shifts configurables, affectations par agent, impact des
+pauses sur le staffing (§33-34).
+
+**Shifts** (`/scheduling/shifts`) : gabarits d'horaires (nom, début, fin,
+pause, déjeuner). Les shifts chevauchant minuit (ex: 17:00→02:00, cité en
+exemple au §33) sont gérés explicitement — `start_time > end_time` signale
+ce cas, testé pour chaque intervalle de la nuit.
+
+**Affectations** (`/scheduling`) : un agent a **un seul planning par
+jour** — ré-enregistrer pour la même date met à jour l'affectation
+existante (comme Capacity/Overtime, pas comme Shrinkage).
+
+**Impact des pauses** (`/scheduling/breaks`) : pour chaque intervalle de
+30 min, Available HC avant/après pause comparé au Required HC (repris du
+forecast Daily/Intraday si disponible) — révèle les sous-staffing créés
+par des pauses mal réparties (ex: toute une équipe en pause en même
+temps). Réutilise la même grille de 48 intervalles que Daily/Intraday,
+partagée plutôt que dupliquée.
+
 ## Tests
 
 ```bash

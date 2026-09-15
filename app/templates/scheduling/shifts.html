@@ -1,0 +1,73 @@
+{% extends "app_base.html" %}
+{% block title %}Shifts — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Shifts</h1>
+        <p class="page-header__meta">Gabarits d'horaires configurables (§33) — pas de valeurs figées en dur.</p>
+    </div>
+    <a href="/scheduling" class="btn-secondary">Voir le planning &rarr;</a>
+</div>
+
+{% if can_edit %}
+<div class="form-card" style="margin-bottom: var(--space-6);">
+    {% if errors %}
+    <div class="error-banner">
+        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    <form method="post" action="/scheduling/shifts">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-grid">
+            <div class="field">
+                <label for="name">Nom</label>
+                <input type="text" id="name" name="name" value="{{ values.name or '' }}" required placeholder="Ex: Matin 09-18">
+            </div>
+            <div class="field">
+                <label for="start_time">Début</label>
+                <input type="time" id="start_time" name="start_time" value="{{ values.start_time or '' }}" required>
+            </div>
+            <div class="field">
+                <label for="end_time">Fin</label>
+                <input type="time" id="end_time" name="end_time" value="{{ values.end_time or '' }}" required>
+                <div class="field__hint">Fin &lt; début = shift chevauchant minuit (ex: 17:00 &rarr; 02:00).</div>
+            </div>
+            <div class="field">
+                <label for="break_minutes">Pause (min)</label>
+                <input type="number" id="break_minutes" name="break_minutes" min="0" max="120" value="{{ values.break_minutes or '15' }}">
+            </div>
+            <div class="field">
+                <label for="lunch_minutes">Déjeuner (min)</label>
+                <input type="number" id="lunch_minutes" name="lunch_minutes" min="0" max="120" value="{{ values.lunch_minutes or '60' }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Ajouter le shift</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% if shifts %}
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr><th>Nom</th><th class="numeric">Début</th><th class="numeric">Fin</th><th class="numeric">Pause</th><th class="numeric">Déjeuner</th></tr>
+        </thead>
+        <tbody>
+            {% for shift in shifts %}
+            <tr>
+                <td>{{ shift.name }}</td>
+                <td class="numeric">{{ shift.start_time.strftime("%H:%M") }}</td>
+                <td class="numeric">{{ shift.end_time.strftime("%H:%M") }}</td>
+                <td class="numeric">{{ shift.break_minutes }} min</td>
+                <td class="numeric">{{ shift.lunch_minutes }} min</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-table-wrapper"><div class="empty-state">Aucun shift créé pour l'instant.</div></div>
+{% endif %}
+{% endblock %}
