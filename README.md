@@ -307,6 +307,27 @@ démo (`app/main.py:bootstrap_demo_data_if_configured`) si aucune campagne
 n'existe encore — idempotent, ne duplique rien si une campagne a déjà été
 créée (manuellement ou par un déploiement précédent).
 
+### Réinitialiser la 2FA d'un compte existant sans accès shell
+
+[#réinitialiser-la-2fa-dun-compte-existant-sans-accès-shell](#réinitialiser-la-2fa-dun-compte-existant-sans-accès-shell)
+
+Le secret TOTP d'un compte n'est affiché qu'une seule fois, dans les logs
+au moment de sa création (`create_admin` ou le bootstrap admin ci-dessus).
+S'il a été perdu — logs Render expirés, QR jamais scanné, authenticator
+changé de téléphone — aucun code ne peut plus jamais être validé pour ce
+compte, quelle que soit l'exactitude de la saisie.
+
+Définir `RESET_TOTP_EMAIL` (email du compte concerné) dans les variables
+d'environnement Render puis redéployer régénère son secret TOTP
+(`app/main.py:bootstrap_reset_totp_if_configured`) et l'affiche dans les
+logs (Dashboard > Logs), comme au premier bootstrap.
+
+**Contrairement aux autres bootstraps, celui-ci n'est pas idempotent** :
+il régénère un nouveau secret à chaque démarrage tant que la variable
+reste définie. Retirez `RESET_TOTP_EMAIL` dès que le nouveau secret a été
+capturé, avant le prochain redéploiement — sinon le compte se
+re-désynchronise de l'authenticator à chaque redémarrage.
+
 ## Historique d'implémentation
 
 Voir `WFM_ARCHITECTURE_PLAN.md` section 11 pour le détail des 16 commits

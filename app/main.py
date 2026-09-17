@@ -86,6 +86,54 @@ def bootstrap_admin_if_configured(*, db_engine=None) -> None:
     print("=" * 70)
 
 
+def bootstrap_reset_totp_if_configured(*, db_engine=None) -> None:
+    """Régénère le secret TOTP d'un utilisateur existant au démarrage si
+    RESET_TOTP_EMAIL est défini en variable d'environnement.
+
+    Le secret TOTP n'est affiché qu'une seule fois, dans les logs au moment
+    du bootstrap admin ou de create_admin.py. S'il est perdu (logs Render
+    expirés, QR jamais scanné, changement de téléphone), aucun code ne peut
+    plus jamais être validé pour ce compte — il n'existait jusqu'ici aucun
+    moyen de le récupérer sans accès direct à la base de données.
+
+    ATTENTION : contrairement aux autres bootstraps, celui-ci N'EST PAS
+    idempotent au sens "sans danger de laisser la variable en place" — il
+    régénère un nouveau secret à CHAQUE démarrage tant que RESET_TOTP_EMAIL
+    reste défini. Retirez la variable dès que le nouveau secret a été
+    capturé dans les logs, avant le prochain redéploiement/redémarrage.
+    """
+    email = os.environ.get("RESET_TOTP_EMAIL")
+    if not email:
+        return
+
+    db_engine = db_engine or engine
+
+    with Session(db_engine) as session:
+        user = session.exec(select(User).where(User.email == email)).first()
+        if user is None:
+            print(f"[bootstrap] RESET_TOTP_EMAIL={email} : aucun utilisateur trouvé, rien à faire.")
+            return
+
+        totp_secret = generate_totp_secret()
+        user.totp_secret = totp_secret
+        session.add(user)
+        session.commit()
+
+    uri = totp_provisioning_uri(totp_secret, email)
+    print("=" * 70)
+    print(f"[bootstrap] Secret TOTP régénéré pour : {email}")
+    print("[bootstrap] Reconfigurez immédiatement votre authenticator :")
+    print(f"[bootstrap] Clé manuelle : {totp_secret}")
+    print(f"[bootstrap] URI complète : {uri}")
+    qr = qrcode.QRCode(border=1)
+    qr.add_data(uri)
+    qr.make()
+    qr.print_ascii()
+    print("[bootstrap] Retirez RESET_TOTP_EMAIL des variables d'environnement Render")
+    print("[bootstrap] maintenant : sinon ce secret sera régénéré au prochain redémarrage.")
+    print("=" * 70)
+
+
 def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
     """Crée une campagne + skill + quelques employés de démonstration au
     démarrage si BOOTSTRAP_DEMO_DATA=true est défini ET qu'aucune campagne
@@ -187,6 +235,7 @@ def bootstrap_shrinkage_categories(*, db_engine=None) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bootstrap_admin_if_configured()
+    bootstrap_reset_totp_if_configured()
     bootstrap_demo_data_if_configured()
     bootstrap_shrinkage_categories()
     yield
