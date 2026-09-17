@@ -130,12 +130,14 @@ def test_analyst_can_create_and_view_ltf_forecast(client: TestClient, engine, re
     assert "Headcount Required" in detail_page.text
 
 
-def test_root_redirects_authenticated_user_to_ltf(client: TestClient, engine):
+def test_root_redirects_authenticated_user_to_dashboard(client: TestClient, engine):
+    # root() redirige vers /dashboard depuis le commit 13 (avant : /ltf,
+    # en attendant que le vrai Dashboard existe).
     user = _make_user(engine, "analyst@wfm.local", UserRole.WFM_ANALYST)
     _login(client, user["email"], user["secret"])
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers["location"] == "/ltf"
+    assert response.headers["location"] == "/dashboard"
 
 
 def test_ltf_list_requires_login(client: TestClient):

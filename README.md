@@ -246,6 +246,29 @@ par des pauses mal réparties (ex: toute une équipe en pause en même
 temps). Réutilise la même grille de 48 intervalles que Daily/Intraday,
 partagée plutôt que dupliquée.
 
+## Dashboard
+
+`/` redirige désormais vers `/dashboard` (comme promis depuis le commit
+06). Vue consolidée Current/Target/Variance/Status (§5) pour une
+date/campagne/skill — **aucun nouveau calcul métier** : ce module assemble
+ce que les autres produisent déjà (`kpi_service.evaluate_kpi`, construit
+au commit 04, enfin utilisé).
+
+Sections qui apparaissent/disparaissent selon ce qui existe déjà :
+- **Volume** (Forecast/Actual/Accuracy) et **KPI vs Target** (Service
+  Level, Occupancy, AHT, ASA, Shrinkage) : nécessitent un LTF actif *et*
+  des actuals saisis sur la journée (Daily/Intraday) — sans actuals, les
+  lignes n'apparaissent simplement pas plutôt que d'afficher des zéros
+  trompeurs.
+- **Staffing** (Required/Scheduled/Actual/Gap) : dès qu'une journée est
+  générée, même sans actuals.
+- **Capacity Planning** : seulement si un plan existe pour ce mois.
+- **Overtime Required** : toujours calculé en direct pour le jour choisi.
+
+Des bannières explicites indiquent quoi faire quand une source manque
+("Aucun LTF actif", "Aucun intervalle généré") plutôt que de masquer
+silencieusement des sections.
+
 ## Tests
 
 ```bash

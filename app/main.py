@@ -33,7 +33,7 @@ from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
 from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import auth, capacity, daily, ltf, overtime, scheduling, stf, shrinkage
+from app.routers import auth, capacity, daily, dashboard, ltf, overtime, scheduling, stf, shrinkage
 
 settings = get_settings()
 
@@ -205,6 +205,7 @@ app.add_middleware(CSRFCookieMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(ltf.router)
 app.include_router(stf.router)
 app.include_router(daily.router)
@@ -229,9 +230,8 @@ def health_check() -> dict:
 
 @app.get("/", tags=["system"])
 def root(current_user: User = Depends(require_login)):
-    """Racine temporaire — redirige vers LTF Monthly, seul module de contenu
-    existant jusqu'ici. Sera remplacée par le vrai dashboard (commit 13)."""
-    return RedirectResponse(url="/ltf", status_code=303)
+    """Redirige vers le Dashboard (§5), comme promis depuis le commit 06."""
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 @app.get("/me", tags=["system"])

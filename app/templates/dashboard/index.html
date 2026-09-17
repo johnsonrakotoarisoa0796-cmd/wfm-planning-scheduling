@@ -1,0 +1,135 @@
+{% extends "app_base.html" %}
+{% block title %}Dashboard — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="page-header__meta">Vue consolidée du jour choisi — assemble LTF, Daily/Intraday, Capacity, Shrinkage et Overtime (§5).</p>
+    </div>
+</div>
+
+<form class="filter-bar" method="get" action="/dashboard">
+    <div class="field">
+        <label for="target_date">Date</label>
+        <input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}">
+    </div>
+    <div class="field">
+        <label for="campaign_id">Campagne</label>
+        <select id="campaign_id" name="campaign_id">
+            {% for c in campaigns %}
+            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="field">
+        <label for="skill_id">Skill</label>
+        <select id="skill_id" name="skill_id">
+            {% for s in skills %}
+            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit">Actualiser</button>
+</form>
+
+{% if not data %}
+<div class="data-table-wrapper"><div class="empty-state">Créez d'abord une campagne et un skill pour voir le dashboard.</div></div>
+{% else %}
+
+{% if not data.has_ltf %}
+<div class="error-banner">Aucun LTF actif pour {{ filters.target_date.strftime("%B %Y") if filters.target_date else "" }} — les cibles (Target) resteront vides tant qu'un LTF n'existe pas pour ce mois.</div>
+{% endif %}
+{% if not data.has_intervals %}
+<div class="error-banner">Aucun intervalle Daily/Intraday généré pour le {{ filters.target_date }} — générez d'abord la journée pour voir Service Level/Occupancy/AHT/ASA.</div>
+{% endif %}
+
+{% if data.forecast_volume is not none %}
+<fieldset>
+    <legend>Volume</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Forecast Volume</td><td class="numeric">{{ "%.0f"|format(data.forecast_volume) }}</td></tr>
+                <tr><td>Actual Volume</td><td class="numeric">{{ "%.0f"|format(data.actual_volume) if data.actual_volume is not none else "—" }}</td></tr>
+                <tr><td>Forecast Accuracy</td><td class="numeric">{{ "%.1f"|format(data.forecast_accuracy_pct) + "%" if data.forecast_accuracy_pct is not none else "—" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+
+{% if data.kpi_rows %}
+<fieldset>
+    <legend>KPI — Current vs Target</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>KPI</th><th class="numeric">Current</th><th class="numeric">Target</th><th class="numeric">Variance</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for row in data.kpi_rows %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td class="numeric">{{ "%.1f"|format(row.actual) }}{{ row.unit }}</td>
+                    <td class="numeric">{{ "%.1f"|format(row.target) }}{{ row.unit }}</td>
+                    <td class="numeric">{{ "%+.1f"|format(row.variance) }}{{ row.unit }}</td>
+                    <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status.replace("_", " ") }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+
+{% if data.staffing %}
+<fieldset>
+    <legend>Staffing du jour (pic)</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Required Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.required_hc) }}</td></tr>
+                <tr><td>Scheduled Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.scheduled_hc) }}</td></tr>
+                <tr><td>Actual Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.actual_hc) if data.staffing.actual_hc is not none else "—" }}</td></tr>
+                <tr><td>Staffing Gap</td><td class="numeric">{{ "%+.1f"|format(data.staffing.gap) if data.staffing.gap is not none else "—" }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+
+{% if data.capacity %}
+<fieldset>
+    <legend>Capacity Planning ({{ filters.target_date.strftime("%Y-%m") if filters.target_date else "" }})</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Current HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.current_hc) }}</td></tr>
+                <tr><td>Projected HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.projected_hc) }}</td></tr>
+                <tr><td>Required HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.required_hc) }}</td></tr>
+                <tr><td>Gap</td><td class="numeric">{{ "%+.1f"|format(data.capacity.gap) }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+{% endif %}
+
+<fieldset>
+    <legend>Heures &amp; Overtime</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Overtime Required (jour)</td><td class="numeric">{{ "%.1f"|format(data.overtime_required_hours) }} h</td></tr>
+                {% if data.monthly_paid_hours is not none %}
+                <tr><td>Paid Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_paid_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Productive Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_productive_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Production Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_production_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Waiting Time (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_waiting_hours).replace(",", " ") }} h</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</fieldset>
+
+{% endif %}
+{% endblock %}
