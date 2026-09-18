@@ -22,8 +22,17 @@
             <legend>Période &amp; périmètre</legend>
             <div class="form-grid">
                 <div class="field">
-                    <label for="period">Mois</label>
-                    <input type="month" id="period" name="period" value="{{ values.period or '' }}" required>
+                    <label for="year">Année</label>
+                    <input type="number" id="year" name="year" min="2000" max="2100" step="1" value="{{ values.year or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="month">Mois</label>
+                    <select id="month" name="month" required>
+                        <option value="" disabled {% if not values.month %}selected{% endif %}>Choisir...</option>
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if values.month == m %}selected{% endif %}>{{ month_labels_fr[m] }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>

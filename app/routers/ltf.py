@@ -97,6 +97,7 @@ def new_ltf_form(
             "skills": skills,
             "errors": [],
             "values": {},
+            "month_labels_fr": MONTH_LABELS_FR,
         },
     )
 
@@ -104,7 +105,8 @@ def new_ltf_form(
 @router.post("/new", dependencies=[Depends(verify_csrf)])
 def create_ltf(
     request: Request,
-    period: str = Form(...),
+    year: int = Form(...),
+    month: int = Form(...),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
     forecast_volume: float = Form(...),
@@ -120,7 +122,8 @@ def create_ltf(
     session: Session = Depends(get_session),
 ):
     submitted_values = {
-        "period": period,
+        "year": year,
+        "month": month,
         "campaign_id": campaign_id,
         "skill_id": skill_id,
         "forecast_volume": forecast_volume,
@@ -135,10 +138,9 @@ def create_ltf(
     }
 
     try:
-        year_str, month_str = period.split("-")
         payload = LTFCreateInput(
-            year=int(year_str),
-            month=int(month_str),
+            year=year,
+            month=month,
             campaign_id=campaign_id,
             skill_id=skill_id,
             forecast_volume=forecast_volume,
@@ -164,6 +166,7 @@ def create_ltf(
                 "skills": skills,
                 "errors": errors,
                 "values": submitted_values,
+                "month_labels_fr": MONTH_LABELS_FR,
             },
             status_code=400,
         )
