@@ -122,3 +122,23 @@ def test_absence_model_preserves_paid_vs_unpaid_rule():
     )
     assert paid.paid is True
     assert unpaid.paid is False
+
+
+def test_workforce_period_hours_respects_hire_and_termination_dates():
+    from app.services.workforce_service import workforce_period_hours
+
+    employee = _employee(
+        hire_date=date(2026, 9, 10),
+        termination_date=date(2026, 9, 20),
+    )
+    paid, paid_absence, unpaid_absence = workforce_period_hours(
+        employee,
+        [],
+        start_date=date(2026, 9, 1),
+        end_date=date(2026, 9, 30),
+    )
+
+    # 2026-09-10 -> 2026-09-20 contient 7 jours ouvrés.
+    assert paid == pytest.approx(56.0)
+    assert paid_absence == 0.0
+    assert unpaid_absence == 0.0
