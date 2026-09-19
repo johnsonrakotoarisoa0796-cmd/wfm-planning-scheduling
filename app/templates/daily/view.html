@@ -16,6 +16,7 @@
             <tbody>
                 <tr><td>Volume forecast (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.forecast_volume).replace(",", " ") }}</td></tr>
                 <tr><td>Volume actual (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.actual_volume).replace(",", " ") if summary.actual_volume is not none else "—" }}</td></tr>
+                <tr><td>AHT actual / Handle Time</td><td class="numeric">{{ "%.0f"|format(summary.avg_actual_aht_seconds) }} s{% if summary.avg_actual_aht_seconds is not none %}{% else %}—{% endif %}</td></tr>
                 <tr><td>Pic Required HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_required_hc) }}</td></tr>
                 <tr><td>Pic Scheduled HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_scheduled_hc) }}</td></tr>
                 <tr><td>Pic Actual HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_actual_hc) if summary.peak_actual_hc is not none else "—" }}</td></tr>
@@ -34,6 +35,7 @@
                     <th>Heure</th>
                     <th class="numeric">Forecast</th>
                     <th class="numeric">Actual</th>
+                    <th class="numeric">AHT</th>
                     <th class="numeric">Required HC</th>
                     <th class="numeric">Scheduled HC</th>
                     <th class="numeric">Actual HC</th>
@@ -49,6 +51,7 @@
                     <td>{{ i.interval_start.strftime("%H:%M") }}</td>
                     <td class="numeric">{{ "%.0f"|format(i.forecast_volume) }}</td>
                     <td class="numeric">{{ "%.0f"|format(i.actual_volume) if i.actual_volume is not none else "—" }}</td>
+                    <td class="numeric">{{ "%.0f"|format(i.actual_aht_seconds) if i.actual_aht_seconds is not none else "—" }}</td>
                     <td class="numeric">{{ "%.1f"|format(i.required_hc) }}</td>
                     <td class="numeric">{{ "%.1f"|format(i.scheduled_hc) }}</td>
                     <td class="numeric">{{ "%.1f"|format(i.actual_hc) if i.actual_hc is not none else "—" }}</td>
