@@ -110,6 +110,7 @@ def build_dashboard(
         intervals,
         occupancy_target_pct=ltf.occupancy_required_pct if ltf else None,
         aht_target_seconds=ltf.aht_required_seconds if ltf else None,
+        asa_target_seconds=ltf.asa_target_seconds if ltf else None,
     ) if intervals else None
 
     kpi_rows: list[KPIRow] = []
