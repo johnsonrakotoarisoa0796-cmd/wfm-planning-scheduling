@@ -57,3 +57,10 @@ def test_templates_do_not_reintroduce_layout_inline_styles():
     for template in TEMPLATES.rglob("*.html"):
         content = template.read_text(encoding="utf-8")
         assert " style=" not in content, f"Inline layout style duplicated in {template}"
+
+
+def test_generate_schedule_template_has_teleopti_style_board():
+    template = (TEMPLATES / "scheduling" / "generate.html").read_text(encoding="utf-8")
+    assert "teleopti-grid" in template
+    assert "Generate Schedule" in template
+    assert "replace_existing" in template
