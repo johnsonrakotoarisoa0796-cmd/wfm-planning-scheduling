@@ -19,7 +19,7 @@ from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
 from app.models.employee import Employee, EmployeeAbsence
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import intraday_service, kpi_service, workforce_service
+from app.services import client_stf_service, intraday_service, kpi_service, workforce_service
 
 
 # ============================================================================
@@ -152,7 +152,23 @@ def compute_break_impact(
     forecast_intervals = intraday_service.list_intervals_for_day(
         session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
     )
-    required_by_start = {i.interval_start: i.required_hc for i in forecast_intervals}
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    client_rows = (
+        client_stf_service.list_intervals(session, client_plan.id)
+        if client_plan is not None
+        else []
+    )
+    effective_intervals = (
+        client_stf_service.effective_intervals(forecast_intervals, client_rows)
+        if client_rows
+        else forecast_intervals
+    )
+    required_by_start = {i.interval_start: i.required_hc for i in effective_intervals}
 
     results = []
     for slot_index in range(intraday_service.SLOTS_PER_DAY):
