@@ -23,7 +23,7 @@ from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import intraday_service
+from app.services import client_stf_service, intraday_service
 
 router = APIRouter(prefix="/daily", tags=["daily"])
 
@@ -151,11 +151,28 @@ def view_day(
     current_user: User = Depends(require_login),
     session: Session = Depends(get_session),
 ):
-    intervals = intraday_service.list_intervals_for_day(
+    raw_intervals = intraday_service.list_intervals_for_day(
         session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
     )
-    if not intervals:
+    if not raw_intervals:
         raise HTTPException(status_code=404, detail="Aucun intervalle pour cette date/campagne/skill.")
+
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    client_rows = (
+        client_stf_service.list_intervals(session, client_plan.id)
+        if client_plan is not None
+        else []
+    )
+    intervals = (
+        client_stf_service.effective_intervals(raw_intervals, client_rows)
+        if client_rows
+        else raw_intervals
+    )
 
     campaign = session.get(Campaign, campaign_id)
     skill = session.get(Skill, skill_id)
