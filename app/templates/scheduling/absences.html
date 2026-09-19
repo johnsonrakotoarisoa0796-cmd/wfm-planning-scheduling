@@ -1,0 +1,25 @@
+{% extends "app_base.html" %}
+{% block title %}Absences — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Absences & congés</h1><p class="page-header__meta">Maternité, disponibilité, congés payés et congés sans solde. Une absence bloque le staffing; son statut payé détermine les heures payées.</p></div></div>
+{% if can_edit %}
+<div class="form-card" style="margin-bottom:24px">
+{% if errors %}<div class="error-banner">{% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+<form method="post" action="/scheduling/absences"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="form-grid">
+<div class="field"><label>Agent</label><select name="employee_id" required><option value="">Choisir…</option>{% for e in employees %}<option value="{{ e.id }}" {% if values.employee_id == e.id %}selected{% endif %}>{{ e.first_name }} {{ e.last_name }} ({{ e.employee_code }})</option>{% endfor %}</select></div>
+<div class="field"><label>Type</label><select name="absence_type" required>
+<option value="maternity">Congé maternité</option><option value="availability">Disponibilité</option><option value="paid_leave">Congé payé</option><option value="unpaid_leave">Congé sans solde</option>
+</select></div>
+<div class="field"><label>Début</label><input type="date" name="start_date" value="{{ values.start_date or '' }}" required></div>
+<div class="field"><label>Fin</label><input type="date" name="end_date" value="{{ values.end_date or '' }}" required></div>
+<div class="field"><label>Traitement paie</label><select name="paid"><option value="false" {% if values.paid is not defined or not values.paid %}selected{% endif %}>Non payé</option><option value="true" {% if values.paid %}selected{% endif %}>Payé</option></select></div>
+<div class="field field--full"><label>Notes</label><textarea name="notes" rows="2">{{ values.notes or '' }}</textarea></div>
+</div>
+<div class="form-actions"><button class="btn-primary" type="submit">Enregistrer l'absence</button></div>
+</form></div>
+{% endif %}
+<div class="data-table-wrapper"><table class="data-table"><thead><tr><th>Agent</th><th>Type</th><th>Début</th><th>Fin</th><th>Paie</th><th>Notes</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.employee_name }}</td><td>{{ row.absence.absence_type }}</td><td>{{ row.absence.start_date }}</td><td>{{ row.absence.end_date }}</td><td>{% if row.absence.paid %}<span class="status-pill status-pill--balanced">Payé</span>{% else %}<span class="status-pill status-pill--warning">Non payé</span>{% endif %}</td><td>{{ row.absence.notes or "—" }}</td></tr>{% else %}<tr><td colspan="6"><div class="empty-state">Aucune absence enregistrée.</div></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

@@ -1,135 +1,52 @@
 {% extends "app_base.html" %}
 {% block title %}Dashboard — WFM Planning & Scheduling{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>Dashboard</h1>
-        <p class="page-header__meta">Vue consolidée du jour choisi — assemble LTF, Daily/Intraday, Capacity, Shrinkage et Overtime (§5).</p>
-    </div>
-</div>
-
+<div class="page-header"><div><h1>Dashboard opérationnel</h1><p class="page-header__meta">Vue consolidée de la capacité, du staffing et de la performance pour la journée sélectionnée.</p></div></div>
 <form class="filter-bar" method="get" action="/dashboard">
-    <div class="field">
-        <label for="target_date">Date</label>
-        <input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}">
-    </div>
-    <div class="field">
-        <label for="campaign_id">Campagne</label>
-        <select id="campaign_id" name="campaign_id">
-            {% for c in campaigns %}
-            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="field">
-        <label for="skill_id">Skill</label>
-        <select id="skill_id" name="skill_id">
-            {% for s in skills %}
-            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <button type="submit">Actualiser</button>
+<div class="field"><label for="target_date">JOUR</label><input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}"></div>
+<div class="field"><label for="campaign_id">CAMPAGNE</label><select id="campaign_id" name="campaign_id">{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="skill_id">SKILL</label><select id="skill_id" name="skill_id">{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+<button type="submit">Actualiser la vue</button>
 </form>
-
-{% if not data %}
-<div class="data-table-wrapper"><div class="empty-state">Créez d'abord une campagne et un skill pour voir le dashboard.</div></div>
+{% if not data %}<div class="data-table-wrapper"><div class="empty-state"><strong>Aucune donnée disponible</strong><br>Créez d'abord une campagne et un skill pour alimenter le dashboard.</div></div>
 {% else %}
-
-{% if not data.has_ltf %}
-<div class="error-banner">Aucun LTF actif pour {{ filters.target_date.strftime("%B %Y") if filters.target_date else "" }} — les cibles (Target) resteront vides tant qu'un LTF n'existe pas pour ce mois.</div>
-{% endif %}
-{% if not data.has_intervals %}
-<div class="error-banner">Aucun intervalle Daily/Intraday généré pour le {{ filters.target_date }} — générez d'abord la journée pour voir Service Level/Occupancy/AHT/ASA.</div>
-{% endif %}
-
-{% if data.forecast_volume is not none %}
-<fieldset>
-    <legend>Volume</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Forecast Volume</td><td class="numeric">{{ "%.0f"|format(data.forecast_volume) }}</td></tr>
-                <tr><td>Actual Volume</td><td class="numeric">{{ "%.0f"|format(data.actual_volume) if data.actual_volume is not none else "—" }}</td></tr>
-                <tr><td>Forecast Accuracy</td><td class="numeric">{{ "%.1f"|format(data.forecast_accuracy_pct) + "%" if data.forecast_accuracy_pct is not none else "—" }}</td></tr>
-            </tbody>
-        </table>
-    </div>
-</fieldset>
-{% endif %}
-
-{% if data.kpi_rows %}
-<fieldset>
-    <legend>KPI — Current vs Target</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <thead>
-                <tr><th>KPI</th><th class="numeric">Current</th><th class="numeric">Target</th><th class="numeric">Variance</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-                {% for row in data.kpi_rows %}
-                <tr>
-                    <td>{{ row.label }}</td>
-                    <td class="numeric">{{ "%.1f"|format(row.actual) }}{{ row.unit }}</td>
-                    <td class="numeric">{{ "%.1f"|format(row.target) }}{{ row.unit }}</td>
-                    <td class="numeric">{{ "%+.1f"|format(row.variance) }}{{ row.unit }}</td>
-                    <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status.replace("_", " ") }}</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</fieldset>
+{% if not data.has_ltf %}<div class="error-banner">Aucun LTF actif pour le mois sélectionné. Les cibles resteront vides tant qu'un LTF n'existe pas.</div>{% endif %}
+{% if not data.has_intervals %}<div class="error-banner">Aucun intervalle Daily/Intraday généré pour cette journée. Générez la journée pour calculer les KPI opérationnels.</div>{% endif %}
+{% if data.kpi_rows %}<fieldset><legend>Performance — Current vs Target</legend><div class="kpi-grid">{% for row in data.kpi_rows %}<article class="kpi-card"><div class="kpi-card__top"><span>{{ row.label }}</span><span class="status-pill status-pill--{{ row.status }}">{{ row.status.replace("_"," ") }}</span></div><div class="kpi-card__value">{{ "%.1f"|format(row.actual) }}<small>{{ row.unit }}</small></div><div class="kpi-card__foot"><span>Cible {{ "%.1f"|format(row.target) }}{{ row.unit }}</span><strong>{{ "%+.1f"|format(row.variance) }}{{ row.unit }}</strong></div></article>{% endfor %}</div></fieldset>{% endif %}
+{% if data.wfm_scorecard %}
+<section class="wfm-control">
+  <div class="wfm-control__head"><div><span class="panel-kicker">WFM CONTROL TOWER</span><h2>Performance complète</h2><p>{{ data.channel_label }} · simultanéité {{ "%.0f"|format(data.channel_concurrency) }}{% if data.market_code %} · marché {{ data.market_code }}{% endif %} · Forecast, couverture, efficacité et signaux intraday.</p></div><span class="panel-icon">◆</span></div>
+  <div class="control-grid">
+    <div class="control-card"><span>Forecast accuracy</span><strong>{% if data.wfm_scorecard.forecast.accuracy_pct is not none %}{{ "%.1f"|format(data.wfm_scorecard.forecast.accuracy_pct) }}%{% else %}—{% endif %}</strong><small>WAPE {{ "%.1f"|format(data.wfm_scorecard.forecast.wape_pct or 0) }}% · Bias {{ "%+.1f"|format(data.wfm_scorecard.forecast.bias_pct or 0) }}%</small></div>
+    <div class="control-card"><span>Staffing coverage</span><strong>{{ "%.1f"|format(data.wfm_scorecard.staffing.coverage_pct) }}%</strong><small>{{ "%.1f"|format(data.wfm_scorecard.staffing.shortage_hc_hours) }} HC-h sous-staffées</small></div>
+    <div class="control-card"><span>Scheduled SL</span><strong>{% if data.wfm_scorecard.operations.scheduled_service_level_pct is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.scheduled_service_level_pct) }}%{% else %}—{% endif %}</strong><small>Cible {{ "%.1f"|format(data.wfm_scorecard.operations.service_level_target_pct) }}%</small></div>
+    <div class="control-card"><span>Actual SL</span><strong>{% if data.wfm_scorecard.operations.actual_service_level_pct is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.actual_service_level_pct) }}%{% else %}—{% endif %}</strong><small>Gap {{ "%+.1f"|format(data.wfm_scorecard.operations.service_level_gap_pct or 0) }} pts</small></div>
+    <div class="control-card"><span>Occupancy</span><strong>{% if data.wfm_scorecard.operations.occupancy_pct is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.occupancy_pct) }}%{% else %}—{% endif %}</strong><small>Plan {{ "%.1f"|format(data.wfm_scorecard.operations.scheduled_occupancy_pct) }}% · cible {{ "%.1f"|format(data.wfm_scorecard.operations.occupancy_target_pct) }}%</small></div>
+<div class="control-card"><span>ASA</span><strong>{% if data.wfm_scorecard.operations.actual_asa_seconds is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.actual_asa_seconds) }} s{% else %}—{% endif %}</strong><small>Cible {% if data.wfm_scorecard.operations.asa_target_seconds is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.asa_target_seconds) }} s{% else %}—{% endif %} · Écart {% if data.wfm_scorecard.operations.asa_gap_seconds is not none %}{{ "%+.1f"|format(data.wfm_scorecard.operations.asa_gap_seconds) }} s{% else %}—{% endif %}</small></div>
+    <div class="control-card"><span>Abandon</span><strong>{% if data.wfm_scorecard.operations.abandon_rate_pct is not none %}{{ "%.1f"|format(data.wfm_scorecard.operations.abandon_rate_pct) }}%{% else %}—{% endif %}</strong><small>AHT {% if data.wfm_scorecard.operations.actual_aht_seconds is not none %}{{ "%.0f"|format(data.wfm_scorecard.operations.actual_aht_seconds) }} s{% else %}—{% endif %}</small></div>
+    <div class="control-card"><span>Overtime requis</span><strong>{{ "%.1f"|format(data.wfm_scorecard.staffing.overtime_required_hours) }} h</strong><small>Sur-staff {{ "%.1f"|format(data.wfm_scorecard.staffing.surplus_hc_hours) }} HC-h</small></div>
+    <div class="control-card"><span>Efficacité planning</span><strong>{{ "%.1f"|format(data.wfm_scorecard.operations.schedule_efficiency_pct) }}%</strong><small>Adhérence staffing {{ "%.1f"|format(data.wfm_scorecard.staffing.staffing_adherence_proxy_pct or 0) }}%</small></div>
+  </div>
+  {% if data.wfm_scorecard.alerts %}
+  <div class="planner-alerts"><div class="planner-alerts__title">Actions recommandées</div>
+    {% for alert in data.wfm_scorecard.alerts[:8] %}
+    <div class="planner-alert planner-alert--{{ alert.severity }}"><span class="planner-alert__time">{{ alert.interval_start.strftime("%H:%M") }}</span><span class="planner-alert__body"><strong>{{ alert.title }}</strong><small>{{ alert.detail }}</small></span>{% if alert.recommended_hc_delta %}<b>{{ "%+.1f"|format(alert.recommended_hc_delta) }} HC</b>{% endif %}</div>
+    {% endfor %}
+  </div>{% endif %}
+</section>
 {% endif %}
 
-{% if data.staffing %}
-<fieldset>
-    <legend>Staffing du jour (pic)</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Required Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.required_hc) }}</td></tr>
-                <tr><td>Scheduled Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.scheduled_hc) }}</td></tr>
-                <tr><td>Actual Headcount</td><td class="numeric">{{ "%.1f"|format(data.staffing.actual_hc) if data.staffing.actual_hc is not none else "—" }}</td></tr>
-                <tr><td>Staffing Gap</td><td class="numeric">{{ "%+.1f"|format(data.staffing.gap) if data.staffing.gap is not none else "—" }}</td></tr>
-            </tbody>
-        </table>
-    </div>
-</fieldset>
-{% endif %}
-
-{% if data.capacity %}
-<fieldset>
-    <legend>Capacity Planning ({{ filters.target_date.strftime("%Y-%m") if filters.target_date else "" }})</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Current HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.current_hc) }}</td></tr>
-                <tr><td>Projected HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.projected_hc) }}</td></tr>
-                <tr><td>Required HC</td><td class="numeric">{{ "%.1f"|format(data.capacity.required_hc) }}</td></tr>
-                <tr><td>Gap</td><td class="numeric">{{ "%+.1f"|format(data.capacity.gap) }}</td></tr>
-            </tbody>
-        </table>
-    </div>
-</fieldset>
-{% endif %}
-
-<fieldset>
-    <legend>Heures &amp; Overtime</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Overtime Required (jour)</td><td class="numeric">{{ "%.1f"|format(data.overtime_required_hours) }} h</td></tr>
-                {% if data.monthly_paid_hours is not none %}
-                <tr><td>Paid Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_paid_hours).replace(",", " ") }} h</td></tr>
-                <tr><td>Productive Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_productive_hours).replace(",", " ") }} h</td></tr>
-                <tr><td>Production Hours (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_production_hours).replace(",", " ") }} h</td></tr>
-                <tr><td>Waiting Time (mois)</td><td class="numeric">{{ "{:,.0f}".format(data.monthly_waiting_hours).replace(",", " ") }} h</td></tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-</fieldset>
-
-{% endif %}
+<div class="dashboard-grid">
+{% if data.forecast_volume is not none %}<section class="metric-panel"><div class="metric-panel__head"><div><span class="panel-kicker">VOLUME</span><h2>Forecast &amp; actual</h2></div><span class="panel-icon">↗</span></div><div class="metric-list"><div><span>Forecast Volume</span><strong>{{ "%.0f"|format(data.forecast_volume) }}</strong></div><div><span>Actual Volume</span><strong>{{ "%.0f"|format(data.actual_volume) if data.actual_volume is not none else "—" }}</strong></div><div><span>Forecast Accuracy</span><strong>{{ "%.1f"|format(data.forecast_accuracy_pct) + "%" if data.forecast_accuracy_pct is not none else "—" }}</strong></div></div></section>{% endif %}
+{% if data.staffing %}<section class="metric-panel"><div class="metric-panel__head"><div><span class="panel-kicker">STAFFING</span><h2>Pic du jour</h2></div><span class="panel-icon">◎</span></div><div class="metric-list"><div><span>Required Headcount</span><strong>{{ "%.1f"|format(data.staffing.required_hc) }}</strong></div><div><span>Scheduled Headcount</span><strong>{{ "%.1f"|format(data.staffing.scheduled_hc) }}</strong></div><div><span>Actual Headcount</span><strong>{{ "%.1f"|format(data.staffing.actual_hc) if data.staffing.actual_hc is not none else "—" }}</strong></div><div><span>Staffing Gap</span><strong>{{ "%+.1f"|format(data.staffing.gap) if data.staffing.gap is not none else "—" }}</strong></div></div></section>{% endif %}
+{% if data.capacity %}<section class="metric-panel"><div class="metric-panel__head"><div><span class="panel-kicker">CAPACITY</span><h2>Projection {{ filters.target_date.strftime("%Y-%m") if filters.target_date else "" }}</h2></div><span class="panel-icon">⌁</span></div><div class="metric-list"><div><span>Current HC</span><strong>{{ "%.1f"|format(data.capacity.current_hc) }}</strong></div><div><span>Projected HC</span><strong>{{ "%.1f"|format(data.capacity.projected_hc) }}</strong></div><div><span>Required HC</span><strong>{{ "%.1f"|format(data.capacity.required_hc) }}</strong></div><div><span>Gap projeté</span><strong>{{ "%+.1f"|format(data.capacity.gap) }}</strong></div></div></section>{% endif %}
+<section class="metric-panel"><div class="metric-panel__head"><div><span class="panel-kicker">PRODUCTIVITÉ</span><h2>Heures &amp; overtime</h2></div><span class="panel-icon">⏱</span></div><div class="metric-list"><div><span>Overtime Required</span><strong>{{ "%.1f"|format(data.overtime_required_hours) }} h</strong></div>{% if data.monthly_paid_hours is not none %}<div><span>Paid Hours</span><strong>{{ "{:,.0f}".format(data.monthly_paid_hours).replace(","," ") }} h</strong></div><div><span>Productive Hours</span><strong>{{ "{:,.0f}".format(data.monthly_productive_hours).replace(","," ") }} h</strong></div><div><span>Production Hours</span><strong>{{ "{:,.0f}".format(data.monthly_production_hours).replace(","," ") }} h</strong></div><div><span>Waiting Time</span><strong>{{ "{:,.0f}".format(data.monthly_waiting_hours).replace(","," ") }} h</strong></div>{% endif %}</div></section>
+</div>{% endif %}
 {% endblock %}
+{% block extra_head %}<style>
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.kpi-card{padding:17px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm)}.kpi-card__top,.kpi-card__foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.kpi-card__top>span:first-child{font-size:11px;font-weight:700;color:#667085;text-transform:uppercase;letter-spacing:.05em}.kpi-card__value{margin:14px 0 12px;font-size:29px;font-weight:700;letter-spacing:-.04em}.kpi-card__value small{margin-left:3px;font-size:13px;color:#98a2b3;font-weight:600}.kpi-card__foot{padding-top:10px;border-top:1px solid #edf0f4;font-size:10px;color:#98a2b3}.kpi-card__foot strong{font-family:var(--font-mono);color:#344054}.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.metric-panel{padding:20px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm)}.metric-panel__head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:17px}.metric-panel__head h2{margin-top:3px;font-size:16px}.panel-kicker{font-size:9px;font-weight:800;letter-spacing:.12em;color:#98a2b3}.panel-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:15px}.metric-list{display:grid;gap:0}.metric-list>div{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #edf0f4;gap:16px}.metric-list span{color:#667085;font-size:12px}.metric-list strong{font-family:var(--font-mono);font-size:13px;color:#172033}@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.wfm-control{margin:4px 0 20px;padding:20px;background:linear-gradient(180deg,#fff,#fbfcff);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm)}
+.wfm-control__head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.wfm-control__head h2{font-size:18px;margin-top:3px}.wfm-control__head p{margin-top:4px;font-size:11px}
+.control-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.control-card{padding:14px;border:1px solid #edf0f4;border-radius:10px;background:#fff}.control-card span,.control-card small{display:block;color:#667085;font-size:10px}.control-card strong{display:block;margin:7px 0 4px;font-size:21px;letter-spacing:-.03em}.planner-alerts{margin-top:16px;border-top:1px solid #edf0f4}.planner-alerts__title{padding:12px 0 8px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#667085}.planner-alert{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #f1f3f6}.planner-alert__time{font-family:var(--font-mono);font-size:11px;color:#667085}.planner-alert__body strong,.planner-alert__body small{display:block}.planner-alert__body strong{font-size:11px}.planner-alert__body small{margin-top:2px;color:#98a2b3;font-size:10px}.planner-alert b{font-family:var(--font-mono);font-size:11px;color:#344054}.planner-alert--critical b{color:#b42318}.planner-alert--warning b{color:#9a5b08}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.kpi-grid,.dashboard-grid,.control-grid{grid-template-columns:1fr}.kpi-card__value{font-size:26px}}
+</style>{% endblock %}

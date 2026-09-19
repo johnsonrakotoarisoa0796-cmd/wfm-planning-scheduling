@@ -13,8 +13,11 @@ class ShiftInput(BaseModel):
     name: str = Field(min_length=1)
     start_time: time
     end_time: time
-    break_minutes: int = Field(ge=0, le=120)
-    lunch_minutes: int = Field(ge=0, le=120)
+    break_minutes: int = Field(default=15, ge=0, le=120)
+    break_count: int = Field(default=2, ge=0, le=4)
+    break_paid: bool = True
+    lunch_minutes: int = Field(default=60, ge=0, le=180)
+    lunch_paid: bool = False
 
 
 class ScheduleEntryInput(BaseModel):
@@ -41,4 +44,21 @@ class ScheduleEntryInput(BaseModel):
     def _shift_required_unless_day_off(self) -> "ScheduleEntryInput":
         if not self.is_day_off and self.shift_id is None:
             raise ValueError("Un shift est requis sauf si l'employé est en jour de repos.")
+        return self
+
+
+class EmployeeAbsenceInput(BaseModel):
+    """Absence d'un agent sur une période calendaire."""
+
+    employee_id: int
+    start_date: date
+    end_date: date
+    absence_type: str
+    paid: bool = False
+    notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _valid_range(self) -> "EmployeeAbsenceInput":
+        if self.end_date < self.start_date:
+            raise ValueError("La fin d'absence doit être postérieure ou égale au début.")
         return self

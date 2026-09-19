@@ -35,6 +35,11 @@
                     </select>
                 </div>
                 <div class="field">
+                    <label for="timezone_name">Fuseau horaire (IANA)</label>
+                    <input type="text" id="timezone_name" name="timezone_name" value="{{ values.timezone_name or '' }}" placeholder="America/New_York"
+                    <div class="field__hint">Vide = fuseau du marché du skill. Vous pouvez surcharger avec un fuseau IANA. La fenêtre s’adapte automatiquement au DST : 07:00–01:00 en été, 08:00–02:00 en hiver.</div>
+                </div>
+                <div class="field">
                     <label for="skill_id">Skill</label>
                     <select id="skill_id" name="skill_id" required>
                         <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>

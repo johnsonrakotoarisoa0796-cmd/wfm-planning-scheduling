@@ -37,8 +37,26 @@
                 <input type="number" id="break_minutes" name="break_minutes" min="0" max="120" value="{{ values.break_minutes or '15' }}">
             </div>
             <div class="field">
+                <label for="break_count">Nombre de pauses</label>
+                <input type="number" id="break_count" name="break_count" min="0" max="4" value="{{ values.break_count or '2' }}">
+            </div>
+            <div class="field">
+                <label for="break_paid">Pauses 15 min</label>
+                <select id="break_paid" name="break_paid">
+                    <option value="true" {% if values.break_paid is not defined or values.break_paid %}selected{% endif %}>Payées — incluses dans les 8 h</option>
+                    <option value="false" {% if values.break_paid is defined and not values.break_paid %}selected{% endif %}>Non payées — ajoutées à l'amplitude</option>
+                </select>
+            </div>
+            <div class="field">
                 <label for="lunch_minutes">Déjeuner (min)</label>
                 <input type="number" id="lunch_minutes" name="lunch_minutes" min="0" max="120" value="{{ values.lunch_minutes or '60' }}">
+            </div>
+            <div class="field">
+                <label for="lunch_paid">Déjeuner payé</label>
+                <select id="lunch_paid" name="lunch_paid">
+                    <option value="false" {% if values.lunch_paid is not defined or not values.lunch_paid %}selected{% endif %}>Non payé — hors 8 h</option>
+                    <option value="true" {% if values.lunch_paid %}selected{% endif %}>Payé</option>
+                </select>
             </div>
         </div>
         <div class="form-actions">
@@ -52,7 +70,7 @@
 <div class="data-table-wrapper">
     <table class="data-table">
         <thead>
-            <tr><th>Nom</th><th class="numeric">Début</th><th class="numeric">Fin</th><th class="numeric">Pause</th><th class="numeric">Déjeuner</th></tr>
+            <tr><th>Nom</th><th>Début</th><th>Fin</th><th>Pauses</th><th>Déjeuner</th><th>Règle</th></tr>
         </thead>
         <tbody>
             {% for shift in shifts %}
@@ -60,8 +78,9 @@
                 <td>{{ shift.name }}</td>
                 <td class="numeric">{{ shift.start_time.strftime("%H:%M") }}</td>
                 <td class="numeric">{{ shift.end_time.strftime("%H:%M") }}</td>
-                <td class="numeric">{{ shift.break_minutes }} min</td>
+                <td class="numeric">{{ shift.break_count }} × {{ shift.break_minutes }} min</td>
                 <td class="numeric">{{ shift.lunch_minutes }} min</td>
+                <td>{{ "Pauses payées" if shift.break_paid else "Pauses non payées" }}</td>
             </tr>
             {% endfor %}
         </tbody>

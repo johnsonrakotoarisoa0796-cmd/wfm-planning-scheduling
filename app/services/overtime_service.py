@@ -27,7 +27,7 @@ from app.models.enums import PeriodType
 from app.models.intraday import IntervalForecast
 from app.models.overtime import OvertimePlan
 from app.schemas.overtime import OvertimeActualInput, OvertimePlanInput
-from app.services import kpi_service
+from app.services import client_stf_service, kpi_service
 from app.services.intraday_service import INTERVAL_MINUTES
 
 _INTERVAL_DURATION_HOURS = INTERVAL_MINUTES / 60  # 0.5
@@ -77,6 +77,12 @@ def compute_overtime_report(
         IntervalForecast.skill_id == skill_id,
     )
     intervals = list(session.exec(query).all())
+    intervals = client_stf_service.effective_intervals_for_range(
+        session,
+        intervals,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
 
     required_hours, available_hours = _hours_from_intervals(intervals)
     gap_hours = kpi_service.staffing_gap(available_hours, required_hours)

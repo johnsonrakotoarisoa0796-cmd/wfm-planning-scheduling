@@ -19,11 +19,12 @@ from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
 from app.models.enums import UserRole
+from app.models.market import Market
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import intraday_service
+from app.services import channel_service, client_stf_service, intraday_service
 
 router = APIRouter(prefix="/daily", tags=["daily"])
 
@@ -101,6 +102,7 @@ def create_day(
     target_date: DateType = Form(...),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
+    timezone_name: str = Form(""),
     daily_volume: float = Form(...),
     daily_aht_seconds: float = Form(...),
     service_level_target_pct: float = Form(...),
@@ -110,8 +112,18 @@ def create_day(
     current_user: User = Depends(require_role(*GENERATE_ROLES)),
     session: Session = Depends(get_session),
 ):
+    effective_timezone = timezone_name.strip()
+    if not effective_timezone:
+        skill = session.get(Skill, skill_id)
+        if skill is not None and skill.market_id is not None:
+            market = session.get(Market, skill.market_id)
+            effective_timezone = market.timezone_name if market is not None else "UTC"
+        else:
+            effective_timezone = "UTC"
+
     submitted_values = {
         "target_date": target_date, "campaign_id": campaign_id, "skill_id": skill_id,
+        "timezone_name": effective_timezone,
         "daily_volume": daily_volume, "daily_aht_seconds": daily_aht_seconds,
         "service_level_target_pct": service_level_target_pct,
         "answer_time_target_seconds": answer_time_target_seconds,
@@ -149,15 +161,34 @@ def view_day(
     current_user: User = Depends(require_login),
     session: Session = Depends(get_session),
 ):
-    intervals = intraday_service.list_intervals_for_day(
+    raw_intervals = intraday_service.list_intervals_for_day(
         session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
     )
-    if not intervals:
+    if not raw_intervals:
         raise HTTPException(status_code=404, detail="Aucun intervalle pour cette date/campagne/skill.")
+
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    client_rows = (
+        client_stf_service.list_intervals(session, client_plan.id)
+        if client_plan is not None
+        else []
+    )
+    intervals = (
+        client_stf_service.effective_intervals(raw_intervals, client_rows)
+        if client_rows
+        else raw_intervals
+    )
 
     campaign = session.get(Campaign, campaign_id)
     skill = session.get(Skill, skill_id)
     summary = intraday_service.compute_daily_summary(intervals)
+    channel_name = channel_service.channel_label(skill.channel) if skill else "Phone"
+    channel_concurrency = channel_service.concurrency_for_channel(skill.channel) if skill else 1.0
 
     return templates.TemplateResponse(
         request,
@@ -170,6 +201,9 @@ def view_day(
             "skill": skill,
             "intervals": intervals,
             "summary": summary,
+            "channel_name": channel_name,
+            "channel_concurrency": channel_concurrency,
+            "client_stf_active": bool(client_rows),
             "can_update": current_user.role in UPDATE_ROLES,
         },
     )

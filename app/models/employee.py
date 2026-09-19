@@ -22,6 +22,7 @@ class Employee(SQLModel, table=True):
     # Base contractuelle en heures/semaine, ne doit jamais être codée en dur
     # ailleurs (voir Settings et core/config.py pour le défaut global).
     weekly_hours_contract: float = Field(default=40.0, nullable=False)
+    timezone_name: str = Field(default="UTC", nullable=False)
 
 
 class EmployeeSkill(SQLModel, table=True):
@@ -32,3 +33,22 @@ class EmployeeSkill(SQLModel, table=True):
     employee_id: int = Field(foreign_key="employees.id", primary_key=True)
     skill_id: int = Field(foreign_key="skills.id", primary_key=True)
     is_primary: bool = Field(default=False, nullable=False)
+
+
+class EmployeeAbsence(SQLModel, table=True):
+    """Absence datée d'un agent : maternité, disponibilité ou congé.
+
+    paid distingue le statut contractuel de la disponibilité opérationnelle:
+    un congé payé reste rémunéré mais l'agent reste indisponible au staffing;
+    un congé non payé ne génère ni paid hours ni capacité opérationnelle.
+    """
+
+    __tablename__ = "employee_absences"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    employee_id: int = Field(foreign_key="employees.id", index=True, nullable=False)
+    start_date: date = Field(index=True, nullable=False)
+    end_date: date = Field(index=True, nullable=False)
+    absence_type: str = Field(nullable=False)
+    paid: bool = Field(default=False, nullable=False)
+    notes: Optional[str] = Field(default=None)

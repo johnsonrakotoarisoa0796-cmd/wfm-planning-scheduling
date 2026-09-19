@@ -18,10 +18,11 @@ from sqlmodel import Session, select
 
 from app.core.config import get_settings
 from app.models.enums import ForecastVersionType
+from app.models.skill import Skill
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
 from app.schemas.ltf import LTFCreateInput
 from app.schemas.stf import STFCreateInput
-from app.services import kpi_service
+from app.services import channel_service, kpi_service
 from app.services.erlang_service import apply_shrinkage
 
 settings = get_settings()
@@ -107,9 +108,17 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
     total_shrinkage_pct = data.indoor_shrinkage_pct + data.outdoor_shrinkage_pct
     working_days = working_days_in_month(data.year, data.month)
 
+    skill = session.get(Skill, data.skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
     workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-    net_required_hc = kpi_service.required_hc_aggregate(workload, available_hours_per_agent, data.occupancy_required_pct)
+    net_required_hc = channel_service.required_hc_aggregate_channel(
+        workload,
+        available_hours_per_agent,
+        data.occupancy_required_pct,
+        skill.channel,
+    )
     gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
 
     paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
@@ -287,9 +296,17 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
     _mark_previous_stf_version_as_not_current(session, data)
 
     working_days = settings.working_days  # semaine ISO complète = 5 jours ouvrés
+    skill = session.get(Skill, data.skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
     workload = kpi_service.workload_hours(data.volume, data.aht_seconds)
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-    net_required_hc = kpi_service.required_hc_aggregate(workload, available_hours_per_agent, data.occupancy_pct)
+    net_required_hc = channel_service.required_hc_aggregate_channel(
+        workload,
+        available_hours_per_agent,
+        data.occupancy_pct,
+        skill.channel,
+    )
     gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
 
     paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)

@@ -332,3 +332,60 @@ re-désynchronise de l'authenticator à chaque redémarrage.
 
 Voir `WFM_ARCHITECTURE_PLAN.md` section 11 pour le détail des 16 commits
 prévus, du squelette initial jusqu'au durcissement de production.
+
+## Règles Workforce / Payroll
+
+La V1 distingue les heures contractuelles, l'amplitude de présence et la disponibilité opérationnelle.
+
+- Contrat standard : 40 h/semaine sur 5 jours ouvrés, soit 8 h/jour.
+- Déjeuner standard : 60 min, hors heures contractuelles.
+- Deux pauses de 15 min sont configurables par shift.
+- Une pause payée est incluse dans les 8 h contractuelles.
+- Une pause non payée allonge l'amplitude sans augmenter les heures payées.
+  Exemple : 07:00–16:00 avec 2 pauses payées + 1 h déjeuner = 8 h payées.
+  Avec 2 pauses non payées, l'amplitude correspondante devient 07:00–16:30 pour conserver 8 h payées.
+- Les agents ont un fuseau horaire IANA (par ex. America/New_York ou Europe/Paris).
+  Les fenêtres saisonnières sont 07:00–01:00 en période DST et 08:00–02:00
+  hors DST, avec conversion UTC automatique.
+- Les absences gérées nativement sont : maternité, disponibilité, congé payé
+  et congé sans solde. Le champ paid sépare rémunération et disponibilité
+  opérationnelle : une absence payée consomme des heures payées mais retire
+  de la capacité ; une absence non payée retire aussi les heures payées.
+- Le Planner exclut les agents déjà planifiés et les agents absents de la
+  capacité disponible avant de proposer un mix de shifts.
+
+Les règles restent configurables : il n'est donc pas nécessaire de dupliquer
+la logique métier pour créer un autre contrat, un autre nombre de pauses ou
+un autre fuseau.
+
+## STF client intervalisé
+
+Le module **STF Client** accepte un besoin de staffing déjà calculé par le client et déjà distribué par intervalle. Un fichier **CSV UTF-8 ou Excel (.xlsx)** est accepté ; les colonnes attendues sont :
+
+`date,interval_start,interval_end,required_hc`
+
+Pour une même semaine ISO + campagne + skill, chaque nouvel import devient la version courante et l'ancienne version reste historisée.
+
+Règle de priorité opérationnelle :
+
+1. si un STF client courant couvre l'intervalle, `required_hc` opérationnel = STF client ;
+2. sinon, le besoin calculé par Daily/Intraday reste utilisé.
+
+Les KPI de staffing sont alors recalculés sur le besoin client : **Required HC-hours, Coverage, Shortage, Surplus, Peak STF, OT requis, FTE équivalent**. Le système mesure aussi l'écart **STF client vs besoin calculé WFM** pour détecter les différences de modèle.
+
+Le STF client ne contient pas nécessairement le volume/AHT : dans ce cas, il ne remplace pas les données de trafic utilisées pour Erlang C. Les KPI **Service Level, ASA et Occupancy** continuent de dépendre du volume/AHT/actuals disponibles. Ainsi, on évite de fabriquer un SL/ASA à partir du seul STF.
+
+Le Planner, le Dashboard, Daily, l'impact des pauses et Overtime consomment tous ce besoin effectif. Le fichier client devient donc une vraie source de staffing, pas seulement une pièce jointe ou une valeur d'affichage.
+
+
+## Canaux et marchés
+
+Le moteur supporte trois canaux opérationnels principaux :
+
+- **Phone** : simultanéité 1 conversation par agent ; dimensionnement Erlang C pour SL/ASA/Occupancy.
+- **Email** : jusqu'à **3 emails simultanés** par agent ; dimensionnement par charge de travail / simultanéité / occupancy.
+- **Message Us** : jusqu'à **2 conversations simultanées** par agent ; même logique asynchrone.
+
+Les marchés sont séparés des campagnes et des skills : **FR, UK, DE, IN, ES, JP, NL** sont préconfigurés, avec code, langue et fuseau IANA. Un skill peut être rattaché à un marché, ce qui permet de conserver plusieurs marchés dans une même campagne sans mélanger leurs horaires ou KPI.
+
+Pour les canaux asynchrones, le système ne transforme pas artificiellement le staffing en Erlang C : le calcul repose sur la charge `Volume × AHT`, divisée par la simultanéité autorisée, puis contrainte par l'occupancy cible. Le SL/ASA de type Erlang reste réservé au Phone tant qu'un modèle SLA spécifique de file/message n'est pas alimenté.

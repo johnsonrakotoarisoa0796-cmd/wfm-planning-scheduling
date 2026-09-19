@@ -21,11 +21,11 @@ from typing import Optional
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
-from app.models.employee import Employee, EmployeeSkill
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import EmployeeStatus, ShrinkageType
 from app.models.shrinkage import ShrinkageCategory, ShrinkageRecord
 from app.schemas.shrinkage import ShrinkageRecordInput
-from app.services import kpi_service
+from app.services import kpi_service, workforce_service
 from app.services.forecast_service import count_weekdays_in_range
 
 settings = get_settings()
@@ -90,6 +90,8 @@ class ShrinkageSummary:
     total_hours: float
     total_pct: float
     available_hours: float
+    paid_absence_hours: float = 0.0
+    unpaid_absence_hours: float = 0.0
     by_category_hours: dict = field(default_factory=dict)  # code -> heures
     by_category_pct: dict = field(default_factory=dict)  # code -> % des Paid Hours
 
@@ -122,10 +124,45 @@ def compute_shrinkage_summary(
     )
     total_hours = indoor_hours + outdoor_hours
 
-    employee_count = _count_active_employees_for_skill(session, skill_id=skill_id)
-    working_days = count_weekdays_in_range(start_date, end_date)
-    paid_hours_value = kpi_service.paid_hours(employee_count, settings.daily_hours, working_days)
+    employees = list(
+        session.exec(
+            select(Employee)
+            .join(EmployeeSkill, EmployeeSkill.employee_id == Employee.id)
+            .where(
+                EmployeeSkill.skill_id == skill_id,
+                Employee.status == EmployeeStatus.ACTIVE,
+            )
+        ).all()
+    )
+    absences = list(
+        session.exec(
+            select(EmployeeAbsence).where(
+                EmployeeAbsence.end_date >= start_date,
+                EmployeeAbsence.start_date <= end_date,
+            )
+        ).all()
+    )
+    absences_by_employee: dict[int, list[EmployeeAbsence]] = {}
+    for absence in absences:
+        absences_by_employee.setdefault(absence.employee_id, []).append(absence)
 
+    paid_hours_value = 0.0
+    paid_absence_hours = 0.0
+    unpaid_absence_hours = 0.0
+    for employee in employees:
+        paid, paid_abs, unpaid_abs = workforce_service.workforce_period_hours(
+            employee,
+            absences_by_employee.get(employee.id, []),
+            start_date=start_date,
+            end_date=end_date,
+        )
+        paid_hours_value += paid
+        paid_absence_hours += paid_abs
+        unpaid_absence_hours += unpaid_abs
+
+    # Les absences payées sont du shrinkage : elles consomment des heures
+    # payées mais ne fournissent aucune capacité opérationnelle.
+    total_hours += paid_absence_hours
     total_pct = kpi_service.shrinkage_pct(total_hours, paid_hours_value)
     available_hours = paid_hours_value - total_hours
 
@@ -147,4 +184,6 @@ def compute_shrinkage_summary(
         available_hours=available_hours,
         by_category_hours=by_category_hours,
         by_category_pct=by_category_pct,
+        paid_absence_hours=paid_absence_hours,
+        unpaid_absence_hours=unpaid_absence_hours,
     )

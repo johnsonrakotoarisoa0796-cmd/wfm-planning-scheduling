@@ -17,8 +17,9 @@ from sqlmodel import Session, select
 
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
+from app.models.employee import Employee, EmployeeAbsence
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import intraday_service, kpi_service
+from app.services import client_stf_service, intraday_service, kpi_service, workforce_service
 
 
 # ============================================================================
@@ -31,7 +32,10 @@ def create_shift(session: Session, data: ShiftInput) -> Shift:
         start_time=data.start_time,
         end_time=data.end_time,
         break_minutes=data.break_minutes,
+        break_count=data.break_count,
+        break_paid=data.break_paid,
         lunch_minutes=data.lunch_minutes,
+        lunch_paid=data.lunch_paid,
     )
     session.add(shift)
     session.commit()
@@ -148,7 +152,23 @@ def compute_break_impact(
     forecast_intervals = intraday_service.list_intervals_for_day(
         session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
     )
-    required_by_start = {i.interval_start: i.required_hc for i in forecast_intervals}
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    client_rows = (
+        client_stf_service.list_intervals(session, client_plan.id)
+        if client_plan is not None
+        else []
+    )
+    effective_intervals = (
+        client_stf_service.effective_intervals(forecast_intervals, client_rows)
+        if client_rows
+        else forecast_intervals
+    )
+    required_by_start = {i.interval_start: i.required_hc for i in effective_intervals}
 
     results = []
     for slot_index in range(intraday_service.SLOTS_PER_DAY):
@@ -175,3 +195,63 @@ def compute_break_impact(
             )
         )
     return results
+
+
+# ============================================================================
+# Pauses / absentéisme contractuel
+# ============================================================================
+
+def shift_hours_summary(session: Session, *, employee_id: int, shift_id: int):
+    employee = session.get(Employee, employee_id)
+    shift = session.get(Shift, shift_id)
+    if employee is None or shift is None:
+        raise ValueError("Employé ou shift introuvable.")
+    return workforce_service.shift_hours(
+        shift,
+        contract_daily_hours=workforce_service.daily_contract_hours(employee),
+    )
+
+
+def create_absence(session: Session, data) -> EmployeeAbsence:
+    workforce_service.validate_absence_type(data.absence_type)
+    employee = session.get(Employee, data.employee_id)
+    if employee is None:
+        raise ValueError("Employé introuvable.")
+    overlap = session.exec(
+        select(EmployeeAbsence).where(
+            EmployeeAbsence.employee_id == data.employee_id,
+            EmployeeAbsence.start_date <= data.end_date,
+            EmployeeAbsence.end_date >= data.start_date,
+        )
+    ).first()
+    if overlap is not None:
+        raise ValueError("Une absence existe déjà sur une partie de cette période.")
+    absence = EmployeeAbsence(
+        employee_id=data.employee_id,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        absence_type=data.absence_type,
+        paid=data.paid,
+        notes=data.notes,
+    )
+    session.add(absence)
+    session.commit()
+    session.refresh(absence)
+    return absence
+
+
+def list_absences(
+    session: Session,
+    *,
+    employee_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> list[EmployeeAbsence]:
+    query = select(EmployeeAbsence)
+    if employee_id is not None:
+        query = query.where(EmployeeAbsence.employee_id == employee_id)
+    if start_date is not None:
+        query = query.where(EmployeeAbsence.end_date >= start_date)
+    if end_date is not None:
+        query = query.where(EmployeeAbsence.start_date <= end_date)
+    return list(session.exec(query.order_by(EmployeeAbsence.start_date.desc())).all())

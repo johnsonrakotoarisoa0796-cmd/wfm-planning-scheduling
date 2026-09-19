@@ -7,6 +7,7 @@ from typing import Optional
 from sqlmodel import Field, SQLModel
 
 from app.core.time_utils import utc_now
+from app.models.enums import Channel
 
 
 class DailyForecast(SQLModel, table=True):
@@ -16,6 +17,7 @@ class DailyForecast(SQLModel, table=True):
     date: DateType = Field(index=True, nullable=False)
     campaign_id: int = Field(foreign_key="campaigns.id", index=True, nullable=False)
     skill_id: int = Field(foreign_key="skills.id", index=True, nullable=False)
+    channel: Channel = Field(default=Channel.VOICE, nullable=False)
 
     forecast_volume: float = Field(default=0)
     forecast_aht_seconds: float = Field(default=0)
@@ -37,6 +39,7 @@ class IntervalForecast(SQLModel, table=True):
     interval_end: time = Field(nullable=False)
     campaign_id: int = Field(foreign_key="campaigns.id", index=True, nullable=False)
     skill_id: int = Field(foreign_key="skills.id", index=True, nullable=False)
+    channel: Channel = Field(default=Channel.VOICE, nullable=False)
 
     forecast_volume: float = Field(default=0)
     actual_volume: Optional[float] = Field(default=None)

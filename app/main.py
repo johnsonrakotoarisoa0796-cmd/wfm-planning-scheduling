@@ -28,12 +28,13 @@ from app.core.security import (
     totp_provisioning_uri,
 )
 from app.models.campaign import Campaign
+from app.models.market import Market
 from app.models.employee import Employee, EmployeeSkill
 from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
 from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import auth, capacity, daily, dashboard, ltf, overtime, scheduling, stf, shrinkage
+from app.routers import auth, capacity, client_stf, daily, dashboard, ltf, markets, overtime, scheduling, stf, shrinkage
 
 settings = get_settings()
 
@@ -160,7 +161,13 @@ def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
         session.commit()
         session.refresh(campaign)
 
-        skill = Skill(campaign_id=campaign.id, name="Voix Niveau 1", channel=Channel.VOICE)
+        france = session.exec(select(Market).where(Market.code == "FR")).first()
+        skill = Skill(
+            campaign_id=campaign.id,
+            market_id=france.id if france is not None else None,
+            name="Voix Niveau 1",
+            channel=Channel.VOICE,
+        )
         session.add(skill)
         session.commit()
         session.refresh(skill)
@@ -193,6 +200,38 @@ def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
     print(f"[bootstrap] Skill de démo créée : {skill_name} ({skill_channel})")
     print(f"[bootstrap] {len(demo_employees)} employés de démo créés et rattachés au skill")
     print("=" * 70)
+
+
+def bootstrap_markets(*, db_engine=None) -> None:
+    """Crée les marchés standards utilisés par le centre de contacts."""
+    db_engine = db_engine or engine
+    defaults = [
+        ("FR", "France", "fr", "Europe/Paris"),
+        ("UK", "United Kingdom", "en", "Europe/London"),
+        ("DE", "Germany", "de", "Europe/Berlin"),
+        ("IN", "India", "en", "Asia/Kolkata"),
+        ("ES", "Spain", "es", "Europe/Madrid"),
+        ("JP", "Japan", "ja", "Asia/Tokyo"),
+        ("NL", "Netherlands", "nl", "Europe/Amsterdam"),
+    ]
+    with Session(db_engine) as session:
+        existing = {item.code for item in session.exec(select(Market)).all()}
+        created = 0
+        for code, name, language_code, timezone_name in defaults:
+            if code in existing:
+                continue
+            session.add(
+                Market(
+                    code=code,
+                    name=name,
+                    language_code=language_code,
+                    timezone_name=timezone_name,
+                    is_active=True,
+                )
+            )
+            created += 1
+        if created:
+            session.commit()
 
 
 def bootstrap_shrinkage_categories(*, db_engine=None) -> None:
@@ -237,6 +276,7 @@ async def lifespan(app: FastAPI):
     bootstrap_admin_if_configured()
     bootstrap_reset_totp_if_configured()
     bootstrap_demo_data_if_configured()
+    bootstrap_markets()
     bootstrap_shrinkage_categories()
     yield
 
@@ -257,6 +297,8 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(ltf.router)
 app.include_router(stf.router)
+app.include_router(client_stf.router)
+app.include_router(markets.router)
 app.include_router(daily.router)
 app.include_router(capacity.router)
 app.include_router(shrinkage.router)

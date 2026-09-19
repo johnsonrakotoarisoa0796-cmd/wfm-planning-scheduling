@@ -18,12 +18,12 @@ from app.core.database import get_session
 from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
-from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import scheduling_service
+from app.schemas.scheduling import EmployeeAbsenceInput, ScheduleEntryInput, ShiftInput
+from app.services import client_stf_service, planner_service, scheduling_service, intraday_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -69,11 +69,14 @@ def create_shift(
     start_time: str = Form(...),
     end_time: str = Form(...),
     break_minutes: int = Form(15),
+    break_count: int = Form(2),
+    break_paid: bool = Form(True),
     lunch_minutes: int = Form(60),
+    lunch_paid: bool = Form(False),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
-    submitted_values = {"name": name, "start_time": start_time, "end_time": end_time, "break_minutes": break_minutes, "lunch_minutes": lunch_minutes}
+    submitted_values = {"name": name, "start_time": start_time, "end_time": end_time, "break_minutes": break_minutes, "break_count": break_count, "break_paid": break_paid, "lunch_minutes": lunch_minutes, "lunch_paid": lunch_paid}
     try:
         payload = ShiftInput(**submitted_values)
         scheduling_service.create_shift(session, payload)
@@ -218,6 +221,100 @@ def create_entry(
         )
 
     return RedirectResponse(url=f"/scheduling?target_date={entry_date}&campaign_id={campaign_id}&skill_id={skill_id}", status_code=303)
+
+
+
+# ============================================================================
+# Planner de mix de shifts
+# ============================================================================
+
+@router.get("/planner")
+def planner_view(
+    request: Request,
+    target_date: Optional[date] = None,
+    campaign_id: Optional[int] = None,
+    skill_id: Optional[int] = None,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    target_date = target_date or date.today()
+    campaigns, skills, employees = _reference_data(session)
+    intervals = []
+    client_stf_active = False
+    recommendations = []
+    if campaign_id is not None and skill_id is not None:
+        raw_intervals = intraday_service.list_intervals_for_day(
+            session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
+        )
+        client_plan = client_stf_service.current_plan(
+            session,
+            target_date=target_date,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+        )
+        client_rows = (
+            client_stf_service.list_intervals(session, client_plan.id)
+            if client_plan is not None
+            else []
+        )
+        intervals = (
+            client_stf_service.effective_intervals(raw_intervals, client_rows)
+            if client_rows
+            else raw_intervals
+        )
+        client_stf_active = bool(client_rows)
+        shifts = scheduling_service.list_shifts(session, active_only=True)
+        existing_entries = scheduling_service.list_schedule_entries(
+            session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
+        )
+        assigned_employee_ids = {entry.employee_id for entry in existing_entries}
+        eligible_skill_employee_ids = {
+            row.employee_id
+            for row in session.exec(
+                select(EmployeeSkill).where(EmployeeSkill.skill_id == skill_id)
+            ).all()
+        }
+        target_absences = scheduling_service.list_absences(
+            session, start_date=target_date, end_date=target_date
+        )
+        absent_employee_ids = {
+            absence.employee_id
+            for absence in target_absences
+        }
+        available_employee_count = sum(
+            1
+            for employee in employees
+            if (
+                employee.status.value == "active"
+                and employee.campaign_id == campaign_id
+                and employee.id in eligible_skill_employee_ids
+                and employee.id not in assigned_employee_ids
+                and employee.id not in absent_employee_ids
+            )
+        )
+        recommendations = planner_service.recommend_shift_mix(
+            intervals, shifts, max_agents=available_employee_count
+        )
+    return templates.TemplateResponse(
+        request,
+        "scheduling/planner.html",
+        {
+            "active_nav": "scheduling",
+            "current_user": current_user,
+            "campaigns": campaigns,
+            "skills": skills,
+            "employees": employees,
+            "available_employee_count": available_employee_count if campaign_id is not None and skill_id is not None else 0,
+            "filters": {
+                "target_date": target_date,
+                "campaign_id": campaign_id,
+                "skill_id": skill_id,
+            },
+            "intervals": intervals,
+            "recommendations": recommendations,
+            "client_stf_active": client_stf_active,
+        },
+    )
 
 
 # ============================================================================

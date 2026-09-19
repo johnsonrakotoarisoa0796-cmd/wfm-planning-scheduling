@@ -20,8 +20,10 @@ from typing import Optional
 from sqlmodel import Session, select
 
 from app.models.intraday import IntervalForecast
+from app.models.skill import Skill
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import kpi_service
+from app.services import channel_service, client_stf_service, kpi_service
+from app.services.workforce_service import seasonal_operating_window, validate_timezone_name
 from app.services.erlang_service import (
     apply_shrinkage,
     average_speed_of_answer_erlang_c,
@@ -54,6 +56,34 @@ def _default_profile_raw_weights() -> list[float]:
         night_floor = 0.03 if (hour < 7 or hour >= 21) else 0.0
         weights.append(morning_peak + afternoon_peak + night_floor)
     return weights
+
+
+def profile_for_operating_window(
+    target_date: DateType,
+    timezone_name: str,
+    profile_pct: list[float] | None = None,
+) -> list[float]:
+    """Masque les tranches hors fenêtre opérationnelle puis renormalise à 100%."""
+    validate_timezone_name(timezone_name)
+    profile = list(profile_pct or default_intraday_profile_pct())
+    if len(profile) != SLOTS_PER_DAY:
+        raise ValueError(f"Le profil doit contenir {SLOTS_PER_DAY} tranches.")
+    window = seasonal_operating_window(target_date, timezone_name)
+    masked = []
+    for slot_index, pct in enumerate(profile):
+        start, _ = slot_bounds(slot_index)
+        inside = (
+            window.start_local <= window.end_local
+            and window.start_local <= start < window.end_local
+        ) or (
+            window.start_local > window.end_local
+            and (start >= window.start_local or start < window.end_local)
+        )
+        masked.append(pct if inside else 0.0)
+    total = sum(masked)
+    if total <= 0:
+        raise ValueError("La fenêtre opérationnelle ne recouvre aucun intervalle.")
+    return [pct / total * 100 for pct in masked]
 
 
 def default_intraday_profile_pct() -> list[float]:
@@ -110,22 +140,36 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
             "— supprimez-les avant de régénérer."
         )
 
-    profile_pct = default_intraday_profile_pct()
+    profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
+    skill = session.get(Skill, data.skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
+    channel = skill.channel
     created: list[IntervalForecast] = []
 
     for slot_index, pct in enumerate(profile_pct):
         interval_start, interval_end = slot_bounds(slot_index)
         interval_volume = data.daily_volume * (pct / 100)
 
-        result = find_required_agents(
-            volume_contacts=interval_volume,
-            aht_seconds=data.daily_aht_seconds,
-            interval_seconds=INTERVAL_SECONDS,
-            service_level_target_pct=data.service_level_target_pct,
-            answer_time_target_seconds=data.answer_time_target_seconds,
-            occupancy_target_pct=data.occupancy_target_pct,
-        )
-        gross_required_hc = apply_shrinkage(result.net_required_hc, data.shrinkage_pct)
+        if channel_service.is_realtime_channel(channel):
+            result = find_required_agents(
+                volume_contacts=interval_volume,
+                aht_seconds=data.daily_aht_seconds,
+                interval_seconds=INTERVAL_SECONDS,
+                service_level_target_pct=data.service_level_target_pct,
+                answer_time_target_seconds=data.answer_time_target_seconds,
+                occupancy_target_pct=data.occupancy_target_pct,
+            )
+            net_required_hc = result.net_required_hc
+        else:
+            net_required_hc = channel_service.required_hc_for_async(
+                volume_contacts=interval_volume,
+                aht_seconds=data.daily_aht_seconds,
+                interval_seconds=INTERVAL_SECONDS,
+                occupancy_target_pct=data.occupancy_target_pct,
+                channel=channel,
+            )
+        gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
 
         interval = IntervalForecast(
             date=data.target_date,
@@ -133,6 +177,7 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
             interval_end=interval_end,
             campaign_id=data.campaign_id,
             skill_id=data.skill_id,
+            channel=channel,
             forecast_volume=interval_volume,
             forecast_aht_seconds=data.daily_aht_seconds,
             required_hc=gross_required_hc,
@@ -177,20 +222,67 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
     if data.actual_hc is not None:
         interval.actual_hc = data.actual_hc
 
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=interval.date,
+        campaign_id=interval.campaign_id,
+        skill_id=interval.skill_id,
+    )
+    effective_required_hc = interval.required_hc
+    if client_plan is not None:
+        client_rows = client_stf_service.list_intervals(session, client_plan.id)
+        matched = next(
+            (
+                row for row in client_rows
+                if row.date == interval.date and row.interval_start == interval.interval_start
+            ),
+            None,
+        )
+        if matched is not None:
+            effective_required_hc = matched.required_hc
+
     if interval.actual_volume is not None and interval.actual_aht_seconds is not None and interval.actual_hc:
         agents = max(round(interval.actual_hc), 0)
         traffic_actual = traffic_intensity_erlangs(interval.actual_volume, interval.actual_aht_seconds, INTERVAL_SECONDS)
 
-        interval.occupancy_pct = occupancy_from_traffic_pct(traffic_actual, agents) if agents else 0.0
-        interval.service_level_pct = (
-            service_level_erlang_c(agents, traffic_actual, interval.actual_aht_seconds, interval.answer_time_target_seconds)
-            if agents
-            else 0.0
-        )
-        asa_estimate = average_speed_of_answer_erlang_c(agents, traffic_actual, interval.actual_aht_seconds) if agents else None
-        interval.asa_seconds = asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
+        if channel_service.is_realtime_channel(interval.channel):
+            interval.occupancy_pct = occupancy_from_traffic_pct(traffic_actual, agents) if agents else 0.0
+            interval.service_level_pct = (
+                service_level_erlang_c(
+                    agents,
+                    traffic_actual,
+                    interval.actual_aht_seconds,
+                    interval.answer_time_target_seconds,
+                )
+                if agents
+                else 0.0
+            )
+            asa_estimate = (
+                average_speed_of_answer_erlang_c(
+                    agents, traffic_actual, interval.actual_aht_seconds
+                )
+                if agents
+                else None
+            )
+            interval.asa_seconds = (
+                asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
+            )
+        else:
+            workload_hours = channel_service.normalized_workload_hours(
+                interval.actual_volume,
+                interval.actual_aht_seconds,
+                interval.channel,
+            )
+            capacity_hours = agents * (INTERVAL_SECONDS / 3600.0)
+            interval.occupancy_pct = (
+                workload_hours / capacity_hours * 100.0 if capacity_hours > 0 else 0.0
+            )
+            # Les canaux asynchrones nécessitent un modèle SLA basé sur l'âge
+            # de la file/message ; il n'est pas assimilé à Erlang C.
+            interval.service_level_pct = None
+            interval.asa_seconds = None
 
-        interval.staffing_gap = kpi_service.staffing_gap(interval.actual_hc, interval.required_hc)
+        interval.staffing_gap = kpi_service.staffing_gap(interval.actual_hc, effective_required_hc)
 
     if data.abandoned_contacts is not None and interval.actual_volume:
         interval.abandon_rate_pct = kpi_service.abandon_rate_pct(data.abandoned_contacts, interval.actual_volume)
@@ -241,7 +333,18 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
     peak_required_hc = max((i.required_hc for i in intervals), default=0.0)
     peak_scheduled_hc = max((i.scheduled_hc for i in intervals), default=0.0)
     actual_hcs = [i.actual_hc for i in intervals if i.actual_hc is not None]
-    service_levels = [i.service_level_pct for i in intervals if i.service_level_pct is not None]
+    service_level_points = [
+        (i.service_level_pct, i.actual_volume or i.forecast_volume)
+        for i in intervals
+        if i.service_level_pct is not None
+    ]
+    avg_service_level_pct = (
+        kpi_service.weighted_average(
+            [sl for sl, _ in service_level_points],
+            [volume for _, volume in service_level_points],
+        )
+        if service_level_points else None
+    )
 
     return DailySummary(
         forecast_volume=forecast_volume,
@@ -249,7 +352,7 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
         peak_required_hc=peak_required_hc,
         peak_scheduled_hc=peak_scheduled_hc,
         peak_actual_hc=max(actual_hcs) if actual_hcs else None,
-        avg_service_level_pct=(sum(service_levels) / len(service_levels)) if service_levels else None,
+        avg_service_level_pct=avg_service_level_pct,
     )
 
 
