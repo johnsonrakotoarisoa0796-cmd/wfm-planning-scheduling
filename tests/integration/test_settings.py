@@ -8,8 +8,9 @@ from app.core.database import get_session
 from app.core.security import hash_password
 from app.main import app, bootstrap_markets
 from app.models.campaign import Campaign
-from app.models.enums import UserRole
-from app.models.skill import Skill, Channel
+from app.models.enums import Channel, UserRole
+from app.models.market import Market
+from app.models.skill import Skill
 from app.models.user import User
 
 TEST_PASSWORD = "mot-de-passe-solide-123"
@@ -75,9 +76,7 @@ def test_settings_allows_campaign_and_skill_creation():
 
             with Session(engine) as session:
                 campaign = session.exec(select(Campaign).where(Campaign.code == "SUP-UK")).one()
-                market = session.exec(select(__import__("app.models.market", fromlist=["Market"]).Market).where(
-                    __import__("app.models.market", fromlist=["Market"]).Market.code == "UK"
-                )).one()
+                market = session.exec(select(Market).where(Market.code == "UK")).one()
 
             skill_response = client.post(
                 "/settings/skills",
