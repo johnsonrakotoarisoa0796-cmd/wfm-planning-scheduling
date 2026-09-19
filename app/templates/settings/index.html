@@ -51,8 +51,9 @@
 <table class="data-table">
 <thead><tr><th>Semaine</th><th>Campagne</th><th>Skill</th><th class="numeric">AHT</th><th class="numeric">Occupancy</th><th class="numeric">SL</th><th class="numeric">Shrinkage</th></tr></thead>
 <tbody>
-{% for row in weekly_rows %}
-<tr><td>{{ row.iso_year }}-W{{ "%02d"|format(row.iso_week) }}</td><td>{{ campaigns|selectattr("id","equalto",row.campaign_id)|map(attribute="name")|first or "—" }}</td><td>{{ skill_rows|selectattr("skill.id","equalto",row.skill_id)|map(attribute="skill.name")|first or "—" }}</td><td class="numeric">{{ "%.0f"|format(row.aht_seconds) }} s</td><td class="numeric">{{ "%.1f"|format(row.occupancy_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.service_level_target_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.shrinkage_pct) }}%</td></tr>
+{% for item in weekly_rows %}
+{% set row = item.row %}
+<tr><td>{{ row.iso_year }}-W{{ "%02d"|format(row.iso_week) }}</td><td>{{ item.campaign_name }}</td><td>{{ item.skill_name }}</td><td class="numeric">{{ "%.0f"|format(row.aht_seconds) }} s</td><td class="numeric">{{ "%.1f"|format(row.occupancy_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.service_level_target_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.shrinkage_pct) }}%</td></tr>
 {% else %}<tr><td colspan="7">Aucun paramètre hebdomadaire enregistré.</td></tr>{% endfor %}
 </tbody>
 </table>
