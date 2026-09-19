@@ -21,7 +21,7 @@ from app.models.forecast import LTFForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.ltf import LTFCreateInput
-from app.services import forecast_service
+from app.services import forecast_service, weekly_intraday_service
 
 router = APIRouter(prefix="/ltf", tags=["ltf"])
 
@@ -196,6 +196,25 @@ def create_ltf(
 
     forecast_service.create_ltf_forecast(session, payload, created_by_user_id=current_user.id)
     return RedirectResponse(url="/ltf", status_code=303)
+
+
+@router.post("/{ltf_id}/disperse", dependencies=[Depends(verify_csrf)])
+def disperse_ltf(
+    ltf_id: int,
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    ltf = session.get(LTFForecast, ltf_id)
+    if ltf is None:
+        raise HTTPException(status_code=404, detail="Forecast LTF introuvable.")
+    try:
+        weekly_intraday_service.disperse_ltf(session, ltf)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        url=f"/daily?campaign_id={ltf.campaign_id}&skill_id={ltf.skill_id}",
+        status_code=303,
+    )
 
 
 @router.get("/{ltf_id}")
