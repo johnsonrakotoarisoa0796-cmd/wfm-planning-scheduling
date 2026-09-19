@@ -3,6 +3,8 @@ services:
     name: wfm-planning-scheduling
     env: python
     plan: free
+    branch: main
+    autoDeployTrigger: commit
     buildCommand: "pip install -r requirements.txt"
     # alembic upgrade head tourne a chaque deploiement, avant de demarrer le
     # serveur : necessaire car le plan free de Render n'offre pas d'acces
