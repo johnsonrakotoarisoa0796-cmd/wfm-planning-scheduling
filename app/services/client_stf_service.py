@@ -21,7 +21,6 @@ from app.services import channel_service, kpi_service
 from app.services.erlang_service import apply_shrinkage, find_required_agents
 from app.services.weekly_parameter_service import get_weekly_parameters
 
-INTERVAL_HOURS = 0.5
 
 
 @dataclass(frozen=True)
