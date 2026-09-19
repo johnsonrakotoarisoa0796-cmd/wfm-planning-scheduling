@@ -68,6 +68,7 @@ class DashboardData:
     monthly_productive_hours: Optional[float] = None
     monthly_production_hours: Optional[float] = None
     monthly_waiting_hours: Optional[float] = None
+    wfm_scorecard: Optional[WFMScorecard] = None
 
 
 def _row(label: str, actual: float, target: float, higher_is_better: bool, unit: str = "") -> KPIRow:
@@ -91,6 +92,11 @@ def build_dashboard(session: Session, *, target_date: date, campaign_id: int, sk
     kpi_rows: list[KPIRow] = []
     staffing = None
     forecast_volume = actual_volume = forecast_accuracy = None
+    wfm_scorecard = build_scorecard(
+        intervals,
+        occupancy_target_pct=ltf.occupancy_required_pct if ltf else None,
+        aht_target_seconds=ltf.aht_required_seconds if ltf else None,
+    ) if intervals else None
 
     if intervals:
         summary = compute_daily_summary(intervals)
@@ -164,4 +170,5 @@ def build_dashboard(session: Session, *, target_date: date, campaign_id: int, sk
         monthly_productive_hours=ltf.productive_hours if ltf else None,
         monthly_production_hours=ltf.production_hours if ltf else None,
         monthly_waiting_hours=ltf.waiting_hours if ltf else None,
+        wfm_scorecard=wfm_scorecard,
     )
