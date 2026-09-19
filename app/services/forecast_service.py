@@ -60,12 +60,7 @@ def working_days_in_month(year: int, month: int) -> int:
 
 
 def _mark_previous_version_as_not_current(session: Session, data: LTFCreateInput) -> None:
-    """Marque l'éventuelle version LTF courante existante comme non-courante.
-
-    Ne supprime ni ne modifie jamais les valeurs déjà enregistrées — c'est
-    la règle de non-écrasement du forecast (§9). L'historique complet reste
-    consultable via ForecastVersion.is_current == False.
-    """
+    """Marque la version LTF courante correspondant à la même période."""
     current_versions = session.exec(
         select(ForecastVersion).where(
             ForecastVersion.version_type == ForecastVersionType.LTF,
@@ -75,61 +70,85 @@ def _mark_previous_version_as_not_current(session: Session, data: LTFCreateInput
         )
     ).all()
     for version in current_versions:
-        ltf_row = session.exec(
+        row = session.exec(
             select(LTFForecast).where(LTFForecast.forecast_version_id == version.id)
         ).first()
-        if ltf_row is not None and ltf_row.year == data.year and ltf_row.month == data.month:
+        if row is None:
+            continue
+        same_week = (
+            data.iso_year is not None
+            and data.iso_week is not None
+            and row.iso_year == data.iso_year
+            and row.iso_week == data.iso_week
+        )
+        same_month = (
+            data.iso_year is None
+            and data.iso_week is None
+            and data.year is not None
+            and data.month is not None
+            and row.year == data.year
+            and row.month == data.month
+            and row.iso_year is None
+        )
+        if same_week or same_month:
             version.is_current = False
             session.add(version)
 
 
 def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_id: int) -> LTFForecast:
-    """Crée une nouvelle version LTF à partir des entrées validées.
+    """Crée un LTF.
 
-    Pipeline de calcul (chaque étape appelle le moteur KPI/Erlang, jamais de
-    formule inline ici) :
-      1. Workload Hours = Volume x AHT
-      2. Net Required HC = Workload / (Heures dispo par agent x Occupancy)
-         — formule agrégée mensuelle, PAS Erlang C (voir
-         kpi_service.required_hc_aggregate pour la justification ; Erlang C
-         s'applique au niveau Daily/Intraday, commit 08)
-      3. Gross Required HC = Net Required HC / (1 - Shrinkage%)
-      4. Paid Hours = Gross Required HC x heures/jour x jours ouvrés du mois
-      5. Productive Hours = Paid Hours - Shrinkage Hours
-      6. Production Hours = Productive Hours - Waiting Hours
-
-    staffing_gap et overtime_required_hours restent à 0.0 à la création :
-    ils seront calculés par les modules dédiés Capacity Planning (commit 09)
-    et Overtime (commit 11), qui ont besoin de l'effectif réel/planifié —
-    inconnu au moment de la simple saisie d'un forecast (§26, §31).
+    Le mode courant est hebdomadaire. Le mode mensuel reste disponible pour
+    les historiques existants et les anciennes intégrations.
     """
     _mark_previous_version_as_not_current(session, data)
-
-    total_shrinkage_pct = data.indoor_shrinkage_pct + data.outdoor_shrinkage_pct
-    working_days = working_days_in_month(data.year, data.month)
 
     skill = session.get(Skill, data.skill_id)
     if skill is None:
         raise ValueError("Skill introuvable.")
-    workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
-    available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-    net_required_hc = channel_service.required_hc_aggregate_channel(
-        workload,
-        available_hours_per_agent,
-        data.occupancy_required_pct,
-        skill.channel,
-    )
-    gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
 
-    paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
+    total_shrinkage_pct = data.indoor_shrinkage_pct + data.outdoor_shrinkage_pct
+
+    if data.iso_year is not None and data.iso_week is not None:
+        period_start = date.fromisocalendar(data.iso_year, data.iso_week, 1)
+        period_end = date.fromisocalendar(data.iso_year, data.iso_week, 7)
+        working_days = count_weekdays_in_range(period_start, period_end)
+        workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
+        available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
+        net_required_hc = channel_service.required_hc_aggregate_channel(
+            workload,
+            available_hours_per_agent,
+            data.occupancy_required_pct,
+            skill.channel,
+        )
+        gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
+        paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
+        label = f"LTF Semaine {data.iso_week} - {data.iso_year}"
+        row_year, row_month = period_start.year, period_start.month
+    else:
+        if data.year is None or data.month is None:
+            raise ValueError("La période LTF est obligatoire.")
+        period_start = date(data.year, data.month, 1)
+        _, last_day = calendar.monthrange(data.year, data.month)
+        period_end = date(data.year, data.month, last_day)
+        working_days = working_days_in_month(data.year, data.month)
+        workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
+        available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
+        net_required_hc = channel_service.required_hc_aggregate_channel(
+            workload,
+            available_hours_per_agent,
+            data.occupancy_required_pct,
+            skill.channel,
+        )
+        gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
+        paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
+        label = f"LTF {MONTH_NAMES_FR[data.month]} {data.year}"
+        row_year, row_month = data.year, data.month
+
     total_shrinkage_hours = paid_hours_value * (total_shrinkage_pct / 100)
     productive_hours_value = kpi_service.productive_hours(paid_hours_value, total_shrinkage_hours)
     waiting_hours = max(productive_hours_value - workload, 0.0)
     production_hours_value = kpi_service.production_hours(productive_hours_value, waiting_hours)
-
-    period_start = date(data.year, data.month, 1)
-    _, last_day = calendar.monthrange(data.year, data.month)
-    period_end = date(data.year, data.month, last_day)
 
     version = ForecastVersion(
         version_type=ForecastVersionType.LTF,
@@ -137,7 +156,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         period_end=period_end,
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
-        label=f"LTF {MONTH_NAMES_FR[data.month]} {data.year}",
+        label=label,
         created_by=created_by_user_id,
         notes=data.notes,
         is_current=True,
@@ -148,8 +167,11 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
 
     ltf = LTFForecast(
         forecast_version_id=version.id,
-        year=data.year,
-        month=data.month,
+        year=row_year,
+        month=row_month,
+        iso_year=data.iso_year,
+        iso_week=data.iso_week,
+        week_start_date=period_start if data.iso_week is not None else None,
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
         forecast_volume=data.forecast_volume,
@@ -198,6 +220,28 @@ def list_current_ltf_forecasts(
         query = query.where(LTFForecast.skill_id == skill_id)
     query = query.order_by(LTFForecast.year, LTFForecast.month)
     return list(session.exec(query).all())
+
+
+def get_current_weekly_ltf_forecast(
+    session: Session,
+    *,
+    iso_year: int,
+    iso_week: int,
+    campaign_id: int,
+    skill_id: int,
+) -> Optional[LTFForecast]:
+    query = (
+        select(LTFForecast)
+        .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
+        .where(
+            ForecastVersion.is_current == True,  # noqa: E712
+            LTFForecast.iso_year == iso_year,
+            LTFForecast.iso_week == iso_week,
+            LTFForecast.campaign_id == campaign_id,
+            LTFForecast.skill_id == skill_id,
+        )
+    )
+    return session.exec(query).first()
 
 
 def get_current_ltf_forecast(
@@ -280,17 +324,26 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
     """
     week_start_date = date.fromisocalendar(data.iso_year, data.iso_week, 1)
 
-    parent_ltf = get_current_ltf_forecast(
+    parent_ltf = get_current_weekly_ltf_forecast(
         session,
-        year=week_start_date.year,
-        month=week_start_date.month,
+        iso_year=data.iso_year,
+        iso_week=data.iso_week,
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
     )
     if parent_ltf is None:
+        # Compatibilité avec les anciens LTF mensuels.
+        parent_ltf = get_current_ltf_forecast(
+            session,
+            year=week_start_date.year,
+            month=week_start_date.month,
+            campaign_id=data.campaign_id,
+            skill_id=data.skill_id,
+        )
+    if parent_ltf is None:
         raise ValueError(
-            f"Aucun LTF actif pour {MONTH_NAMES_FR[week_start_date.month]} {week_start_date.year} "
-            "sur cette campagne/skill — créez d'abord un LTF pour ce mois."
+            f"Aucun LTF actif pour la semaine {data.iso_week}/{data.iso_year} "
+            "sur cette campagne/skill."
         )
 
     _mark_previous_stf_version_as_not_current(session, data)
