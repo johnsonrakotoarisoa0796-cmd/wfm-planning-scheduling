@@ -80,6 +80,8 @@ def settings_page(
     )
     campaigns_by_id = {c.id: c for c in campaigns}
     skills_by_id = {row["skill"].id: row["skill"] for row in rows}
+    users = list(session.exec(select(User).order_by(User.email)).all()) if current_user.role == UserRole.ADMIN else []
+    employees = list(session.exec(select(__import__("app.models.employee", fromlist=["Employee"]).Employee).order_by(__import__("app.models.employee", fromlist=["Employee"]).Employee.last_name, __import__("app.models.employee", fromlist=["Employee"]).Employee.first_name)).all()) if current_user.role == UserRole.ADMIN else []
     weekly_rows = [
         {
             "row": row,
@@ -101,6 +103,8 @@ def settings_page(
             "can_edit": current_user.role in WRITE_ROLES,
             "weekly_rows": weekly_rows,
             "workforce_by_campaign": workforce_by_campaign,
+            "users": users,
+            "employees": employees,
         },
     )
 
@@ -256,4 +260,23 @@ def seed_demo_configuration(
             )
         session.commit()
 
+    return RedirectResponse("/settings", status_code=303)
+
+
+@router.post("/user-agent-link", dependencies=[Depends(verify_csrf)])
+def link_user_to_employee(
+    user_id: int = Form(...),
+    employee_id: str = Form(""),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, user_id)
+    if user is None:
+        return RedirectResponse("/settings?error=Utilisateur+introuvable", status_code=303)
+    employee_id_value = int(employee_id) if employee_id.strip() else None
+    if employee_id_value is not None and session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, employee_id_value) is None:
+        return RedirectResponse("/settings?error=Agent+introuvable", status_code=303)
+    user.employee_id = employee_id_value
+    session.add(user)
+    session.commit()
     return RedirectResponse("/settings", status_code=303)
