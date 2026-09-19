@@ -302,3 +302,106 @@ def evaluate_kpi(
         variance=kpi_variance(actual, target),
         status=kpi_status(actual, target, on_target_tolerance_pct, critical_tolerance_pct, higher_is_better),
     )
+
+
+# --- WFM control-tower metrics ------------------------------------------------
+
+def weighted_average(values: list[float], weights: list[float]) -> float:
+    """Moyenne pondérée; 0 si aucun poids exploitable."""
+    if len(values) != len(weights):
+        raise ValueError("values et weights doivent avoir la même longueur.")
+    total_weight = sum(max(w, 0.0) for w in weights)
+    if total_weight <= 0:
+        return 0.0
+    return sum(v * max(w, 0.0) for v, w in zip(values, weights)) / total_weight
+
+
+def mean_absolute_percentage_error_pct(forecast_values: list[float], actual_values: list[float]) -> float:
+    """MAPE (%) en ignorant les périodes dont l'actual est nul."""
+    if len(forecast_values) != len(actual_values):
+        raise ValueError("forecast_values et actual_values doivent avoir la même longueur.")
+    pairs = [(f, a) for f, a in zip(forecast_values, actual_values) if a != 0]
+    if not pairs:
+        return 0.0
+    return sum(abs(f - a) / abs(a) for f, a in pairs) / len(pairs) * 100
+
+
+def weighted_absolute_percentage_error_pct(forecast_values: list[float], actual_values: list[float]) -> float:
+    """WAPE (%) = somme des erreurs absolues / somme des actuals."""
+    if len(forecast_values) != len(actual_values):
+        raise ValueError("forecast_values et actual_values doivent avoir la même longueur.")
+    actual_total = sum(abs(a) for a in actual_values)
+    if actual_total <= 0:
+        return 0.0
+    return sum(abs(f - a) for f, a in zip(forecast_values, actual_values)) / actual_total * 100
+
+
+def forecast_bias_pct(forecast_values: list[float], actual_values: list[float]) -> float:
+    """Bias (%) = (Forecast - Actual) / Actual total.
+    
+    Positif = forecast trop haut; négatif = forecast trop bas.
+    """
+    if len(forecast_values) != len(actual_values):
+        raise ValueError("forecast_values et actual_values doivent avoir la même longueur.")
+    actual_total = sum(actual_values)
+    if actual_total == 0:
+        return 0.0
+    return (sum(forecast_values) - actual_total) / actual_total * 100
+
+
+def service_level_shortfall_pct(actual_pct: float, target_pct: float) -> float:
+    """Manque de SL en points; 0 si le KPI est au-dessus de la cible."""
+    return max(0.0, target_pct - actual_pct)
+
+
+def coverage_pct(required_hc_hours: float, staffed_hc_hours: float) -> float:
+    """Coverage = heures réellement couvertes / heures requises.
+    
+    Le numérateur doit être plafonné à la demande au moment de l'appelant
+    pour éviter qu'un sur-staffing produise plus de 100%.
+    """
+    return _safe_ratio(staffed_hc_hours, required_hc_hours) * 100
+
+
+def understaffed_hours(required_hc_hours: float, staffed_hc_hours: float) -> float:
+    """Heures-HC de sous-staffing, jamais négatives."""
+    return max(0.0, required_hc_hours - staffed_hc_hours)
+
+
+def overstaffed_hours(required_hc_hours: float, staffed_hc_hours: float) -> float:
+    """Heures-HC de sur-staffing, jamais négatives."""
+    return max(0.0, staffed_hc_hours - required_hc_hours)
+
+
+def schedule_adherence_pct(adhered_hours: float, scheduled_hours: float) -> float:
+    """Adhérence planning = temps conforme / temps planifié."""
+    return _safe_ratio(adhered_hours, scheduled_hours) * 100
+
+
+def staffing_adherence_proxy_pct(actual_hc_hours: float, scheduled_hc_hours: float) -> float:
+    """Proxy intraday d'adhérence quand seuls des HC actuals sont disponibles.
+    
+    Ce n'est pas l'adhérence agent-level ACD/WFM; il compare seulement la
+    couverture observée au staffing planifié.
+    """
+    return _safe_ratio(min(actual_hc_hours, scheduled_hc_hours), scheduled_hc_hours) * 100
+
+
+def utilization_pct(workload_hours_value: float, staffed_hours: float) -> float:
+    """Utilisation = charge de travail / heures staffées."""
+    return _safe_ratio(workload_hours_value, staffed_hours) * 100
+
+
+def schedule_efficiency_pct(required_hc_hours: float, scheduled_hc_hours: float) -> float:
+    """Efficacité de planning = demande couverte / heures planifiées.
+    
+    Le ratio est plafonné à 100% pour ne pas récompenser un sous-staffing.
+    """
+    if scheduled_hc_hours <= 0:
+        return 0.0
+    return min(100.0, required_hc_hours / scheduled_hc_hours * 100)
+
+
+def forecast_accuracy_wape_pct(forecast_values: list[float], actual_values: list[float]) -> float:
+    """Accuracy dérivée du WAPE : 100 - WAPE, bornée à 0."""
+    return max(0.0, 100.0 - weighted_absolute_percentage_error_pct(forecast_values, actual_values))
