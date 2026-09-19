@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     weekly_hours: float = 40.0
     working_days: int = 5
     interval_minutes: int = 30
+    default_timezone: str = "UTC"
+    summer_operating_start: str = "07:00"
+    summer_operating_end: str = "01:00"
+    winter_operating_start: str = "08:00"
+    winter_operating_end: str = "02:00"
 
     # Sécurité / sessions
     session_max_age_seconds: int = 60 * 60 * 12  # 12h
