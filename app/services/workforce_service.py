@@ -203,3 +203,58 @@ def local_interval_to_utc(
     end_date = target_date if end_local > start_local else target_date + timedelta(days=1)
     end = datetime.combine(end_date, end_local, tzinfo=tz)
     return start.astimezone(ZoneInfo("UTC")), end.astimezone(ZoneInfo("UTC"))
+
+
+def weekdays_in_range(start_date: date, end_date: date) -> list[date]:
+    if end_date < start_date:
+        raise ValueError("end_date doit être postérieure ou égale à start_date.")
+    days = []
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:
+            days.append(current)
+        current += timedelta(days=1)
+    return days
+
+
+def employee_absences_for_period(
+    absences: list[EmployeeAbsence],
+    *,
+    start_date: date,
+    end_date: date,
+) -> list[EmployeeAbsence]:
+    return [
+        absence for absence in absences
+        if absence.end_date >= start_date and absence.start_date <= end_date
+    ]
+
+
+def workforce_period_hours(
+    employee: Employee,
+    absences: list[EmployeeAbsence],
+    *,
+    start_date: date,
+    end_date: date,
+    working_days_per_week: int | None = None,
+) -> tuple[float, float, float]:
+    """Retourne (paid_hours, paid_absence_hours, unpaid_absence_hours)."""
+    daily_hours = daily_contract_hours(employee, working_days_per_week)
+    paid = 0.0
+    paid_absence = 0.0
+    unpaid_absence = 0.0
+
+    for day in weekdays_in_range(start_date, end_date):
+        day_absences = [a for a in absences if absence_overlaps_date(a, day)]
+        if not day_absences:
+            paid += daily_hours
+            continue
+
+        # Une journée couverte par plusieurs absences est comptée une seule fois.
+        primary = day_absences[0]
+        if primary.paid:
+            paid += daily_hours
+            paid_absence += daily_hours
+        else:
+            unpaid_absence += daily_hours
+
+    return paid, paid_absence, unpaid_absence
