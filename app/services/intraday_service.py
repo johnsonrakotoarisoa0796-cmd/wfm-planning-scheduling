@@ -245,14 +245,42 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
         agents = max(round(interval.actual_hc), 0)
         traffic_actual = traffic_intensity_erlangs(interval.actual_volume, interval.actual_aht_seconds, INTERVAL_SECONDS)
 
-        interval.occupancy_pct = occupancy_from_traffic_pct(traffic_actual, agents) if agents else 0.0
-        interval.service_level_pct = (
-            service_level_erlang_c(agents, traffic_actual, interval.actual_aht_seconds, interval.answer_time_target_seconds)
-            if agents
-            else 0.0
-        )
-        asa_estimate = average_speed_of_answer_erlang_c(agents, traffic_actual, interval.actual_aht_seconds) if agents else None
-        interval.asa_seconds = asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
+        if channel_service.is_realtime_channel(interval.channel):
+            interval.occupancy_pct = occupancy_from_traffic_pct(traffic_actual, agents) if agents else 0.0
+            interval.service_level_pct = (
+                service_level_erlang_c(
+                    agents,
+                    traffic_actual,
+                    interval.actual_aht_seconds,
+                    interval.answer_time_target_seconds,
+                )
+                if agents
+                else 0.0
+            )
+            asa_estimate = (
+                average_speed_of_answer_erlang_c(
+                    agents, traffic_actual, interval.actual_aht_seconds
+                )
+                if agents
+                else None
+            )
+            interval.asa_seconds = (
+                asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
+            )
+        else:
+            workload_hours = channel_service.normalized_workload_hours(
+                interval.actual_volume,
+                interval.actual_aht_seconds,
+                interval.channel,
+            )
+            capacity_hours = agents * (INTERVAL_SECONDS / 3600.0)
+            interval.occupancy_pct = (
+                workload_hours / capacity_hours * 100.0 if capacity_hours > 0 else 0.0
+            )
+            # Les canaux asynchrones nécessitent un modèle SLA basé sur l'âge
+            # de la file/message ; il n'est pas assimilé à Erlang C.
+            interval.service_level_pct = None
+            interval.asa_seconds = None
 
         interval.staffing_gap = kpi_service.staffing_gap(interval.actual_hc, effective_required_hc)
 
