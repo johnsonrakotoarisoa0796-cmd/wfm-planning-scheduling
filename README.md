@@ -357,3 +357,22 @@ La V1 distingue les heures contractuelles, l'amplitude de présence et la dispon
 Les règles restent configurables : il n'est donc pas nécessaire de dupliquer
 la logique métier pour créer un autre contrat, un autre nombre de pauses ou
 un autre fuseau.
+
+## STF client intervalisé
+
+Le module **STF Client** accepte un besoin de staffing déjà calculé par le client et déjà distribué par intervalle. Le fichier CSV attendu contient :
+
+`date,interval_start,interval_end,required_hc`
+
+Pour une même semaine ISO + campagne + skill, chaque nouvel import devient la version courante et l'ancienne version reste historisée.
+
+Règle de priorité opérationnelle :
+
+1. si un STF client courant couvre l'intervalle, `required_hc` opérationnel = STF client ;
+2. sinon, le besoin calculé par Daily/Intraday reste utilisé.
+
+Les KPI de staffing sont alors recalculés sur le besoin client : **Required HC-hours, Coverage, Shortage, Surplus, Peak STF, OT requis, FTE équivalent**. Le système mesure aussi l'écart **STF client vs besoin calculé WFM** pour détecter les différences de modèle.
+
+Le STF client ne contient pas nécessairement le volume/AHT : dans ce cas, il ne remplace pas les données de trafic utilisées pour Erlang C. Les KPI **Service Level, ASA et Occupancy** continuent de dépendre du volume/AHT/actuals disponibles. Ainsi, on évite de fabriquer un SL/ASA à partir du seul STF.
+
+Le Planner, le Dashboard, Daily, l'impact des pauses et Overtime consomment tous ce besoin effectif. Le fichier client devient donc une vraie source de staffing, pas seulement une pièce jointe ou une valeur d'affichage.
