@@ -23,7 +23,7 @@ from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import client_stf_service, intraday_service
+from app.services import channel_service, client_stf_service, intraday_service
 
 router = APIRouter(prefix="/daily", tags=["daily"])
 
@@ -177,6 +177,8 @@ def view_day(
     campaign = session.get(Campaign, campaign_id)
     skill = session.get(Skill, skill_id)
     summary = intraday_service.compute_daily_summary(intervals)
+    channel_name = channel_service.channel_label(skill.channel) if skill else "Phone"
+    channel_concurrency = channel_service.concurrency_for_channel(skill.channel) if skill else 1.0
 
     return templates.TemplateResponse(
         request,
@@ -189,6 +191,9 @@ def view_day(
             "skill": skill,
             "intervals": intervals,
             "summary": summary,
+            "channel_name": channel_name,
+            "channel_concurrency": channel_concurrency,
+            "client_stf_active": bool(client_rows),
             "can_update": current_user.role in UPDATE_ROLES,
         },
     )
