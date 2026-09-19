@@ -57,7 +57,7 @@ class OperationsScorecard:
     aht_target_seconds: Optional[float]
     aht_variance_seconds: Optional[float]
     aht_variance_to_target_seconds: Optional[float]
-    scheduled_service_level_pct: float
+    scheduled_service_level_pct: Optional[float]
     actual_service_level_pct: Optional[float]
     service_level_target_pct: float
     service_level_gap_pct: Optional[float]
@@ -153,7 +153,7 @@ def build_scorecard(
                 aht_target_seconds=aht_target_seconds,
                 aht_variance_seconds=None,
                 aht_variance_to_target_seconds=None,
-                scheduled_service_level_pct=0,
+                scheduled_service_level_pct=None,
                 actual_service_level_pct=None,
                 service_level_target_pct=0,
                 service_level_gap_pct=None,
@@ -294,7 +294,7 @@ def build_scorecard(
 
     scheduled_sl = (
         kpi_service.weighted_average(scheduled_sl_values, scheduled_sl_weights)
-        if scheduled_sl_values else 0.0
+        if scheduled_sl_values else None
     )
     scheduled_asa = (
         kpi_service.weighted_average(scheduled_asa_values, scheduled_asa_weights)
