@@ -333,7 +333,7 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
 
         entries = session.exec(select(ScheduleEntry)).all()
         assert len(entries) == 15
-        assert sum(1 for entry in entries if entry.is_day_off) > 0
+        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(5)}
 
 
 def test_schedule_generator_page_is_available(client: TestClient, engine):
