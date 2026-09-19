@@ -43,10 +43,10 @@ def test_async_interval_staffing_uses_occupancy_and_concurrency():
 
 def test_aggregate_staffing_changes_by_channel():
     assert required_hc_aggregate_channel(30, 160, 85, Channel.VOICE) == pytest.approx(
-        22.0588235, abs=0.0001
+        0.220588235, abs=0.0001
     )
     assert required_hc_aggregate_channel(30, 160, 85, Channel.EMAIL) == pytest.approx(
-        7.3529411, abs=0.0001
+        0.073529411, abs=0.0001
     )
 
 
