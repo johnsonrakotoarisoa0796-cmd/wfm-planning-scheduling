@@ -13,7 +13,7 @@
 
 <form class="filter-bar" method="get" action="/ltf">
     <div class="field">
-        <label for="year">Année</label>
+        <label for="year">Année / ISO</label>
         <select id="year" name="year">
             <option value="">Toutes</option>
             {% for y in range(2024, 2029) %}
@@ -47,7 +47,7 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th>Période</th>
+                <th>Semaine</th>
                 <th>Campagne</th>
                 <th>Skill</th>
                 <th class="numeric">Volume</th>
@@ -62,7 +62,7 @@
         <tbody>
             {% for row in rows %}
             <tr>
-                <td><a href="/ltf/{{ row.forecast.id }}">{{ row.month_label }} {{ row.forecast.year }}</a></td>
+                <td><a href="/ltf/{{ row.forecast.id }}">{% if row.forecast.iso_year and row.forecast.iso_week %}{{ row.forecast.iso_year }}-W{{ "%02d"|format(row.forecast.iso_week) }}{% else %}{{ row.month_label }} {{ row.forecast.year }}{% endif %}</a></td>
                 <td>{{ row.campaign_name }}</td>
                 <td>{{ row.skill_name }}</td>
                 <td class="numeric">{{ "{:,.0f}".format(row.forecast.forecast_volume).replace(",", " ") }}</td>
