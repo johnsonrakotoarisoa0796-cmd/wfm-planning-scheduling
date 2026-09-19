@@ -97,13 +97,24 @@ def build_dashboard(
     campaign_id: int,
     skill_id: int,
 ) -> DashboardData:
-    ltf: Optional[LTFForecast] = forecast_service.get_current_ltf_forecast(
+    iso = target_date.isocalendar()
+    # Le modèle courant est hebdomadaire. Les LTF mensuels restent un fallback
+    # uniquement pour les historiques qui ne disposent pas encore d'un LTF weekly.
+    ltf: Optional[LTFForecast] = forecast_service.get_current_weekly_ltf_forecast(
         session,
-        year=target_date.year,
-        month=target_date.month,
+        iso_year=iso.year,
+        iso_week=iso.week,
         campaign_id=campaign_id,
         skill_id=skill_id,
     )
+    if ltf is None:
+        ltf = forecast_service.get_current_ltf_forecast(
+            session,
+            year=target_date.year,
+            month=target_date.month,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+        )
     skill = session.get(Skill, skill_id)
     selected_channel_label = channel_label(skill.channel) if skill else "Phone"
     selected_concurrency = concurrency_for_channel(skill.channel) if skill else 1.0

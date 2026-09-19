@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 
 from app.core.config import get_settings
 from app.models.enums import ForecastVersionType
+from app.models.campaign import Campaign
 from app.models.skill import Skill
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
 from app.schemas.ltf import LTFCreateInput
@@ -31,6 +32,22 @@ MONTH_NAMES_FR = [
     "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ]
+
+
+def _validate_skill_scope(session: Session, campaign_id: int, skill_id: int) -> Skill:
+    campaign = session.get(Campaign, campaign_id)
+    if campaign is None:
+        raise ValueError("Campagne introuvable.")
+    skill = session.get(Skill, skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
+    if skill.campaign_id != campaign_id:
+        raise ValueError("Le skill sélectionné n'appartient pas à la campagne.")
+    if not skill.is_active:
+        raise ValueError("Le skill sélectionné est désactivé.")
+    if not campaign.is_active:
+        raise ValueError("La campagne sélectionnée est désactivée.")
+    return skill
 
 
 def count_weekdays_in_range(start_date: date, end_date: date) -> int:
@@ -103,9 +120,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
     """
     _mark_previous_version_as_not_current(session, data)
 
-    skill = session.get(Skill, data.skill_id)
-    if skill is None:
-        raise ValueError("Skill introuvable.")
+    skill = _validate_skill_scope(session, data.campaign_id, data.skill_id)
 
     total_shrinkage_pct = data.indoor_shrinkage_pct + data.outdoor_shrinkage_pct
 
@@ -349,9 +364,7 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
     _mark_previous_stf_version_as_not_current(session, data)
 
     working_days = settings.working_days  # semaine ISO complète = 5 jours ouvrés
-    skill = session.get(Skill, data.skill_id)
-    if skill is None:
-        raise ValueError("Skill introuvable.")
+    skill = _validate_skill_scope(session, data.campaign_id, data.skill_id)
     workload = kpi_service.workload_hours(data.volume, data.aht_seconds)
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
     net_required_hc = channel_service.required_hc_aggregate_channel(

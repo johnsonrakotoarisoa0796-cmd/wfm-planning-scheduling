@@ -12,6 +12,7 @@ from app.models.skill import Skill
 from app.models.intraday import IntervalForecast
 from app.schemas.intraday import GenerateIntradayInput
 from app.services.intraday_service import build_intraday_forecast_rows
+from app.services.weekly_parameter_service import get_weekly_parameters
 
 settings = get_settings()
 
@@ -93,6 +94,14 @@ def disperse_stf(
     session: Session,
     stf: STFForecast,
 ) -> list[IntervalForecast]:
+    iso = stf.week_start_date.isocalendar()
+    parameters = get_weekly_parameters(
+        session,
+        iso_year=iso.year,
+        iso_week=iso.week,
+        campaign_id=stf.campaign_id,
+        skill_id=stf.skill_id,
+    )
     return disperse_week(
         session,
         week_start_date=stf.week_start_date,
@@ -102,7 +111,7 @@ def disperse_stf(
         aht_seconds=stf.aht_seconds,
         occupancy_pct=stf.occupancy_pct,
         service_level_target_pct=stf.service_level_target_pct,
-        answer_time_target_seconds=settings.default_answer_time_target_seconds,
+        answer_time_target_seconds=parameters.answer_time_target_seconds,
         shrinkage_pct=stf.shrinkage_pct,
     )
 

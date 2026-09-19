@@ -103,6 +103,27 @@ def test_dashboard_without_ltf_or_intervals_shows_warnings(client: TestClient, e
 
 # --- build_dashboard() : assemblage correct -----------------------------------------
 
+def test_dashboard_prefers_weekly_ltf_for_selected_date(engine, reference_data):
+    with Session(engine) as session:
+        forecast_service.create_ltf_forecast(
+            session,
+            LTFCreateInput(
+                iso_year=2026, iso_week=38,
+                campaign_id=reference_data["campaign_id"], skill_id=reference_data["skill_id"],
+                forecast_volume=12000, forecast_aht_seconds=300, aht_required_seconds=290,
+                occupancy_required_pct=85, service_level_target_pct=80, asa_target_seconds=20,
+                indoor_shrinkage_pct=10, outdoor_shrinkage_pct=5,
+            ),
+            created_by_user_id=None,
+        )
+        data = dashboard_service.build_dashboard(
+            session, target_date=date(2026, 9, 15),
+            campaign_id=reference_data["campaign_id"], skill_id=reference_data["skill_id"],
+        )
+        assert data.has_ltf is True
+        assert data.monthly_paid_hours is not None
+
+
 def test_dashboard_data_with_only_ltf_no_intervals(engine, reference_data):
     with Session(engine) as session:
         forecast_service.create_ltf_forecast(
