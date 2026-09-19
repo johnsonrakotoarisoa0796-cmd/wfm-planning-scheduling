@@ -16,7 +16,7 @@
             <tbody>
                 <tr><td>Volume forecast (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.forecast_volume).replace(",", " ") }}</td></tr>
                 <tr><td>Volume actual (total)</td><td class="numeric">{{ "{:,.0f}".format(summary.actual_volume).replace(",", " ") if summary.actual_volume is not none else "—" }}</td></tr>
-                <tr><td>AHT actual / Handle Time</td><td class="numeric">{{ "%.0f"|format(summary.avg_actual_aht_seconds) }} s{% if summary.avg_actual_aht_seconds is not none %}{% else %}—{% endif %}</td></tr>
+                <tr><td>AHT actual / Handle Time</td><td class="numeric">{% if summary.avg_actual_aht_seconds is not none %}{{ "%.0f"|format(summary.avg_actual_aht_seconds) }} s{% else %}—{% endif %}</td></tr>
                 <tr><td>Pic Required HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_required_hc) }}</td></tr>
                 <tr><td>Pic Scheduled HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_scheduled_hc) }}</td></tr>
                 <tr><td>Pic Actual HC</td><td class="numeric">{{ "%.1f"|format(summary.peak_actual_hc) if summary.peak_actual_hc is not none else "—" }}</td></tr>
