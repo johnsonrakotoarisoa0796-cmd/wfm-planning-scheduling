@@ -302,7 +302,7 @@ def planner_view(
         request,
         "scheduling/planner.html",
         {
-            "active_nav": "scheduling",
+            "active_nav": "scheduling-planner",
             "current_user": current_user,
             "campaigns": campaigns,
             "skills": skills,
