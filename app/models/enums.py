@@ -43,3 +43,11 @@ class ConfigScope(str, Enum):
     GLOBAL = "global"
     CAMPAIGN = "campaign"
     SKILL = "skill"
+
+
+class AbsenceType(str, Enum):
+    """Motifs d'absence longue/courte ayant un impact sur le staffing."""
+    MATERNITY = "maternity"
+    AVAILABILITY = "availability"
+    PAID_LEAVE = "paid_leave"
+    UNPAID_LEAVE = "unpaid_leave"
