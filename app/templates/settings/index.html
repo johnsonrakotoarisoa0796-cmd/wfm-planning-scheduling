@@ -1,5 +1,14 @@
 {% extends "app_base.html" %}
-{% block title %}Configuration — WFM{% endblock %}
+{% block title %}Configuration — WFM
+{% if current_user.role.value == "admin" %}
+<section class="form-card form-card--wide" style="margin-top:20px">
+<div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
+<table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Agent lié</th><th>Action</th></tr></thead><tbody>
+{% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
+</tbody></table>
+</section>
+{% endif %}
+{% endblock %}
 {% block content %}
 <div class="page-header"><div><h1>Configuration WFM</h1><p class="page-header__meta">Gérez les campagnes, leurs skills, canaux et marchés utilisés par les forecasts et le planning.</p></div>
 {% if can_edit %}<form method="post" action="/settings/demo"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary" type="submit">Charger le pack démo multi-marché</button></form>{% endif %}</div>
