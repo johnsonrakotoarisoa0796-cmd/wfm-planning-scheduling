@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     winter_operating_start: str = "08:00"
     winter_operating_end: str = "02:00"
 
+    # Défauts WFM utilisés uniquement lorsqu'aucun paramètre hebdomadaire
+    # explicite n'existe encore pour le couple campagne/skill.
+    default_aht_seconds: float = 300.0
+    default_occupancy_pct: float = 85.0
+    default_service_level_target_pct: float = 80.0
+    default_answer_time_target_seconds: float = 20.0
+    default_shrinkage_pct: float = 0.0
+
     # Sécurité / sessions
     session_max_age_seconds: int = 60 * 60 * 12  # 12h
     pending_2fa_max_age_seconds: int = 60 * 5  # 5 min, cf. §8
