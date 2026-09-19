@@ -332,6 +332,28 @@ def generate_schedule(
                 f"{targets[employee.id] - scheduled_hours[employee.id]:.1f} h non planifiées."
             )
 
+    # Persist explicit day-off entries so the weekly schedule is complete and
+    # can be viewed/edited from the normal Scheduling screen.
+    for employee in employees:
+        for day in days:
+            if day in assigned_days[employee.id]:
+                continue
+            if workforce_service.is_employee_absent(absences.get(employee.id, []), day):
+                continue
+            generated.append(
+                GeneratedEntry(
+                    employee,
+                    ScheduleEntry(
+                        employee_id=employee.id,
+                        date=day,
+                        campaign_id=campaign_id,
+                        skill_id=skill_id,
+                        is_day_off=True,
+                    ),
+                    shifts[0],
+                )
+            )
+
     session.add_all([row.entry for row in generated])
     session.commit()
 
