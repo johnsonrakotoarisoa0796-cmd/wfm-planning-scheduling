@@ -13,7 +13,7 @@ from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.forecast import LTFForecast
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
-from app.services import client_stf_service, forecast_service, intraday_service, planner_service, workforce_service
+from app.services import client_stf_service, forecast_service, intraday_service, overtime_service, planner_service
 from app.services.campaign_workforce_service import WorkforceMetrics, calculate_metrics, roster_snapshot
 
 
@@ -154,7 +154,13 @@ def build_control_tower(
 
     shortage_h = sum(max(row.required_hc - (row.actual_hc if row.actual_hc is not None else row.scheduled_hc), 0.0) for row in intervals) * 0.5
     surplus_h = sum(max((row.actual_hc if row.actual_hc is not None else row.scheduled_hc) - row.required_hc, 0.0) for row in intervals) * 0.5
-    overtime_h = shortage_h
+    overtime_h = overtime_service.compute_overtime_report(
+        session,
+        start_date=target_date,
+        end_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    ).ot_required_hours
 
     workforce_plan = _latest_workforce_plan(session, campaign_id, target_date)
     metrics = calculate_metrics(workforce_plan) if workforce_plan else None
