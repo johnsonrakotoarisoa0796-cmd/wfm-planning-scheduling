@@ -114,7 +114,10 @@ def review_request(
     current_user: User = Depends(require_role(*MANAGER_ROLES)),
     session: Session = Depends(get_session),
 ):
-    agent_portal_service.review_request(
-        session, request_id=request_id, reviewer_id=current_user.id, decision=decision
-    )
+    try:
+        agent_portal_service.review_request(
+            session, request_id=request_id, reviewer_id=current_user.id, decision=decision
+        )
+    except ValueError:
+        return RedirectResponse("/agent/requests?error=traitement+impossible", status_code=303)
     return RedirectResponse("/agent/requests", status_code=303)
