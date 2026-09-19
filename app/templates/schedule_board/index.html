@@ -1,0 +1,20 @@
+{% extends "app_base.html" %}
+{% block title %}Schedule Board — WFM{% endblock %}
+{% block content %}
+<div class="page-header"><div><span class="panel-kicker">PLANNING BOARD</span><h1>Schedule Board</h1><p class="page-header__meta">Vue hebdomadaire type Teleopti : agent × journée × shift.</p></div><a class="btn-secondary" href="/scheduling/generate">Générer un planning</a></div>
+<form class="filter-bar" method="get" action="/schedule-board">
+<div class="field field--compact"><label>SEMAINE</label><input type="week" name="week" value="{{ filters.week }}"></div>
+<div class="field"><label>CAMPAGNE</label><select name="campaign_id"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label>SKILL</label><select name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+<button type="submit">Afficher</button></form>
+{% if not rows %}<div class="data-table-wrapper"><div class="empty-state"><strong>Board vide</strong><br>Choisissez une campagne et un skill. Le board affiche les affectations, congés et jours OFF.</div></div>{% else %}
+<section class="data-table-wrapper">
+<table class="data-table schedule-board"><thead><tr><th>Agent</th>{% for offset in range(5) %}{% set day = week_start + timedelta(days=offset) %}<th>{{ day.strftime("%a %d/%m") }}</th>{% endfor %}</tr></thead>
+<tbody>{% for row in rows %}<tr><td><strong>{{ row.employee.first_name }} {{ row.employee.last_name }}</strong><div class="field__hint">{{ row.employee.employee_code }}</div></td>{% for cell in row.days %}<td>
+{% if cell.absence %}<span class="status-pill status-pill--critical">Absence</span><small>{{ cell.absence.absence_type }}</small>
+{% elif cell.entry and cell.entry.is_day_off %}<span class="status-pill">OFF</span>
+{% elif cell.shift %}<strong>{{ cell.shift.name }}</strong><small>{{ cell.shift.start_time.strftime("%H:%M") }}–{{ cell.shift.end_time.strftime("%H:%M") }}</small>{% else %}<span class="field__hint">Non planifié</span>{% endif %}
+</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+</section>
+{% endif %}
+{% endblock %}
