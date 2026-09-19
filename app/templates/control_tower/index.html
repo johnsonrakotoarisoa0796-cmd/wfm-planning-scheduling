@@ -1,0 +1,47 @@
+{% extends "app_base.html" %}
+{% block title %}Control Tower — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><span class="panel-kicker">WFM COMMAND CENTER</span><h1>Control Tower</h1><p class="page-header__meta">Forecast → capacité → staffing → actions, dans une seule vue opérationnelle.</p></div>
+</div>
+<form class="filter-bar" method="get" action="/control-tower">
+  <div class="field field--compact"><label>JOUR</label><input type="date" name="target_date" value="{{ filters.target_date }}"></div>
+  <div class="field"><label>CAMPAGNE</label><select name="campaign_id"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label>SKILL</label><select name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }} · {{ s.campaign_id }}</option>{% endfor %}</select></div>
+  <button type="submit">Actualiser</button>
+</form>
+{% if not data %}
+<div class="data-table-wrapper"><div class="empty-state"><strong>La tour de contrôle est prête.</strong><br>Sélectionnez une campagne, un skill et une date pour réunir forecast, staffing, workforce et recommandations.</div></div>
+{% else %}
+<section class="wfm-control">
+ <div class="wfm-control__head"><div><span class="panel-kicker">{{ data.campaign.code }} · {{ data.skill.name }}</span><h2>{{ data.target_date.strftime("%A %d %B %Y") }}</h2><p>Le moteur conserve les valeurs prévisionnelles et distingue les données réelles des indicateurs de planification.</p></div><a class="btn-secondary" href="/schedule-board?week={{ data.target_date.strftime('%G-W%V') }}&campaign_id={{ data.campaign.id }}&skill_id={{ data.skill.id }}">Board planning ↗</a></div>
+ <div class="control-grid">
+   <div class="control-card"><span>Forecast volume</span><strong>{{ "%.0f"|format(data.forecast_volume) }}</strong><small>Actual {{ "%.0f"|format(data.actual_volume) if data.actual_volume is not none else "—" }}</small></div>
+   <div class="control-card"><span>Forecast accuracy</span><strong>{% if data.forecast_accuracy_pct is not none %}{{ "%.1f"|format(data.forecast_accuracy_pct) }}%{% else %}—{% endif %}</strong><small>Calculé sur les actuals disponibles</small></div>
+   <div class="control-card"><span>Peak required</span><strong>{{ "%.1f"|format(data.peak_required_hc) }} HC</strong><small>Scheduled {{ "%.1f"|format(data.peak_scheduled_hc) }}</small></div>
+   <div class="control-card"><span>Peak actual</span><strong>{{ "%.1f"|format(data.peak_actual_hc) if data.peak_actual_hc is not none else "—" }}</strong><small>Actualisation ACD manuelle/importée</small></div>
+   <div class="control-card"><span>Shortage</span><strong>{{ "%.1f"|format(data.shortage_hc_hours) }} HC-h</strong><small>OT théorique associé : {{ "%.1f"|format(data.overtime_hours) }} h</small></div>
+   <div class="control-card"><span>Surplus</span><strong>{{ "%.1f"|format(data.surplus_hc_hours) }} HC-h</strong><small>Potentiel de réallocation</small></div>
+   <div class="control-card"><span>Roster actif</span><strong>{{ data.roster_hc }}</strong><small>Agents campagne</small></div>
+   <div class="control-card"><span>Production disponible</span><strong>{% if data.workforce_metrics %}{{ "%.1f"|format(data.workforce_metrics.production_available_hc) }}{% else %}—{% endif %}</strong><small>{% if data.workforce_plan %}Plan {{ data.workforce_plan.period }}{% else %}Aucun plan workforce{% endif %}</small></div>
+ </div>
+ {% if data.workforce_metrics and data.workforce_metrics.projected_gap_hc < 0 %}
+ <div class="error-banner">⚠ Workforce : projection EOM sous le besoin de {{ "%.1f"|format(data.workforce_metrics.projected_gap_hc|abs) }} HC. Consultez le plan Workforce de la campagne.</div>
+ {% endif %}
+</section>
+<section class="data-table-wrapper data-table-wrapper--spaced">
+ <div class="section-title-row"><div><div class="panel-kicker">INTRADAY</div><h2>Net staffing par intervalle</h2></div><div class="field__hint">Rouge = sous-staff · vert = équilibré/surplus</div></div>
+ <table class="data-table"><thead><tr><th>Intervalle</th><th class="numeric">Forecast</th><th class="numeric">Required</th><th class="numeric">Scheduled</th><th class="numeric">Actual</th><th class="numeric">Gap</th><th class="numeric">Coverage</th><th>État</th></tr></thead><tbody>
+ {% for item in data.intervals %}
+ <tr><td>{{ item.interval.interval_start.strftime("%H:%M") }}–{{ item.interval.interval_end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.0f"|format(item.interval.forecast_volume) }}</td><td class="numeric">{{ "%.1f"|format(item.required_hc) }}</td><td class="numeric">{{ "%.1f"|format(item.scheduled_hc) }}</td><td class="numeric">{{ "%.1f"|format(item.actual_hc) if item.actual_hc is not none else "—" }}</td><td class="numeric">{{ "%+.1f"|format(item.staffing_gap) }}</td><td class="numeric">{{ "%.0f"|format(item.coverage_pct) }}%</td><td><span class="status-pill status-pill--{{ item.status }}">{{ item.status }}</span></td></tr>
+ {% else %}<tr><td colspan="8">Aucun intervalle. Générez Daily/Intraday avant le pilotage.</td></tr>{% endfor %}
+ </tbody></table>
+</section>
+<section class="data-table-wrapper data-table-wrapper--spaced">
+ <div class="section-title-row"><div><div class="panel-kicker">SIMULATION</div><h2>Mix de shifts recommandé</h2></div><a class="btn-secondary btn-small" href="/scheduling/planner?target_date={{ data.target_date }}&campaign_id={{ data.campaign.id }}&skill_id={{ data.skill.id }}">Ouvrir le Planner</a></div>
+ <table class="data-table"><thead><tr><th>Shift</th><th class="numeric">HC</th><th>Horaire</th><th class="numeric">Shortage après</th><th class="numeric">Surplus après</th></tr></thead><tbody>
+ {% for r in data.recommendations %}<tr><td><strong>{{ r.shift_name }}</strong></td><td class="numeric">{{ r.headcount }}</td><td>{{ r.start_time.strftime("%H:%M") }} → {{ r.end_time.strftime("%H:%M") }}</td><td class="numeric">{{ "%.1f"|format(r.shortage_hours_after) }} h</td><td class="numeric">{{ "%.1f"|format(r.surplus_hours_after) }} h</td></tr>{% else %}<tr><td colspan="5">Aucune recommandation supplémentaire : la couverture actuelle est suffisante ou aucun agent n'est disponible.</td></tr>{% endfor %}
+ </tbody></table>
+</section>
+{% endif %}
+{% endblock %}
