@@ -110,7 +110,7 @@ def _scheduled_metrics(interval: IntervalForecast) -> tuple[float, Optional[floa
     return sl, asa if asa != float("inf") else None
 
 
-def build_scorecard(intervals: list[IntervalForecast]) -> WFMScorecard:
+def build_scorecard(intervals: list[IntervalForecast], *, occupancy_target_pct: float | None = None, aht_target_seconds: float | None = None) -> WFMScorecard:
     if not intervals:
         empty_forecast = ForecastScorecard(0, None, None, None, None, None, None, None)
         empty_staffing = StaffingScorecard(0, 0, None, 0, 0, 0, 0, 0, None, 0, 0, 0, None)
