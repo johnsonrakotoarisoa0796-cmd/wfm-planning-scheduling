@@ -1,0 +1,56 @@
+{% extends "app_base.html" %}
+{% block title %}Nouvelle cohorte — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Nouvelle cohorte de recrutement</h1><p class="page-header__meta">Définissez la durée de formation, le nesting et les hypothèses de capacité de chaque phase.</p></div>
+  <a href="/recruitment" class="btn-secondary">← Retour</a>
+</div>
+<div class="form-card">
+  {% include "partials/form_errors.html" %}
+  <form method="post" action="/recruitment/new">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Population &amp; périmètre</legend>
+      <div class="form-grid">
+        <div class="field"><label for="cohort_name">Nom de cohorte</label><input id="cohort_name" name="cohort_name" value="{{ values.cohort_name or '' }}" placeholder="Wave FR Septembre" required></div>
+        <div class="field"><label for="start_date">Date de démarrage</label><input id="start_date" type="date" name="start_date" value="{{ values.start_date or '' }}" required></div>
+        <div class="field"><label for="headcount">Recrues (HC)</label><input id="headcount" type="number" name="headcount" min="1" step="1" value="{{ values.headcount or 10 }}" required></div>
+        <div class="field"><label for="weekly_hours_contract">Heures contrat / semaine</label><input id="weekly_hours_contract" type="number" name="weekly_hours_contract" min="1" step="0.5" value="{{ values.weekly_hours_contract or 40 }}" required></div>
+        <div class="field"><label for="campaign_id">Campagne</label><select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="skill_id">Skill</label><select id="skill_id" name="skill_id" required><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="training_weeks">Durée formation (semaines)</label><input id="training_weeks" type="number" name="training_weeks" min="0" step="1" value="{{ values.training_weeks or 2 }}" required></div>
+        <div class="field"><label for="nesting_weeks">Durée nesting (semaines)</label><input id="nesting_weeks" type="number" name="nesting_weeks" min="0" step="1" value="{{ values.nesting_weeks or 2 }}" required></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Formation — hypothèses hebdomadaires initiales</legend>
+      <div class="form-grid">
+        <div class="field"><label for="training_aht_seconds">AHT formation (s)</label><input id="training_aht_seconds" type="number" name="training_aht_seconds" min="1" step="1" value="{{ values.training_aht_seconds or 420 }}" required></div>
+        <div class="field"><label for="training_occupancy_pct">Occupancy formation (%)</label><input id="training_occupancy_pct" type="number" name="training_occupancy_pct" min="0" max="100" step="0.1" value="{{ values.training_occupancy_pct or 75 }}" required></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nesting — hypothèses initiales</legend>
+      <div class="form-grid">
+        <div class="field"><label for="nesting_aht_seconds">AHT nesting (s)</label><input id="nesting_aht_seconds" type="number" name="nesting_aht_seconds" min="1" step="1" value="{{ values.nesting_aht_seconds or 360 }}" required></div>
+        <div class="field"><label for="nesting_occupancy_pct">Occupancy nesting (%)</label><input id="nesting_occupancy_pct" type="number" name="nesting_occupancy_pct" min="0" max="100" step="0.1" value="{{ values.nesting_occupancy_pct or 80 }}" required></div>
+        <div class="field"><label for="nesting_capacity_factor_pct">Facteur capacité nesting (%)</label><input id="nesting_capacity_factor_pct" type="number" name="nesting_capacity_factor_pct" min="0" max="100" step="0.1" value="{{ values.nesting_capacity_factor_pct or 50 }}" required></div>
+      </div>
+      <div class="field__hint">Exemple : 50% signifie qu'une recrue en nesting compte pour 0,5 capacité productive avant ajustement par occupancy.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Production — hypothèses initiales</legend>
+      <div class="form-grid">
+        <div class="field"><label for="production_aht_seconds">AHT production (s)</label><input id="production_aht_seconds" type="number" name="production_aht_seconds" min="1" step="1" value="{{ values.production_aht_seconds or 300 }}" required></div>
+        <div class="field"><label for="production_occupancy_pct">Occupancy production (%)</label><input id="production_occupancy_pct" type="number" name="production_occupancy_pct" min="0" max="100" step="0.1" value="{{ values.production_occupancy_pct or 85 }}" required></div>
+      </div>
+    </fieldset>
+
+    <div class="field"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3">{{ values.notes or '' }}</textarea></div>
+    <div class="form-actions"><button class="btn-primary" type="submit">Créer la cohorte</button><a class="btn-secondary" href="/recruitment">Annuler</a></div>
+  </form>
+</div>
+{% endblock %}
