@@ -1,7 +1,8 @@
 {% extends "app_base.html" %}
 {% block title %}Configuration — WFM{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Configuration WFM</h1><p class="page-header__meta">Gérez les campagnes, leurs skills, canaux et marchés utilisés par les forecasts et le planning.</p></div></div>
+<div class="page-header"><div><h1>Configuration WFM</h1><p class="page-header__meta">Gérez les campagnes, leurs skills, canaux et marchés utilisés par les forecasts et le planning.</p></div>
+{% if can_edit %}<form method="post" action="/settings/demo"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary" type="submit">Charger le pack démo multi-marché</button></form>{% endif %}</div>
 {% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
 <div class="settings-grid">
 <section class="form-card"><div class="panel-kicker">CAMPAGNES</div><h2>Nouvelle campagne</h2>
