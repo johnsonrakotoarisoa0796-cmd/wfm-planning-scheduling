@@ -18,11 +18,11 @@ from app.core.database import get_session
 from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
-from app.models.employee import Employee, EmployeeSkill
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
-from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
+from app.schemas.scheduling import EmployeeAbsenceInput, ScheduleEntryInput, ShiftInput
 from app.services import planner_service, scheduling_service, intraday_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
@@ -69,11 +69,14 @@ def create_shift(
     start_time: str = Form(...),
     end_time: str = Form(...),
     break_minutes: int = Form(15),
+    break_count: int = Form(2),
+    break_paid: bool = Form(True),
     lunch_minutes: int = Form(60),
+    lunch_paid: bool = Form(False),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
-    submitted_values = {"name": name, "start_time": start_time, "end_time": end_time, "break_minutes": break_minutes, "lunch_minutes": lunch_minutes}
+    submitted_values = {"name": name, "start_time": start_time, "end_time": end_time, "break_minutes": break_minutes, "break_count": break_count, "break_paid": break_paid, "lunch_minutes": lunch_minutes, "lunch_paid": lunch_paid}
     try:
         payload = ShiftInput(**submitted_values)
         scheduling_service.create_shift(session, payload)
