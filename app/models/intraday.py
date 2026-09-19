@@ -39,6 +39,7 @@ class IntervalForecast(SQLModel, table=True):
     interval_end: time = Field(nullable=False)
     campaign_id: int = Field(foreign_key="campaigns.id", index=True, nullable=False)
     skill_id: int = Field(foreign_key="skills.id", index=True, nullable=False)
+    channel: Channel = Field(default=Channel.VOICE, nullable=False)
 
     forecast_volume: float = Field(default=0)
     actual_volume: Optional[float] = Field(default=None)
