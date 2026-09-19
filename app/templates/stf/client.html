@@ -1,0 +1,129 @@
+{% extends "app_base.html" %}
+{% block title %}STF Client — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>STF client intervalisé</h1>
+    <p class="page-header__meta">Importez le besoin déjà calculé par le client. Le STF client devient le besoin opérationnel de référence sur les intervalles importés.</p>
+  </div>
+</div>
+
+{% if errors %}
+<div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+{% endif %}
+
+<div class="stf-client-grid">
+  <section class="form-card">
+    <div class="panel-kicker">IMPORT HEBDOMADAIRE</div>
+    <h2>Recevoir un STF client</h2>
+    <p class="field__hint">CSV UTF-8 avec les colonnes <code>date,interval_start,interval_end,required_hc</code>. Une ligne = un intervalle.</p>
+    <form method="post" action="/stf-client/import" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-grid">
+        <div class="field">
+          <label for="period">Semaine</label>
+          <input type="week" id="period" name="period" required>
+        </div>
+        <div class="field">
+          <label for="campaign_id">Campagne</label>
+          <select id="campaign_id" name="campaign_id" required>
+            <option value="" disabled selected>Choisir...</option>
+            {% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="skill_id">Skill</label>
+          <select id="skill_id" name="skill_id" required>
+            <option value="" disabled selected>Choisir...</option>
+            {% for s in skills %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="label">Libellé</label>
+          <input id="label" name="label" value="STF client">
+        </div>
+        <div class="field field--full">
+          <label for="notes">Notes</label>
+          <input id="notes" name="notes" placeholder="Version client, campagne marketing, consignes...">
+        </div>
+        <div class="field field--full">
+          <label for="file">Fichier CSV</label>
+          <input type="file" id="file" name="file" accept=".csv,text/csv" required>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn-primary" type="submit">Importer le STF client</button></div>
+    </form>
+    <div class="csv-example">
+      <strong>Exemple</strong>
+      <pre>date,interval_start,interval_end,required_hc
+2026-09-21,07:00,07:30,18
+2026-09-21,07:30,08:00,20
+2026-09-21,08:00,08:30,22</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title-row"><div><div class="panel-kicker">VERSIONS COURANTES</div><h2>STF client reçus</h2></div></div>
+    {% if plans %}
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Semaine</th><th>Campagne</th><th>Skill</th><th>Libellé</th><th class="numeric">Version</th></tr></thead>
+        <tbody>
+        {% for row in plans %}
+        <tr>
+          <td><a href="/stf-client?plan_id={{ row.plan.id }}">{{ row.plan.week_start_date }}</a></td>
+          <td>{{ row.campaign_name }}</td>
+          <td>{{ row.skill_name }}</td>
+          <td>{{ row.plan.label }}</td>
+          <td class="numeric">{{ row.plan.import_batch_id[:8] if row.plan.import_batch_id else "—" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="planner-empty">Aucun STF client importé.</div>
+    {% endif %}
+  </section>
+</div>
+
+{% if selected_plan %}
+<section class="wfm-control stf-client-control">
+  <div class="wfm-control__head">
+    <div>
+      <span class="panel-kicker">STF CLIENT ACTIF</span>
+      <h2>{{ selected_plan.label }} · semaine du {{ selected_plan.week_start_date }}</h2>
+      <p>{{ interval_count }} intervalles reçus. Le besoin client est utilisé par le Planner et les indicateurs de couverture sur les créneaux importés.</p>
+    </div>
+  </div>
+  {% if scorecard %}
+  <div class="control-grid">
+    <div class="control-card"><span>STF requis</span><strong>{{ "%.1f"|format(scorecard.required_hc_hours) }} h</strong><small>{{ "%.1f"|format(scorecard.fte_equivalent_week) }} FTE équivalent / 40 h</small></div>
+    <div class="control-card"><span>Coverage</span><strong>{{ "%.1f"|format(scorecard.coverage_pct) }}%</strong><small>Besoin couvert par le planning actuel</small></div>
+    <div class="control-card"><span>Shortage</span><strong>{{ "%.1f"|format(scorecard.shortage_hc_hours) }} h</strong><small>{{ scorecard.understaffed_intervals }} intervalles en sous-staffing</small></div>
+    <div class="control-card"><span>Surplus</span><strong>{{ "%.1f"|format(scorecard.surplus_hc_hours) }} h</strong><small>{{ scorecard.overstaffed_intervals }} intervalles en sur-staffing</small></div>
+    <div class="control-card"><span>Peak STF</span><strong>{{ "%.1f"|format(scorecard.peak_stf_hc) }} HC</strong><small>Planning pic {{ "%.1f"|format(scorecard.peak_scheduled_hc) }}</small></div>
+    <div class="control-card"><span>Vs modèle WFM</span><strong>{% if scorecard.model_variance_hc_hours is not none %}{{ "%+.1f"|format(scorecard.model_variance_hc_hours) }} h{% else %}—{% endif %}</strong><small>{% if scorecard.model_variance_pct is not none %}{{ "%+.1f"|format(scorecard.model_variance_pct) }}%{% else %}Pas d'intervalles calculés{% endif %}</small></div>
+  </div>
+  {% endif %}
+</section>
+
+<section>
+<div class="section-title-row"><div><div class="panel-kicker">DÉTAIL INTERVALLES</div><h2>Besoin reçu</h2></div></div>
+<div class="data-table-wrapper">
+<table class="data-table">
+<thead><tr><th>Date</th><th>Intervalle</th><th class="numeric">STF client</th></tr></thead>
+<tbody>
+{% for row in rows[:200] %}
+<tr><td>{{ row.date }}</td><td>{{ row.start.strftime("%H:%M") }} → {{ row.end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.1f"|format(row.required_hc) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% if rows|length > 200 %}<p class="field__hint">Affichage limité aux 200 premières lignes. Les calculs utilisent toutes les lignes importées.</p>{% endif %}
+</div>
+</section>
+{% endif %}
+{% endblock %}
+{% block extra_head %}<style>
+.stf-client-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;margin-bottom:18px}.stf-client-control{margin-bottom:18px}.csv-example{margin-top:15px;padding:12px;border:1px solid #edf0f4;border-radius:10px;background:#fbfcfe}.csv-example strong{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#667085}.csv-example pre{margin:8px 0 0;overflow:auto;font-family:var(--font-mono);font-size:11px;color:#344054}.section-title-row{display:flex;justify-content:space-between;align-items:flex-end;margin:10px 0}.section-title-row h2{font-size:16px;margin-top:3px}@media(max-width:980px){.stf-client-grid{grid-template-columns:1fr}}
+</style>{% endblock %}
