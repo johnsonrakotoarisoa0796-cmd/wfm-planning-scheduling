@@ -1,14 +1,35 @@
 from datetime import date
 
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine
+
+from app.models.campaign import Campaign
+from app.models.skill import Skill
 from app.services.recruitment_service import create_recruitment_plan, list_ramp_weeks, project_ramp
 
 
-def test_recruitment_creates_training_nesting_and_production_weeks(session):
+def _session():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    SQLModel.metadata.create_all(engine)
+    session = Session(engine)
+    campaign = Campaign(name="Support FR", code="SUP-FR", is_active=True)
+    session.add(campaign)
+    session.commit()
+    session.refresh(campaign)
+    skill = Skill(campaign_id=campaign.id, name="Phone", is_active=True)
+    session.add(skill)
+    session.commit()
+    session.refresh(skill)
+    return session, campaign.id, skill.id
+
+
+def test_recruitment_creates_training_nesting_and_production_weeks():
+    session, campaign_id, skill_id = _session()
     plan = create_recruitment_plan(
         session,
         cohort_name="Wave FR",
-        campaign_id=1,
-        skill_id=1,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
         start_date=date(2026, 9, 21),
         headcount=10,
         weekly_hours_contract=40,
