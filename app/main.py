@@ -34,7 +34,7 @@ from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
 from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import auth, capacity, campaign_workforce, client_stf, daily, dashboard, ltf, markets, overtime, recruitment, scheduling, settings as settings_router, stf, shrinkage
+from app.routers import auth, capacity, campaign_workforce, client_stf, control_tower, daily, dashboard, guide, ltf, markets, overtime, recruitment, schedule_board, scheduling, settings as settings_router, stf, shrinkage
 
 settings = get_settings()
 
@@ -384,6 +384,9 @@ app.include_router(settings_router.router)
 app.include_router(daily.router)
 app.include_router(capacity.router)
 app.include_router(campaign_workforce.router)
+app.include_router(control_tower.router)
+app.include_router(schedule_board.router)
+app.include_router(guide.router)
 app.include_router(shrinkage.router)
 app.include_router(overtime.router)
 app.include_router(recruitment.router)
