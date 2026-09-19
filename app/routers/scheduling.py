@@ -231,6 +231,104 @@ def create_entry(
     return RedirectResponse(url=f"/scheduling?target_date={entry_date}&campaign_id={campaign_id}&skill_id={skill_id}", status_code=303)
 
 
+# ============================================================================
+# Absences / congés
+# ============================================================================
+
+@router.get("/absences")
+def list_absences(
+    request: Request,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    employees = list(session.exec(select(Employee).order_by(Employee.last_name, Employee.first_name)).all())
+    employees_by_id = {employee.id: employee for employee in employees}
+    absences = scheduling_service.list_absences(session)
+    rows = [
+        {
+            "absence": absence,
+            "employee_name": (
+                f"{employees_by_id[absence.employee_id].first_name} {employees_by_id[absence.employee_id].last_name}"
+                if absence.employee_id in employees_by_id
+                else "?"
+            ),
+        }
+        for absence in absences
+    ]
+    return templates.TemplateResponse(
+        request,
+        "scheduling/absences.html",
+        {
+            "active_nav": "scheduling",
+            "current_user": current_user,
+            "employees": employees,
+            "rows": rows,
+            "errors": [],
+            "values": {},
+            "can_edit": current_user.role in WRITE_ROLES,
+        },
+    )
+
+
+@router.post("/absences", dependencies=[Depends(verify_csrf)])
+def create_absence(
+    request: Request,
+    employee_id: int = Form(...),
+    start_date: date = Form(...),
+    end_date: date = Form(...),
+    absence_type: str = Form(...),
+    paid: str = Form("false"),
+    notes: Optional[str] = Form(None),
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    paid_value = paid.strip().lower() in {"1", "true", "yes", "on"}
+    submitted_values = {
+        "employee_id": employee_id,
+        "start_date": start_date,
+        "end_date": end_date,
+        "absence_type": absence_type,
+        "paid": paid_value,
+        "notes": notes,
+    }
+    try:
+        payload = EmployeeAbsenceInput(**submitted_values)
+        scheduling_service.create_absence(session, payload)
+    except (ValidationError, ValueError) as exc:
+        errors = [str(error["msg"]) for error in exc.errors()] if isinstance(exc, ValidationError) else [str(exc)]
+        employees = list(session.exec(select(Employee).order_by(Employee.last_name, Employee.first_name)).all())
+        rows = []
+        employees_by_id = {employee.id: employee for employee in employees}
+        absences = scheduling_service.list_absences(session)
+        for absence in absences:
+            rows.append(
+                {
+                    "absence": absence,
+                    "employee_name": (
+                        f"{employees_by_id[absence.employee_id].first_name} {employees_by_id[absence.employee_id].last_name}"
+                        if absence.employee_id in employees_by_id
+                        else "?"
+                    ),
+                }
+            )
+        return templates.TemplateResponse(
+            request,
+            "scheduling/absences.html",
+            {
+                "active_nav": "scheduling",
+                "current_user": current_user,
+                "employees": employees,
+                "rows": rows,
+                "errors": errors,
+                "values": submitted_values,
+                "can_edit": True,
+            },
+            status_code=400,
+        )
+
+    return RedirectResponse(url="/scheduling/absences", status_code=303)
+
+
 
 # ============================================================================
 # Generate Schedule — workflow automatique hebdomadaire
