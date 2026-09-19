@@ -4,6 +4,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.campaign import Campaign
+from app.models.enums import ForecastVersionType
 from app.models.forecast import ForecastVersion, STFForecast
 from app.models.intraday import IntervalForecast
 from app.models.weekly_parameters import WeeklyWFMParameter
@@ -68,12 +69,12 @@ def test_stf_dispersion_uses_weekly_answer_time_target():
         session.refresh(skill)
 
         version = ForecastVersion(
-            version_type="STF",
+            version_type=ForecastVersionType.STF,
             period_start=date(2026, 9, 21),
             period_end=date(2026, 9, 27),
             campaign_id=campaign.id,
             skill_id=skill.id,
-            label="STF W38",
+            label="STF W39",
             is_current=True,
         )
         session.add(version)
