@@ -101,6 +101,17 @@ def _login(client: TestClient, email: str, secret: str) -> None:
     client.post("/login/verify", data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2}, follow_redirects=False)
 
 
+# --- Planner ------------------------------------------------------------------------
+
+def test_planner_page_renders_without_template_error(client: TestClient, engine):
+    user = _make_user(engine, "admin@wfm.local", UserRole.ADMIN)
+    _login(client, user["email"], user["secret"])
+    response = client.get("/scheduling/planner")
+    assert response.status_code == 200
+    assert "Planner de staffing" in response.text
+    assert "Sélectionnez une campagne et un skill" in response.text
+
+
 # --- Shifts ------------------------------------------------------------------------
 
 def test_analyst_can_create_shift(client: TestClient, engine):
