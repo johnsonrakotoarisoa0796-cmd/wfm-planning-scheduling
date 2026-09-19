@@ -9,6 +9,7 @@
     <div class="page-actions">
         <a href="/scheduling/shifts" class="btn-secondary">Gérer les shifts</a>
         <a href="/scheduling/breaks" class="btn-secondary">Impact des pauses</a>
+        {% if can_edit %}<a href="/scheduling/generate" class="btn-primary">⚡ Générer le schedule</a>{% endif %}
         {% if can_edit %}<a href="/scheduling/new" class="btn-secondary">+ Nouvelle affectation</a>{% endif %}
     </div>
 </div>

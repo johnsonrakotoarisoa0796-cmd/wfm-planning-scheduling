@@ -75,6 +75,8 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
     entry.shift_id = None if data.is_day_off else data.shift_id
     entry.break_start = None if data.is_day_off else data.break_start
     entry.break_end = None if data.is_day_off else data.break_end
+    entry.break2_start = None if data.is_day_off else data.break2_start
+    entry.break2_end = None if data.is_day_off else data.break2_end
     entry.lunch_start = None if data.is_day_off else data.lunch_start
     entry.lunch_end = None if data.is_day_off else data.lunch_end
 
@@ -110,16 +112,46 @@ def _shift_covers_interval(shift: Shift, interval_start: time, interval_end: tim
     return interval_start >= shift.start_time or interval_start < shift.end_time
 
 
+def _time_minutes(value: time) -> int:
+    return value.hour * 60 + value.minute
+
+
+def _segment_overlaps(
+    period_start: time,
+    period_end: time,
+    interval_start: time,
+    interval_end: time,
+) -> bool:
+    """Chevauchement robuste, y compris pour une pause après minuit."""
+    ps, pe = _time_minutes(period_start), _time_minutes(period_end)
+    ins, ine = _time_minutes(interval_start), _time_minutes(interval_end)
+    if pe <= ps:
+        pe += 24 * 60
+    if ine <= ins:
+        ine += 24 * 60
+    # Teste le segment direct puis sa projection sur le jour suivant.
+    return (
+        ps < ine and ins < pe
+    ) or (
+        (ps + 24 * 60) < ine and ins < (pe + 24 * 60)
+    )
+
+
 def _overlaps(period_start: Optional[time], period_end: Optional[time], interval_start: time, interval_end: time) -> bool:
     if period_start is None or period_end is None:
         return False
-    return period_start < interval_end and interval_start < period_end
+    return _segment_overlaps(period_start, period_end, interval_start, interval_end)
 
 
 def _entry_on_break_during_interval(entry: ScheduleEntry, interval_start: time, interval_end: time) -> bool:
-    """Vrai si l'employé est en pause OU en déjeuner durant cet intervalle."""
-    return _overlaps(entry.break_start, entry.break_end, interval_start, interval_end) or _overlaps(
-        entry.lunch_start, entry.lunch_end, interval_start, interval_end
+    """Vrai si l'employé est en pause 1, pause 2 ou déjeuner durant cet intervalle."""
+    return any(
+        _overlaps(start, end, interval_start, interval_end)
+        for start, end in (
+            (entry.break_start, entry.break_end),
+            (entry.break2_start, entry.break2_end),
+            (entry.lunch_start, entry.lunch_end),
+        )
     )
 
 

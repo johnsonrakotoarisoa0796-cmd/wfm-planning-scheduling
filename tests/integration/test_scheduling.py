@@ -18,13 +18,13 @@ from app.core.database import get_session
 from app.core.security import hash_password
 from app.main import app
 from app.models.campaign import Campaign
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeSkill
 from app.models.enums import Channel, EmployeeStatus, UserRole
 from app.models.schedule import ScheduleEntry
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import intraday_service, scheduling_service
+from app.services import auto_scheduler_service, intraday_service, scheduling_service
 from app.schemas.intraday import GenerateIntradayInput
 
 TEST_PASSWORD = "mot-de-passe-solide-123"
@@ -286,3 +286,59 @@ def test_create_schedule_entry_without_csrf_is_rejected(client: TestClient, engi
         "shift_id": str(reference_data["shift_id"]),
     })
     assert response.status_code == 400
+
+
+def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, reference_data):
+    from datetime import timedelta
+
+    with Session(engine) as session:
+        for employee_id in reference_data["employee_ids"]:
+            session.add(EmployeeSkill(
+                employee_id=employee_id,
+                skill_id=reference_data["skill_id"],
+                is_primary=(employee_id == reference_data["employee_ids"][0]),
+            ))
+        session.commit()
+
+        monday = date(2026, 9, 14)
+        for offset in range(5):
+            intraday_service.generate_intraday_forecast(
+                session,
+                GenerateIntradayInput(
+                    target_date=monday + timedelta(days=offset),
+                    campaign_id=reference_data["campaign_id"],
+                    skill_id=reference_data["skill_id"],
+                    daily_volume=1500,
+                    daily_aht_seconds=300,
+                    service_level_target_pct=80,
+                    answer_time_target_seconds=20,
+                    occupancy_target_pct=85,
+                    shrinkage_pct=10,
+                ),
+            )
+
+        result = auto_scheduler_service.generate_schedule(
+            session,
+            week_start_date=monday,
+            campaign_id=reference_data["campaign_id"],
+            skill_id=reference_data["skill_id"],
+        )
+
+        assert result.entries
+        work_entries = [item.entry for item in result.entries if not item.entry.is_day_off]
+        assert work_entries
+        assert all(entry.break2_start is not None for entry in work_entries)
+        assert all(entry.lunch_start is not None for entry in work_entries)
+        assert len(result.coverage) == 5
+
+        entries = session.exec(select(ScheduleEntry)).all()
+        assert len(entries) == 15
+        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(5)}
+
+
+def test_schedule_generator_page_is_available(client: TestClient, engine):
+    user = _make_user(engine, "scheduler@wfm.local", UserRole.WFM_ANALYST)
+    _login(client, user["email"], user["secret"])
+    response = client.get("/scheduling/generate")
+    assert response.status_code == 200
+    assert "Generate Schedule" in response.text

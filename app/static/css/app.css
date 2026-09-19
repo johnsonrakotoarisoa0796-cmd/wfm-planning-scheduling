@@ -969,3 +969,135 @@ table.data-table {
 
 .form-actions-inline{display:inline-flex;align-items:center;margin-left:.5rem}.form-actions-inline form{display:inline-flex}
 .table-input{width:7rem;min-width:0}.btn-small{padding:.45rem .75rem;font-size:.82rem}
+
+
+/* Teleopti-style automatic scheduling board */
+.schedule-generator-panel {
+  margin-bottom: 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--panel), var(--surface));
+  box-shadow: var(--shadow-md);
+}
+.schedule-generator-panel__head,
+.teleopti-schedule-card__toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.schedule-generator-panel__head h2,
+.teleopti-schedule-card__toolbar h2 { margin-top: 4px; font-size: 18px; }
+.schedule-generator-panel__head p { margin-top: 5px; font-size: 11px; }
+.schedule-generator-badge {
+  display: grid;
+  place-items: center;
+  min-width: 90px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #0b87c9;
+  color: #fff;
+}
+.schedule-generator-badge span { font-size: 8px; font-weight: 800; letter-spacing: .12em; opacity: .72; }
+.schedule-generator-badge strong { font-size: 17px; letter-spacing: .02em; }
+.schedule-generator-form { margin: 18px 0 0; }
+.schedule-generator-form .field { margin: 0; }
+.generator-replace { align-self: end; padding-bottom: 10px; }
+.success-banner {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 12px;
+}
+.teleopti-schedule-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+}
+.schedule-toolbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.schedule-toolbar-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.schedule-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; background: var(--accent); }
+.schedule-dot--work { background: #35b96f; }
+.schedule-dot--break { background: #ef7ac7; }
+.schedule-dot--lunch { background: #c9bb2f; }
+.schedule-dot--off { background: #aab2bd; }
+.teleopti-grid {
+  display: grid;
+  grid-template-columns: 190px repeat(5, minmax(170px, 1fr));
+  min-width: 1040px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.teleopti-grid__corner,
+.teleopti-grid__day {
+  padding: 11px 12px;
+  background: #0799db;
+  color: #fff;
+  border-right: 1px solid rgba(255,255,255,.18);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.teleopti-grid__day strong { display: block; margin-top: 3px; font-size: 13px; letter-spacing: 0; }
+.teleopti-agent {
+  min-height: 116px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.teleopti-agent strong,
+.teleopti-agent small { display: block; }
+.teleopti-agent small { margin-top: 3px; color: var(--text-soft); font-family: var(--font-mono); font-size: 9px; }
+.teleopti-cell {
+  min-height: 116px;
+  padding: 7px;
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+.schedule-block {
+  min-height: 101px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+.schedule-block strong,
+.schedule-block small { display: block; }
+.schedule-block strong { font-size: 11px; }
+.schedule-block small { margin-top: 3px; opacity: .76; }
+.schedule-block--work { background: #55dc7f; color: #114328; }
+.schedule-block--off { background: #eef1f4; color: #667085; }
+.schedule-block--absence { background: #f8d2d2; color: #7a2222; }
+.schedule-block--empty { background: #f6f8fa; color: #8a94a3; }
+.schedule-activity {
+  display: block;
+  margin-top: 8px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.schedule-activity--break { background: #efb3e1; color: #6d2259; }
+.schedule-activity--lunch { background: #eee58a; color: #5a5413; }
+.teleopti-schedule-card { overflow-x: auto; }
+
+@media (max-width: 800px) {
+  .schedule-generator-panel__head,
+  .teleopti-schedule-card__toolbar { flex-direction: column; }
+  .schedule-generator-form { align-items: stretch; }
+}

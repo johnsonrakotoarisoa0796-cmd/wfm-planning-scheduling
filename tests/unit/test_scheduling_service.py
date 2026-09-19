@@ -89,6 +89,13 @@ def test_no_break_or_lunch_set_never_overlaps():
     assert _entry_on_break_during_interval(entry, time(12, 0), time(12, 30)) is False
 
 
+def test_second_break_is_counted_in_break_impact():
+    entry = _entry()
+    entry.break2_start = time(16, 0)
+    entry.break2_end = time(16, 15)
+    assert _entry_on_break_during_interval(entry, time(16, 0), time(16, 30)) is True
+
+
 def test_partial_overlap_at_boundary_counts():
     # Pause 10:00-10:10, intervalle 09:30-10:00 -> pas de chevauchement (limite exacte).
     entry = _entry(break_start=time(10, 0), break_end=time(10, 10))

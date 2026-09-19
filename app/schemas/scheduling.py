@@ -37,6 +37,8 @@ class ScheduleEntryInput(BaseModel):
     shift_id: Optional[int] = None
     break_start: Optional[time] = None
     break_end: Optional[time] = None
+    break2_start: Optional[time] = None
+    break2_end: Optional[time] = None
     lunch_start: Optional[time] = None
     lunch_end: Optional[time] = None
 

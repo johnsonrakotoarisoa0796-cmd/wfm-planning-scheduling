@@ -1,0 +1,96 @@
+{% extends "app_base.html" %}
+{% block title %}Generate Schedule — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="panel-kicker">AUTOMATIC SCHEDULING</span>
+    <h1>Generate Schedule</h1>
+    <p class="page-header__meta">Générez une semaine complète à partir du forecast intraday, des contrats, des compétences, des absences et des shifts configurés.</p>
+  </div>
+  <a href="/scheduling" class="btn-secondary">← Scheduling</a>
+</div>
+
+{% if errors %}
+<div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+{% endif %}
+{% if generated %}
+<div class="success-banner schedule-success">Schedule généré et enregistré. Vérifiez les couvertures et les activités avant publication.</div>
+{% endif %}
+
+<section class="schedule-generator-panel">
+  <div class="schedule-generator-panel__head">
+    <div>
+      <div class="panel-kicker">PLANIFICATION HEBDOMADAIRE</div>
+      <h2>Automatic Scheduling</h2>
+      <p>Le moteur couvre d'abord la demande puis complète les heures contractuelles restantes.</p>
+    </div>
+    <div class="schedule-generator-badge"><span>TELEOPTI STYLE</span><strong>WFM</strong></div>
+  </div>
+
+  {% if can_edit %}
+  <form class="filter-bar schedule-generator-form" method="post" action="/scheduling/generate">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field"><label for="period">Semaine ISO</label><input type="week" id="period" name="period" value="{{ filters.period }}" required></div>
+    <div class="field"><label for="campaign_id">Campagne</label><select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="skill_id">Skill</label><select id="skill_id" name="skill_id" required><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+    <label class="checkbox-label generator-replace"><input type="checkbox" name="replace_existing" value="true" class="checkbox-input"> Remplacer le planning existant</label>
+    <button class="btn-primary" type="submit">⚡ Générer le schedule</button>
+  </form>
+  {% else %}
+  <form class="filter-bar" method="get" action="/scheduling/generate">
+    <div class="field"><label for="period">Semaine ISO</label><input type="week" id="period" name="week" value="{{ filters.period }}"></div>
+    <div class="field"><label for="campaign_id">Campagne</label><select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="skill_id">Skill</label><select id="skill_id" name="skill_id" required><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+    <button class="btn-secondary" type="submit">Afficher</button>
+  </form>
+  {% endif %}
+</section>
+
+{% if week_rows %}
+<section class="teleopti-schedule-card">
+  <div class="teleopti-schedule-card__toolbar">
+    <div>
+      <span class="panel-kicker">TEAM SCHEDULE</span>
+      <h2>Semaine {{ filters.period }}</h2>
+    </div>
+    <div class="schedule-toolbar-legend">
+      <span><i class="schedule-dot schedule-dot--work"></i>Work</span>
+      <span><i class="schedule-dot schedule-dot--break"></i>Break</span>
+      <span><i class="schedule-dot schedule-dot--lunch"></i>Lunch</span>
+      <span><i class="schedule-dot schedule-dot--off"></i>Day off</span>
+    </div>
+  </div>
+
+  <div class="teleopti-grid">
+    <div class="teleopti-grid__corner">AGENT</div>
+    {% for day in week_days %}<div class="teleopti-grid__day">{{ day.strftime("%a")|upper }}<strong>{{ day.strftime("%d/%m") }}</strong></div>{% endfor %}
+
+    {% for row in week_rows %}
+      <div class="teleopti-agent">
+        <strong>{{ row.employee.first_name }} {{ row.employee.last_name }}</strong>
+        <small>{{ row.employee.employee_code }}</small>
+      </div>
+      {% for cell in row.days %}
+      <div class="teleopti-cell">
+        {% if cell.absence %}
+          <div class="schedule-block schedule-block--absence"><strong>ABSENCE</strong><small>{{ cell.absence.absence_type }}</small></div>
+        {% elif cell.entry and cell.entry.is_day_off %}
+          <div class="schedule-block schedule-block--off"><strong>DAY OFF</strong></div>
+        {% elif cell.entry and cell.shift %}
+          <div class="schedule-block schedule-block--work">
+            <strong>{{ cell.shift.name }}</strong>
+            <small>{{ cell.shift.start_time.strftime("%H:%M") }} → {{ cell.shift.end_time.strftime("%H:%M") }}</small>
+            {% if cell.entry.break_start %}<span class="schedule-activity schedule-activity--break">Break {{ cell.entry.break_start.strftime("%H:%M") }}–{{ cell.entry.break_end.strftime("%H:%M") }}</span>{% endif %}
+            {% if cell.entry.lunch_start %}<span class="schedule-activity schedule-activity--lunch">Lunch {{ cell.entry.lunch_start.strftime("%H:%M") }}–{{ cell.entry.lunch_end.strftime("%H:%M") }}</span>{% endif %}
+            {% if cell.entry.break2_start %}<span class="schedule-activity schedule-activity--break">Break {{ cell.entry.break2_start.strftime("%H:%M") }}–{{ cell.entry.break2_end.strftime("%H:%M") }}</span>{% endif %}
+          </div>
+        {% else %}
+          <div class="schedule-block schedule-block--empty"><strong>OFF</strong></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
