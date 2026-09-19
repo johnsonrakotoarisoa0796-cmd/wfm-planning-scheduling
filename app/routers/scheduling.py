@@ -23,7 +23,7 @@ from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import scheduling_service
+from app.services import planner_service, scheduling_service, intraday_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -218,6 +218,57 @@ def create_entry(
         )
 
     return RedirectResponse(url=f"/scheduling?target_date={entry_date}&campaign_id={campaign_id}&skill_id={skill_id}", status_code=303)
+
+
+
+# ============================================================================
+# Planner de mix de shifts
+# ============================================================================
+
+@router.get("/planner")
+def planner_view(
+    request: Request,
+    target_date: Optional[date] = None,
+    campaign_id: Optional[int] = None,
+    skill_id: Optional[int] = None,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    target_date = target_date or date.today()
+    campaigns, skills, employees = _reference_data(session)
+    intervals = []
+    recommendations = []
+    if campaign_id is not None and skill_id is not None:
+        intervals = intraday_service.list_intervals_for_day(
+            session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
+        )
+        shifts = scheduling_service.list_shifts(session, active_only=True)
+        available_employee_count = sum(
+            1
+            for employee in employees
+            if employee.status.value == "active" and employee.campaign_id == campaign_id
+        )
+        recommendations = planner_service.recommend_shift_mix(
+            intervals, shifts, max_agents=available_employee_count
+        )
+    return templates.TemplateResponse(
+        request,
+        "scheduling/planner.html",
+        {
+            "active_nav": "scheduling",
+            "current_user": current_user,
+            "campaigns": campaigns,
+            "skills": skills,
+            "employees": employees,
+            "filters": {
+                "target_date": target_date,
+                "campaign_id": campaign_id,
+                "skill_id": skill_id,
+            },
+            "intervals": intervals,
+            "recommendations": recommendations,
+        },
+    )
 
 
 # ============================================================================
