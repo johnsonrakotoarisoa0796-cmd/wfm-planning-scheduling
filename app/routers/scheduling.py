@@ -23,7 +23,7 @@ from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.scheduling import EmployeeAbsenceInput, ScheduleEntryInput, ShiftInput
-from app.services import planner_service, scheduling_service, intraday_service
+from app.services import client_stf_service, planner_service, scheduling_service, intraday_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -240,11 +240,29 @@ def planner_view(
     target_date = target_date or date.today()
     campaigns, skills, employees = _reference_data(session)
     intervals = []
+    client_stf_active = False
     recommendations = []
     if campaign_id is not None and skill_id is not None:
-        intervals = intraday_service.list_intervals_for_day(
+        raw_intervals = intraday_service.list_intervals_for_day(
             session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
         )
+        client_plan = client_stf_service.current_plan(
+            session,
+            target_date=target_date,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+        )
+        client_rows = (
+            client_stf_service.list_intervals(session, client_plan.id)
+            if client_plan is not None
+            else []
+        )
+        intervals = (
+            client_stf_service.effective_intervals(raw_intervals, client_rows)
+            if client_rows
+            else raw_intervals
+        )
+        client_stf_active = bool(client_rows)
         shifts = scheduling_service.list_shifts(session, active_only=True)
         existing_entries = scheduling_service.list_schedule_entries(
             session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
@@ -294,6 +312,7 @@ def planner_view(
             },
             "intervals": intervals,
             "recommendations": recommendations,
+            "client_stf_active": client_stf_active,
         },
     )
 
