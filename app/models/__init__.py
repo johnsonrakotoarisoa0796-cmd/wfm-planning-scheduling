@@ -6,6 +6,7 @@ appelle SQLModel.metadata.create_all(). Toute nouvelle table doit etre
 ajoutee ici.
 """
 
+from app.models.agent_request import AgentRequest
 from app.models.campaign import Campaign
 from app.models.market import Market
 from app.models.weekly_parameters import WeeklyWFMParameter
@@ -26,6 +27,7 @@ from app.models.sla import SLAProfile
 from app.models.user import User
 
 __all__ = [
+    "AgentRequest",
     "Campaign",
     "Market",
     "ClientSTFInterval",
