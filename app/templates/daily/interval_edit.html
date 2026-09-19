@@ -32,7 +32,19 @@
                     <input type="number" id="actual_volume" name="actual_volume" min="0" step="1" value="{{ interval.actual_volume if interval.actual_volume is not none else '' }}">
                 </div>
                 <div class="field">
-                    <label for="actual_aht_seconds">AHT réel (secondes)</label>
+                    <label for="actual_talk_time_seconds">Talk Time moyen (s)</label>
+                    <input type="number" id="actual_talk_time_seconds" name="actual_talk_time_seconds" min="0" step="1" value="{{ interval.actual_talk_time_seconds if interval.actual_talk_time_seconds is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="actual_hold_time_seconds">Hold Time moyen (s)</label>
+                    <input type="number" id="actual_hold_time_seconds" name="actual_hold_time_seconds" min="0" step="1" value="{{ interval.actual_hold_time_seconds if interval.actual_hold_time_seconds is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="actual_acw_seconds">ACW moyen (s)</label>
+                    <input type="number" id="actual_acw_seconds" name="actual_acw_seconds" min="0" step="1" value="{{ interval.actual_acw_seconds if interval.actual_acw_seconds is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="actual_aht_seconds">AHT calculé (s)</label>
                     <input type="number" id="actual_aht_seconds" name="actual_aht_seconds" min="1" step="1" value="{{ interval.actual_aht_seconds if interval.actual_aht_seconds is not none else '' }}">
                 </div>
                 <div class="field">
@@ -44,7 +56,7 @@
                     <input type="number" id="abandoned_contacts" name="abandoned_contacts" min="0" step="1" value="">
                 </div>
             </div>
-            <p class="field__hint">Renseigner Volume + AHT + HC réels recalcule automatiquement le Service Level/ASA/Occupancy estimés (via Erlang C, pas une mesure ACD directe).</p>
+            <p class="field__hint">Renseigner Volume + Talk + Hold + ACW + HC calcule automatiquement l'AHT le Service Level/ASA/Occupancy estimés (via Erlang C, pas une mesure ACD directe).</p>
         </fieldset>
 
         <div class="form-actions">
