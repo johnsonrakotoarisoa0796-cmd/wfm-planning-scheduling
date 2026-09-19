@@ -8,6 +8,8 @@ ajoutee ici.
 
 from app.models.campaign import Campaign
 from app.models.market import Market
+from app.models.weekly_parameters import WeeklyWFMParameter
+from app.models.recruitment import RecruitmentPlan, RecruitmentRampWeek
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.capacity import CapacityPlan
 from app.models.config_parameter import ConfigParameter
@@ -44,6 +46,9 @@ __all__ = [
     "ShrinkageCategory",
     "ShrinkageRecord",
     "Skill",
+    "WeeklyWFMParameter",
+    "RecruitmentPlan",
+    "RecruitmentRampWeek",
     "SLAProfile",
     "User",
 ]
