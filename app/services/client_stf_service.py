@@ -1,4 +1,4 @@
-"""Import, validation et calculs du STF client par intervalle."""
+"""Import du STF client : le client fournit volume + intervalle ; WFM calcule le HC requis."""
 from __future__ import annotations
 
 import csv
@@ -13,6 +13,7 @@ from uuid import uuid4
 from openpyxl import load_workbook
 from sqlmodel import Session, select
 
+from app.models.campaign import Campaign
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
@@ -265,94 +266,104 @@ def create_plan(
         if row.volume is None and (row.required_hc is None or row.required_hc < 0):
             raise ValueError("volume obligatoire.")
 
-    batch_id = uuid4().hex
-    current = session.exec(
-        select(ClientSTFPlan).where(
-            ClientSTFPlan.week_start_date == week_start_date,
-            ClientSTFPlan.campaign_id == campaign_id,
-            ClientSTFPlan.skill_id == skill_id,
-            ClientSTFPlan.is_current == True,  # noqa: E712
-        )
-    ).all()
-    for plan in current:
-        plan.is_current = False
-        session.add(plan)
-
-    plan = ClientSTFPlan(
-        week_start_date=week_start_date,
-        campaign_id=campaign_id,
-        skill_id=skill_id,
-        label=label or "STF client",
-        notes=notes,
-        created_by=created_by_user_id,
-        import_batch_id=batch_id,
-        is_current=True,
-    )
-    session.add(plan)
-    session.flush()
-
-    skill = session.get(Skill, skill_id)
-    if skill is None:
-        raise ValueError("Skill introuvable.")
-
-    week_iso = week_start_date.isocalendar()
-    parameters = get_weekly_parameters(
-        session,
-        iso_year=week_iso.year,
-        iso_week=week_iso.week,
-        campaign_id=campaign_id,
-        skill_id=skill_id,
-    )
-
-    for row in materialized:
-        end_seconds = row.interval_end.hour * 3600 + row.interval_end.minute * 60 + row.interval_end.second
-        start_seconds = row.interval_start.hour * 3600 + row.interval_start.minute * 60 + row.interval_start.second
-        if end_seconds <= start_seconds:
-            end_seconds += 24 * 3600
-        interval_seconds = end_seconds - start_seconds
-
-        if row.volume is not None:
-            if channel_service.is_realtime_channel(skill.channel):
-                result = find_required_agents(
-                    volume_contacts=row.volume,
-                    aht_seconds=parameters.aht_seconds,
-                    interval_seconds=interval_seconds,
-                    service_level_target_pct=parameters.service_level_target_pct,
-                    answer_time_target_seconds=parameters.answer_time_target_seconds,
-                    occupancy_target_pct=parameters.occupancy_pct,
+    try:
+            batch_id = uuid4().hex
+            current = session.exec(
+                select(ClientSTFPlan).where(
+                    ClientSTFPlan.week_start_date == week_start_date,
+                    ClientSTFPlan.campaign_id == campaign_id,
+                    ClientSTFPlan.skill_id == skill_id,
+                    ClientSTFPlan.is_current == True,  # noqa: E712
                 )
-                net_required_hc = result.net_required_hc
-            else:
-                net_required_hc = channel_service.required_hc_for_async(
-                    volume_contacts=row.volume,
-                    aht_seconds=parameters.aht_seconds,
-                    interval_seconds=interval_seconds,
-                    occupancy_target_pct=parameters.occupancy_pct,
-                    channel=skill.channel,
-                )
-            required_hc = apply_shrinkage(net_required_hc, parameters.shrinkage_pct)
-        else:
-            required_hc = row.required_hc or 0.0
+            ).all()
+            for plan in current:
+                plan.is_current = False
+                session.add(plan)
 
-        session.add(
-            ClientSTFInterval(
-                plan_id=plan.id,
-                date=row.date,
-                interval_start=row.interval_start,
-                interval_end=row.interval_end,
-                volume=row.volume,
-                aht_seconds=parameters.aht_seconds if row.volume is not None else None,
-                occupancy_pct=parameters.occupancy_pct if row.volume is not None else None,
-                service_level_target_pct=parameters.service_level_target_pct if row.volume is not None else None,
-                answer_time_target_seconds=parameters.answer_time_target_seconds if row.volume is not None else None,
-                shrinkage_pct=parameters.shrinkage_pct if row.volume is not None else None,
-                required_hc=required_hc,
+            plan = ClientSTFPlan(
+                week_start_date=week_start_date,
+                campaign_id=campaign_id,
+                skill_id=skill_id,
+                label=label or "STF client",
+                notes=notes,
+                created_by=created_by_user_id,
+                import_batch_id=batch_id,
+                is_current=True,
             )
-        )
+            session.add(plan)
+            session.flush()
 
-    session.commit()
-    session.refresh(plan)
-    return plan
+            skill = session.get(Skill, skill_id)
+            campaign = session.get(Campaign, campaign_id)
+            if campaign is None or skill is None:
+                raise ValueError("Campagne ou skill introuvable.")
+            if skill.campaign_id != campaign_id:
+                raise ValueError("Le skill sélectionné n'appartient pas à la campagne.")
+            if not skill.is_active:
+                raise ValueError("Le skill sélectionné est désactivé.")
+
+            week_iso = week_start_date.isocalendar()
+            parameters = get_weekly_parameters(
+                session,
+                iso_year=week_iso.year,
+                iso_week=week_iso.week,
+                campaign_id=campaign_id,
+                skill_id=skill_id,
+            )
+
+            for row in materialized:
+                end_seconds = row.interval_end.hour * 3600 + row.interval_end.minute * 60 + row.interval_end.second
+                start_seconds = row.interval_start.hour * 3600 + row.interval_start.minute * 60 + row.interval_start.second
+                if end_seconds <= start_seconds:
+                    end_seconds += 24 * 3600
+                interval_seconds = end_seconds - start_seconds
+
+                if row.volume is not None:
+                    if channel_service.is_realtime_channel(skill.channel):
+                        result = find_required_agents(
+                            volume_contacts=row.volume,
+                            aht_seconds=parameters.aht_seconds,
+                            interval_seconds=interval_seconds,
+                            service_level_target_pct=parameters.service_level_target_pct,
+                            answer_time_target_seconds=parameters.answer_time_target_seconds,
+                            occupancy_target_pct=parameters.occupancy_pct,
+                        )
+                        net_required_hc = result.net_required_hc
+                    else:
+                        net_required_hc = channel_service.required_hc_for_async(
+                            volume_contacts=row.volume,
+                            aht_seconds=parameters.aht_seconds,
+                            interval_seconds=interval_seconds,
+                            occupancy_target_pct=parameters.occupancy_pct,
+                            channel=skill.channel,
+                        )
+                    required_hc = apply_shrinkage(net_required_hc, parameters.shrinkage_pct)
+                else:
+                    required_hc = row.required_hc or 0.0
+
+                session.add(
+                    ClientSTFInterval(
+                        plan_id=plan.id,
+                        date=row.date,
+                        interval_start=row.interval_start,
+                        interval_end=row.interval_end,
+                        volume=row.volume,
+                        aht_seconds=parameters.aht_seconds if row.volume is not None else None,
+                        occupancy_pct=parameters.occupancy_pct if row.volume is not None else None,
+                        service_level_target_pct=parameters.service_level_target_pct if row.volume is not None else None,
+                        answer_time_target_seconds=parameters.answer_time_target_seconds if row.volume is not None else None,
+                        shrinkage_pct=parameters.shrinkage_pct if row.volume is not None else None,
+                        required_hc=required_hc,
+                    )
+                )
+
+            session.commit()
+            session.refresh(plan)
+            return plan
+
+    except Exception:
+        session.rollback()
+        raise
 
 
 def current_plan(
