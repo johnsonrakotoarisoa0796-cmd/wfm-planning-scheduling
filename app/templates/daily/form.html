@@ -9,11 +9,7 @@
 </div>
 
 <div class="form-card">
-    {% if errors %}
-    <div class="error-banner">
-        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
-    </div>
-    {% endif %}
+    {% include "partials/form_errors.html" %}
 
     <form method="post" action="/daily/new">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -36,7 +32,7 @@
                 </div>
                 <div class="field">
                     <label for="timezone_name">Fuseau horaire (IANA)</label>
-                    <input type="text" id="timezone_name" name="timezone_name" value="{{ values.timezone_name or '' }}" placeholder="America/New_York"
+                    <input type="text" id="timezone_name" name="timezone_name" value="{{ values.timezone_name or '' }}" placeholder="America/New_York">
                     <div class="field__hint">Vide = fuseau du marché du skill. Vous pouvez surcharger avec un fuseau IANA. La fenêtre s’adapte automatiquement au DST : 07:00–01:00 en été, 08:00–02:00 en hiver.</div>
                 </div>
                 <div class="field">

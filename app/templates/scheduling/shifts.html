@@ -10,12 +10,8 @@
 </div>
 
 {% if can_edit %}
-<div class="form-card" style="margin-bottom: var(--space-6);">
-    {% if errors %}
-    <div class="error-banner">
-        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
-    </div>
-    {% endif %}
+<div class="form-card form-card--wide">
+    {% include "partials/form_errors.html" %}
     <form method="post" action="/scheduling/shifts">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-grid">

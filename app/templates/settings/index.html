@@ -22,13 +22,10 @@
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le skill</button></div></form>
 {% else %}<p class="field__hint">Réservé aux rôles WFM autorisés.</p>{% endif %}</section></div>
-<section class="data-table-wrapper" style="margin-bottom:16px"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
+<section class="data-table-wrapper data-table-wrapper--spaced"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
 {% for c in campaigns %}<tr><td><strong>{{ c.name }}</strong></td><td>{{ c.code }}</td><td>{{ c.description or "—" }}</td><td>{% if c.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4">Aucune campagne.</td></tr>{% endfor %}
 </tbody></table></section>
 <section class="data-table-wrapper"><table class="data-table"><thead><tr><th>Campagne</th><th>Skill</th><th>Canal</th><th>Marché</th><th>Statut</th></tr></thead><tbody>
 {% for row in skill_rows %}<tr><td>{{ row.campaign.name if row.campaign else "—" }}</td><td><strong>{{ row.skill.name }}</strong></td><td>{{ row.channel_label }}</td><td>{{ (row.market.code ~ " · " ~ row.market.name) if row.market else "—" }}</td><td>{% if row.skill.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="5">Aucun skill. Créez-en un pour alimenter le Dashboard et le Planner.</td></tr>{% endfor %}
 </tbody></table></section>
 {% endblock %}
-{% block extra_head %}<style>
-.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}.settings-grid h2{font-size:16px;margin:4px 0 15px}.settings-grid .form-card{max-width:none}@media(max-width:900px){.settings-grid{grid-template-columns:1fr}}
-</style>{% endblock %}
