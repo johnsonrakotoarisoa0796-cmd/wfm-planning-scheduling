@@ -443,42 +443,47 @@ def scorecard(
         for interval in intervals
         if (interval.date, interval.interval_start) in row_by_key
     ]
-    required = sum(max(stf_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end) for interval, stf_hc in matched)
-    scheduled = sum(max(interval.scheduled_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end) for interval, _ in matched)
-    actual_values = [interval.actual_hc for interval, _ in matched if interval.actual_hc is not None]
-    actual = sum(actual_values) * INTERVAL_HOURS if actual_values else None
-    shortage = sum(
-        max(stf_hc - max(interval.scheduled_hc, 0), 0) * _interval_hours(interval.interval_start, interval.interval_end)
-        for interval, stf_hc in matched
+
+    def hours(interval) -> float:
+        return _interval_hours(interval.interval_start, interval.interval_end)
+
+    required = sum(max(stf_hc, 0) * hours(interval) for interval, stf_hc in matched)
+    scheduled = sum(max(interval.scheduled_hc, 0) * hours(interval) for interval, _ in matched)
+    actual = (
+        sum((interval.actual_hc or 0.0) * hours(interval) for interval, _ in matched if interval.actual_hc is not None)
+        if any(interval.actual_hc is not None for interval, _ in matched)
+        else None
     )
-    surplus = sum(
-        max(max(interval.scheduled_hc, 0) - stf_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end)
-        for interval, stf_hc in matched
-    )
-    covered = sum(
-        min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * _interval_hours(interval.interval_start, interval.interval_end)
-        for interval, stf_hc in matched
-    )
+    shortage = sum(max(stf_hc - max(interval.scheduled_hc, 0), 0) * hours(interval) for interval, stf_hc in matched)
+    surplus = sum(max(max(interval.scheduled_hc, 0) - stf_hc, 0) * hours(interval) for interval, stf_hc in matched)
+    covered = sum(min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * hours(interval) for interval, stf_hc in matched)
+
     peak_stf = max((stf_hc for _, stf_hc in matched), default=0)
     peak_scheduled = max((interval.scheduled_hc for interval, _ in matched), default=0)
+    actual_values = [interval.actual_hc for interval, _ in matched if interval.actual_hc is not None]
     peak_actual = max(actual_values) if actual_values else None
 
-    model_variance_hours: float | None = None
-    model_variance_pct: float | None = None
-    model_pairs = [
+    model_rows = [
         (
+            interval,
             stf_hc,
-            interval.interval.required_hc
-            if isinstance(interval, EffectiveInterval)
-            else interval.required_hc,
+            interval.interval.required_hc if isinstance(interval, EffectiveInterval) else interval.required_hc,
         )
         for interval, stf_hc in matched
     ]
-    if model_pairs:
-        model_variance_hours = sum((stf - model) * _interval_hours(interval.interval_start, interval.interval_end) for (interval, stf_hc), (stf, model) in zip(matched, model_pairs))
-        model_total = sum(max(model, 0) * _interval_hours(interval.interval_start, interval.interval_end) for (interval, model) in zip([m[0] for m in matched], [p[1] for p in model_pairs]))
-        if model_total:
-            model_variance_pct = model_variance_hours / model_total * 100
+    model_variance_hours = (
+        sum((stf_hc - model_hc) * hours(interval) for interval, stf_hc, model_hc in model_rows)
+        if model_rows else None
+    )
+    model_total = (
+        sum(max(model_hc, 0) * hours(interval) for interval, _, model_hc in model_rows)
+        if model_rows else 0.0
+    )
+    model_variance_pct = (
+        model_variance_hours / model_total * 100
+        if model_variance_hours is not None and model_total > 0
+        else None
+    )
 
     return ClientSTFScorecard(
         required_hc_hours=required,
@@ -490,14 +495,11 @@ def scorecard(
         peak_stf_hc=peak_stf,
         peak_scheduled_hc=peak_scheduled,
         peak_actual_hc=peak_actual,
-        understaffed_intervals=sum(
-            1 for interval, stf_hc in matched if stf_hc - interval.scheduled_hc > 0.5
-        ),
-        overstaffed_intervals=sum(
-            1 for interval, stf_hc in matched if interval.scheduled_hc - stf_hc > 0.5
-        ),
+        understaffed_intervals=sum(1 for interval, stf_hc in matched if stf_hc - interval.scheduled_hc > 0.5),
+        overstaffed_intervals=sum(1 for interval, stf_hc in matched if interval.scheduled_hc - stf_hc > 0.5),
         overtime_required_hours=shortage,
         fte_equivalent_week=required / weekly_contract_hours if weekly_contract_hours > 0 else 0,
         model_variance_hc_hours=model_variance_hours,
         model_variance_pct=model_variance_pct,
     )
+
