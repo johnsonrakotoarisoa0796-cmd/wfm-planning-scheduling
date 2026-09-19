@@ -26,6 +26,8 @@ class WorkforceMetrics:
     production_available_hc: float
     availability_pct: float
     projected_production_hc: float
+    projected_availability_pct: float
+    current_gap_hc: float
     projected_gap_hc: float
 
 
@@ -38,17 +40,10 @@ class WorkforceRosterSnapshot:
 def _validate_business_values(data: CampaignWorkforcePlanInput) -> None:
     if data.available_hc > data.current_hc:
         raise ValueError("Les agents disponibles ne peuvent pas dépasser le Current HC.")
-    if data.long_leave_hc + data.training_hc + data.nesting_hc + data.other_unavailable_hc > data.current_hc:
-        raise ValueError(
-            "La somme des indisponibilités ne peut pas dépasser le Current HC."
-        )
 
 
 def calculate_metrics(plan: CampaignWorkforcePlan) -> WorkforceMetrics:
-    attrition_hc = min(
-        plan.current_hc,
-        max(0.0, plan.current_hc * plan.attrition_pct / 100.0),
-    )
+    attrition_hc = min(plan.current_hc, max(0.0, plan.current_hc * plan.attrition_pct / 100.0))
     projected_hc = max(
         0.0,
         plan.current_hc
@@ -57,6 +52,7 @@ def calculate_metrics(plan: CampaignWorkforcePlan) -> WorkforceMetrics:
         - plan.transfers_out_hc
         - attrition_hc,
     )
+
     production_available_hc = max(
         0.0,
         plan.available_hc
@@ -69,31 +65,36 @@ def calculate_metrics(plan: CampaignWorkforcePlan) -> WorkforceMetrics:
         if plan.current_hc > 0
         else 0.0
     )
+
     projected_production_hc = max(
         0.0,
         projected_hc
         - plan.long_leave_hc
+        - plan.planned_leave_hc
+        - plan.unplanned_absence_hc
         - plan.training_hc
         - plan.nesting_hc
         - plan.other_unavailable_hc,
     )
-    projected_gap_hc = projected_production_hc - plan.required_hc
+    projected_availability_pct = (
+        projected_production_hc / projected_hc * 100.0
+        if projected_hc > 0
+        else 0.0
+    )
+
     return WorkforceMetrics(
         attrition_hc=attrition_hc,
         projected_hc=projected_hc,
         production_available_hc=production_available_hc,
         availability_pct=availability_pct,
         projected_production_hc=projected_production_hc,
-        projected_gap_hc=projected_gap_hc,
+        projected_availability_pct=projected_availability_pct,
+        current_gap_hc=production_available_hc - plan.required_hc,
+        projected_gap_hc=projected_production_hc - plan.required_hc,
     )
 
 
-def roster_snapshot(
-    session: Session,
-    *,
-    campaign_id: int,
-    period: str,
-) -> WorkforceRosterSnapshot:
+def roster_snapshot(session: Session, *, campaign_id: int, period: str) -> WorkforceRosterSnapshot:
     year, month = (int(part) for part in period.split("-"))
     month_start = date(year, month, 1)
     month_end = date(year, month, monthrange(year, month)[1])
@@ -113,18 +114,12 @@ def roster_snapshot(
     return WorkforceRosterSnapshot(
         active_roster_hc=len(rows),
         active_roster_fte=sum(
-            max(0.0, employee.weekly_hours_contract) / weekly_hours
-            for employee in rows
+            max(0.0, employee.weekly_hours_contract) / weekly_hours for employee in rows
         ),
     )
 
 
-def get_plan(
-    session: Session,
-    *,
-    campaign_id: int,
-    period: str,
-) -> Optional[CampaignWorkforcePlan]:
+def get_plan(session: Session, *, campaign_id: int, period: str) -> Optional[CampaignWorkforcePlan]:
     return session.exec(
         select(CampaignWorkforcePlan).where(
             CampaignWorkforcePlan.campaign_id == campaign_id,
@@ -133,12 +128,18 @@ def get_plan(
     ).first()
 
 
-def upsert_plan(
-    session: Session,
-    data: CampaignWorkforcePlanInput,
-    *,
-    created_by_user_id: int | None,
-) -> CampaignWorkforcePlan:
+def list_plans(session: Session, *, campaign_id: int, limit: int = 12) -> list[CampaignWorkforcePlan]:
+    return list(
+        session.exec(
+            select(CampaignWorkforcePlan)
+            .where(CampaignWorkforcePlan.campaign_id == campaign_id)
+            .order_by(CampaignWorkforcePlan.period.desc())
+            .limit(limit)
+        ).all()
+    )
+
+
+def upsert_plan(session: Session, data: CampaignWorkforcePlanInput, *, created_by_user_id: int | None) -> CampaignWorkforcePlan:
     _validate_business_values(data)
 
     campaign = session.get(Campaign, data.campaign_id)
@@ -156,6 +157,8 @@ def upsert_plan(
     plan.current_hc = data.current_hc
     plan.available_hc = data.available_hc
     plan.long_leave_hc = data.long_leave_hc
+    plan.planned_leave_hc = data.planned_leave_hc
+    plan.unplanned_absence_hc = data.unplanned_absence_hc
     plan.training_hc = data.training_hc
     plan.nesting_hc = data.nesting_hc
     plan.other_unavailable_hc = data.other_unavailable_hc
