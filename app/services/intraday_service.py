@@ -241,7 +241,18 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
     peak_required_hc = max((i.required_hc for i in intervals), default=0.0)
     peak_scheduled_hc = max((i.scheduled_hc for i in intervals), default=0.0)
     actual_hcs = [i.actual_hc for i in intervals if i.actual_hc is not None]
-    service_levels = [i.service_level_pct for i in intervals if i.service_level_pct is not None]
+    service_level_points = [
+        (i.service_level_pct, i.actual_volume or i.forecast_volume)
+        for i in intervals
+        if i.service_level_pct is not None
+    ]
+    avg_service_level_pct = (
+        kpi_service.weighted_average(
+            [sl for sl, _ in service_level_points],
+            [volume for _, volume in service_level_points],
+        )
+        if service_level_points else None
+    )
 
     return DailySummary(
         forecast_volume=forecast_volume,
@@ -249,7 +260,7 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
         peak_required_hc=peak_required_hc,
         peak_scheduled_hc=peak_scheduled_hc,
         peak_actual_hc=max(actual_hcs) if actual_hcs else None,
-        avg_service_level_pct=(sum(service_levels) / len(service_levels)) if service_levels else None,
+        avg_service_level_pct=avg_service_level_pct,
     )
 
 
