@@ -966,3 +966,6 @@ table.data-table {
 .interval-strip__bar--h76{height:76%}.interval-strip__bar--h79{height:79%}.interval-strip__bar--h84{height:84%}
 .interval-strip__bar--h87{height:87%}.interval-strip__bar--h88{height:88%}.interval-strip__bar--h89{height:89%}
 .interval-strip__bar--h94{height:94%}
+
+.form-actions-inline{display:inline-flex;align-items:center;margin-left:.5rem}.form-actions-inline form{display:inline-flex}
+.table-input{width:7rem;min-width:0}.btn-small{padding:.45rem .75rem;font-size:.82rem}
