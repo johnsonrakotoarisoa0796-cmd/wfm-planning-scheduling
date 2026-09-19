@@ -18,7 +18,7 @@ from app.core.database import get_session
 from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeSkill
 from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
@@ -247,12 +247,19 @@ def planner_view(
             session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
         )
         assigned_employee_ids = {entry.employee_id for entry in existing_entries}
+        eligible_skill_employee_ids = {
+            row.employee_id
+            for row in session.exec(
+                select(EmployeeSkill).where(EmployeeSkill.skill_id == skill_id)
+            ).all()
+        }
         available_employee_count = sum(
             1
             for employee in employees
             if (
                 employee.status.value == "active"
                 and employee.campaign_id == campaign_id
+                and employee.id in eligible_skill_employee_ids
                 and employee.id not in assigned_employee_ids
             )
         )
