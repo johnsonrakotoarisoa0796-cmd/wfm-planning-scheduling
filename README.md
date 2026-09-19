@@ -332,3 +332,28 @@ re-désynchronise de l'authenticator à chaque redémarrage.
 
 Voir `WFM_ARCHITECTURE_PLAN.md` section 11 pour le détail des 16 commits
 prévus, du squelette initial jusqu'au durcissement de production.
+
+## Règles Workforce / Payroll
+
+La V1 distingue les heures contractuelles, l'amplitude de présence et la disponibilité opérationnelle.
+
+- Contrat standard : 40 h/semaine sur 5 jours ouvrés, soit 8 h/jour.
+- Déjeuner standard : 60 min, hors heures contractuelles.
+- Deux pauses de 15 min sont configurables par shift.
+- Une pause payée est incluse dans les 8 h contractuelles.
+- Une pause non payée allonge l'amplitude sans augmenter les heures payées.
+  Exemple : 07:00–16:00 avec 2 pauses payées + 1 h déjeuner = 8 h payées.
+  Avec 2 pauses non payées, l'amplitude correspondante devient 07:00–16:30 pour conserver 8 h payées.
+- Les agents ont un fuseau horaire IANA (par ex. America/New_York ou Europe/Paris).
+  Les fenêtres saisonnières sont 07:00–01:00 en période DST et 08:00–02:00
+  hors DST, avec conversion UTC automatique.
+- Les absences gérées nativement sont : maternité, disponibilité, congé payé
+  et congé sans solde. Le champ paid sépare rémunération et disponibilité
+  opérationnelle : une absence payée consomme des heures payées mais retire
+  de la capacité ; une absence non payée retire aussi les heures payées.
+- Le Planner exclut les agents déjà planifiés et les agents absents de la
+  capacité disponible avant de proposer un mix de shifts.
+
+Les règles restent configurables : il n'est donc pas nécessaire de dupliquer
+la logique métier pour créer un autre contrat, un autre nombre de pauses ou
+un autre fuseau.
