@@ -4,10 +4,13 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import dataclass
+from datetime import datetime
+
 from datetime import date, time, timedelta
 from typing import Iterable, Optional
 from uuid import uuid4
 
+from openpyxl import load_workbook
 from sqlmodel import Session, select
 
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
@@ -109,6 +112,96 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
     if not rows:
         raise ValueError("Le fichier STF client est vide.")
     return sorted(rows, key=lambda row: (row.date, row.interval_start))
+
+
+
+def _row_to_stf(
+    raw: dict[str, object],
+    line_number: int,
+    *,
+    date_key: str = "date",
+    start_key: str = "interval_start",
+    end_key: str = "interval_end",
+    hc_key: str = "required_hc",
+) -> ClientSTFRow:
+    try:
+        raw_day = raw[date_key]
+        if isinstance(raw_day, datetime):
+            day = raw_day.date()
+        elif isinstance(raw_day, date):
+            day = raw_day
+        else:
+            day = date.fromisoformat(str(raw_day).strip())
+        raw_start = raw[start_key]
+        raw_end = raw[end_key]
+        start = raw_start if isinstance(raw_start, time) else _parse_time(str(raw_start))
+        end = raw_end if isinstance(raw_end, time) else _parse_time(str(raw_end))
+        hc = float(raw[hc_key])
+    except (AttributeError, TypeError, ValueError, KeyError) as exc:
+        raise ValueError(f"Ligne {line_number} invalide: {exc}") from exc
+    if hc < 0:
+        raise ValueError(f"Ligne {line_number}: required_hc doit être >= 0.")
+    if start == end:
+        raise ValueError(f"Ligne {line_number}: intervalle vide.")
+    return ClientSTFRow(day, start, end, hc)
+
+
+def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
+    """Lit un classeur Excel: première feuille, première ligne = en-têtes."""
+    workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    sheet = workbook.active
+    rows = sheet.iter_rows(values_only=True)
+    try:
+        header_row = next(rows)
+    except StopIteration as exc:
+        raise ValueError("Le fichier Excel est vide.") from exc
+
+    header_map = {
+        str(value).strip().lower(): index
+        for index, value in enumerate(header_row)
+        if value is not None
+    }
+    aliases = {
+        "date": ("date", "day"),
+        "interval_start": ("interval_start", "start", "heure_debut"),
+        "interval_end": ("interval_end", "end", "heure_fin"),
+        "required_hc": ("required_hc", "stf", "required", "hc_requis"),
+    }
+    indexes: dict[str, int] = {}
+    for target, candidates in aliases.items():
+        for candidate in candidates:
+            if candidate in header_map:
+                indexes[target] = header_map[candidate]
+                break
+        if target not in indexes:
+            raise ValueError(
+                f"Colonne Excel manquante pour {target}. "
+                "Attendues: date, interval_start, interval_end, required_hc."
+            )
+
+    parsed: list[ClientSTFRow] = []
+    seen: set[tuple[date, time]] = set()
+    for line_number, values in enumerate(rows, start=2):
+        if not any(value not in (None, "") for value in values):
+            continue
+        raw = {
+            key: values[indexes[key]]
+            for key in indexes
+        }
+        row = _row_to_stf(raw, line_number)
+        key = (row.date, row.interval_start)
+        if key in seen:
+            raise ValueError(
+                f"Ligne {line_number}: intervalle dupliqué pour "
+                f"{row.date} à {row.interval_start:%H:%M}."
+            )
+        seen.add(key)
+        parsed.append(row)
+
+    workbook.close()
+    if not parsed:
+        raise ValueError("Le fichier Excel STF client est vide.")
+    return sorted(parsed, key=lambda row: (row.date, row.interval_start))
 
 
 def create_plan(
