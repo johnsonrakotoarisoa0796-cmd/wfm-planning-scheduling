@@ -1,44 +1,43 @@
-/*
-  Pages d'authentification — layout deux panneaux.
-
-  Panneau gauche : identité produit + motif "intervalles intraday" (ancrage
-  dans le domaine WFM, cf. §10 du cahier des charges).
-  Panneau droit : formulaire, aligné à gauche (pas de héros centré générique).
-*/
-
 .auth-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1.05fr 1fr;
+  background: var(--bg);
 }
 
 .auth-brand {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  padding: var(--space-8) var(--space-7);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  padding: var(--space-8) clamp(28px, 5vw, 72px);
+  border-right: 1px solid var(--border);
+  background: var(--panel);
 }
 
 .auth-brand__mark {
-  font-family: var(--font-mono);
-  font-size: 13px;
   color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 .auth-brand__pitch {
-  max-width: 380px;
+  max-width: 480px;
 }
 
 .auth-brand__pitch h1 {
-  font-size: 28px;
-  line-height: 1.25;
-  margin-bottom: var(--space-3);
+  max-width: 470px;
+  margin-bottom: 12px;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -.045em;
 }
 
 .auth-brand__pitch p {
-  font-size: 15px;
+  max-width: 440px;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .interval-strip {
@@ -46,13 +45,14 @@
   align-items: flex-end;
   gap: 3px;
   height: 96px;
-  margin-top: var(--space-6);
+  margin-top: var(--space-7);
 }
 
 .interval-strip__bar {
   flex: 1;
+  min-width: 0;
+  border-radius: 3px 3px 0 0;
   background: var(--border);
-  border-radius: 1px 1px 0 0;
 }
 
 .interval-strip__bar--peak {
@@ -62,13 +62,14 @@
 .interval-strip__caption {
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
   margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .auth-form-pane {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,31 +77,36 @@
 }
 
 .auth-form {
-  width: 100%;
-  max-width: 360px;
+  width: min(100%, 380px);
 }
 
 .auth-form h2 {
-  font-size: 22px;
-  margin-bottom: var(--space-1);
+  margin-bottom: 5px;
+  font-size: 25px;
 }
 
 .auth-form .subtitle {
   margin-bottom: var(--space-6);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .auth-form__footer {
   margin-top: var(--space-5);
-  font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .totp-code-input {
   font-family: var(--font-mono);
-  font-size: 24px;
-  letter-spacing: 0.35em;
+  font-size: 24px !important;
+  letter-spacing: .35em;
   text-align: center;
+}
+
+.auth-form .btn-primary {
+  width: 100%;
+  min-height: 44px;
 }
 
 @media (max-width: 860px) {
@@ -109,13 +115,26 @@
   }
 
   .auth-brand {
-    border-right: none;
+    border-right: 0;
     border-bottom: 1px solid var(--border);
     padding: var(--space-6) var(--space-5);
+  }
+
+  .auth-brand__pitch {
+    max-width: none;
+    margin: 54px 0 4px;
+  }
+
+  .auth-brand__pitch h1 {
+    font-size: 30px;
   }
 
   .interval-strip {
     height: 56px;
     margin-top: var(--space-4);
+  }
+
+  .auth-form-pane {
+    padding: 30px 20px 44px;
   }
 }
