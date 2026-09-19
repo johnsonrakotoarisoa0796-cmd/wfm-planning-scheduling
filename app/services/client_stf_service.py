@@ -104,11 +104,12 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
         if not any((value or "").strip() for value in raw.values()):
             continue
         try:
-            day = date.fromisoformat(raw["date"].strip())
-            start = _parse_time(raw["interval_start"])
-            end = _parse_time(raw["interval_end"])
-            raw_volume = raw.get("volume", "")
-            raw_hc = raw.get("required_hc", "")
+            normalized = {str(k).strip().lower(): v for k, v in raw.items()}
+            day = date.fromisoformat(str(normalized["date"]).strip())
+            start = _parse_time(str(normalized["interval_start"]))
+            end = _parse_time(str(normalized["interval_end"]))
+            raw_volume = str(normalized.get("volume", "") or "")
+            raw_hc = str(normalized.get("required_hc", "") or "")
             volume = float(raw_volume) if raw_volume.strip() else None
             required_hc = float(raw_hc) if raw_hc.strip() else None
         except (AttributeError, TypeError, ValueError) as exc:
@@ -422,6 +423,14 @@ def effective_intervals_for_range(
     return effective_intervals(intervals, rows)
 
 
+
+def _interval_hours(start: time, end: time) -> float:
+    start_seconds = start.hour * 3600 + start.minute * 60 + start.second
+    end_seconds = end.hour * 3600 + end.minute * 60 + end.second
+    if end_seconds <= start_seconds:
+        end_seconds += 24 * 3600
+    return max((end_seconds - start_seconds) / 3600.0, 0.0)
+
 def scorecard(
     intervals: list[IntervalForecast | EffectiveInterval],
     *,
@@ -434,20 +443,20 @@ def scorecard(
         for interval in intervals
         if (interval.date, interval.interval_start) in row_by_key
     ]
-    required = sum(max(stf_hc, 0) * INTERVAL_HOURS for _, stf_hc in matched)
-    scheduled = sum(max(interval.scheduled_hc, 0) * INTERVAL_HOURS for interval, _ in matched)
+    required = sum(max(stf_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end) for interval, stf_hc in matched)
+    scheduled = sum(max(interval.scheduled_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end) for interval, _ in matched)
     actual_values = [interval.actual_hc for interval, _ in matched if interval.actual_hc is not None]
     actual = sum(actual_values) * INTERVAL_HOURS if actual_values else None
     shortage = sum(
-        max(stf_hc - max(interval.scheduled_hc, 0), 0) * INTERVAL_HOURS
+        max(stf_hc - max(interval.scheduled_hc, 0), 0) * _interval_hours(interval.interval_start, interval.interval_end)
         for interval, stf_hc in matched
     )
     surplus = sum(
-        max(max(interval.scheduled_hc, 0) - stf_hc, 0) * INTERVAL_HOURS
+        max(max(interval.scheduled_hc, 0) - stf_hc, 0) * _interval_hours(interval.interval_start, interval.interval_end)
         for interval, stf_hc in matched
     )
     covered = sum(
-        min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * INTERVAL_HOURS
+        min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * _interval_hours(interval.interval_start, interval.interval_end)
         for interval, stf_hc in matched
     )
     peak_stf = max((stf_hc for _, stf_hc in matched), default=0)
@@ -466,8 +475,8 @@ def scorecard(
         for interval, stf_hc in matched
     ]
     if model_pairs:
-        model_variance_hours = sum((stf - model) * INTERVAL_HOURS for stf, model in model_pairs)
-        model_total = sum(max(model, 0) * INTERVAL_HOURS for _, model in model_pairs)
+        model_variance_hours = sum((stf - model) * _interval_hours(interval.interval_start, interval.interval_end) for (interval, stf_hc), (stf, model) in zip(matched, model_pairs))
+        model_total = sum(max(model, 0) * _interval_hours(interval.interval_start, interval.interval_end) for (interval, model) in zip([m[0] for m in matched], [p[1] for p in model_pairs]))
         if model_total:
             model_variance_pct = model_variance_hours / model_total * 100
 
