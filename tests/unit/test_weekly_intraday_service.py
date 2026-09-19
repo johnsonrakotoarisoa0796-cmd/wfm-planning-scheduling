@@ -1,7 +1,7 @@
 from datetime import date
 
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models.campaign import Campaign
 from app.models.intraday import IntervalForecast
@@ -42,7 +42,7 @@ def test_weekly_volume_is_distributed_to_five_days_and_30_minute_intervals():
         assert sum(row.forecast_volume for row in rows) == 5000
         assert len({row.date for row in rows}) == 5
         assert session.exec(
-            __import__("sqlmodel").select(IntervalForecast).where(
+            select(IntervalForecast).where(
                 IntervalForecast.campaign_id == campaign.id,
                 IntervalForecast.skill_id == skill.id,
             )
