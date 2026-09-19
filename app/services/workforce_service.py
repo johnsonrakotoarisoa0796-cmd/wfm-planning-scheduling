@@ -244,6 +244,14 @@ def workforce_period_hours(
     unpaid_absence = 0.0
 
     for day in weekdays_in_range(start_date, end_date):
+        # La capacité contractuelle ne commence qu'à la date d'embauche et
+        # s'arrête après la date de sortie. Les jours hors contrat ne doivent
+        # donc jamais alimenter Paid Hours ou les heures d'absence.
+        if day < employee.hire_date or (
+            employee.termination_date is not None and day > employee.termination_date
+        ):
+            continue
+
         day_absences = [a for a in absences if absence_overlaps_date(a, day)]
         if not day_absences:
             paid += daily_hours
