@@ -22,7 +22,7 @@
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le skill</button></div></form>
 {% else %}<p class="field__hint">Réservé aux rôles WFM autorisés.</p>{% endif %}</section></div>
-<section class="data-table-wrapper" style="margin-bottom:16px"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
+<section class="data-table-wrapper data-table-wrapper--spaced"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
 {% for c in campaigns %}<tr><td><strong>{{ c.name }}</strong></td><td>{{ c.code }}</td><td>{{ c.description or "—" }}</td><td>{% if c.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4">Aucune campagne.</td></tr>{% endfor %}
 </tbody></table></section>
 <section class="data-table-wrapper"><table class="data-table"><thead><tr><th>Campagne</th><th>Skill</th><th>Canal</th><th>Marché</th><th>Statut</th></tr></thead><tbody>
