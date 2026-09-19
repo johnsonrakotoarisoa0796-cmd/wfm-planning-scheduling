@@ -1,10 +1,4 @@
-"""Suivi Workforce global par campagne et par mois.
-
-Ce plan suit l'etat RH declare de la campagne, independamment des skills:
-effectif, agents disponibles, longues absences, formation/nesting, attrition,
-recrutement et mouvements internes. Il complete CapacityPlan qui reste
-dimensionne au niveau campagne + skill.
-"""
+"""Suivi Workforce global par campagne et par mois."""
 from datetime import datetime
 from typing import Optional
 
@@ -22,7 +16,10 @@ class CampaignWorkforcePlan(SQLModel, table=True):
 
     current_hc: float = Field(default=0.0, nullable=False)
     available_hc: float = Field(default=0.0, nullable=False)
+
     long_leave_hc: float = Field(default=0.0, nullable=False)
+    planned_leave_hc: float = Field(default=0.0, nullable=False)
+    unplanned_absence_hc: float = Field(default=0.0, nullable=False)
     training_hc: float = Field(default=0.0, nullable=False)
     nesting_hc: float = Field(default=0.0, nullable=False)
     other_unavailable_hc: float = Field(default=0.0, nullable=False)
