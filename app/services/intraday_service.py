@@ -20,8 +20,9 @@ from typing import Optional
 from sqlmodel import Session, select
 
 from app.models.intraday import IntervalForecast
+from app.models.skill import Skill
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import client_stf_service, kpi_service
+from app.services import channel_service, client_stf_service, kpi_service
 from app.services.workforce_service import seasonal_operating_window, validate_timezone_name
 from app.services.erlang_service import (
     apply_shrinkage,
@@ -140,21 +141,35 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
         )
 
     profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
+    skill = session.get(Skill, data.skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
+    channel = skill.channel
     created: list[IntervalForecast] = []
 
     for slot_index, pct in enumerate(profile_pct):
         interval_start, interval_end = slot_bounds(slot_index)
         interval_volume = data.daily_volume * (pct / 100)
 
-        result = find_required_agents(
-            volume_contacts=interval_volume,
-            aht_seconds=data.daily_aht_seconds,
-            interval_seconds=INTERVAL_SECONDS,
-            service_level_target_pct=data.service_level_target_pct,
-            answer_time_target_seconds=data.answer_time_target_seconds,
-            occupancy_target_pct=data.occupancy_target_pct,
-        )
-        gross_required_hc = apply_shrinkage(result.net_required_hc, data.shrinkage_pct)
+        if channel_service.is_realtime_channel(channel):
+            result = find_required_agents(
+                volume_contacts=interval_volume,
+                aht_seconds=data.daily_aht_seconds,
+                interval_seconds=INTERVAL_SECONDS,
+                service_level_target_pct=data.service_level_target_pct,
+                answer_time_target_seconds=data.answer_time_target_seconds,
+                occupancy_target_pct=data.occupancy_target_pct,
+            )
+            net_required_hc = result.net_required_hc
+        else:
+            net_required_hc = channel_service.required_hc_for_async(
+                volume_contacts=interval_volume,
+                aht_seconds=data.daily_aht_seconds,
+                interval_seconds=INTERVAL_SECONDS,
+                occupancy_target_pct=data.occupancy_target_pct,
+                channel=channel,
+            )
+        gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
 
         interval = IntervalForecast(
             date=data.target_date,
@@ -162,6 +177,7 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
             interval_end=interval_end,
             campaign_id=data.campaign_id,
             skill_id=data.skill_id,
+            channel=channel,
             forecast_volume=interval_volume,
             forecast_aht_seconds=data.daily_aht_seconds,
             required_hc=gross_required_hc,
