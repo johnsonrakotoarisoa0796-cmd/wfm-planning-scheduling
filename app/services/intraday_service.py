@@ -354,6 +354,7 @@ class DailySummary:
     peak_scheduled_hc: float
     peak_actual_hc: Optional[float]
     avg_service_level_pct: Optional[float]
+    avg_actual_aht_seconds: Optional[float]
 
 
 def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
