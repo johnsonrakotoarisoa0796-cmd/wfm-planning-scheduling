@@ -84,13 +84,19 @@ def _parse_time(value: str) -> time:
 
 
 def parse_csv(content: str) -> list[ClientSTFRow]:
-    """CSV attendu: date,interval_start,interval_end,required_hc."""
+    """CSV: date,interval_start,interval_end,volume.
+
+    required_hc est accepté uniquement pour compatibilité avec les anciens
+    fichiers ; il n'est plus demandé au client.
+    """
     reader = csv.DictReader(io.StringIO(content))
-    required_headers = {"date", "interval_start", "interval_end", "required_hc"}
-    headers = {h.strip() for h in (reader.fieldnames or [])}
+    headers = {h.strip().lower() for h in (reader.fieldnames or [])}
+    required_headers = {"date", "interval_start", "interval_end"}
     missing = required_headers - headers
     if missing:
         raise ValueError("Colonnes manquantes: " + ", ".join(sorted(missing)))
+    if "volume" not in headers and "required_hc" not in headers:
+        raise ValueError("Colonne manquante: volume (le HC requis est calculé par WFM).")
 
     rows: list[ClientSTFRow] = []
     seen: set[tuple[date, time]] = set()
@@ -101,11 +107,18 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
             day = date.fromisoformat(raw["date"].strip())
             start = _parse_time(raw["interval_start"])
             end = _parse_time(raw["interval_end"])
-            hc = float(raw["required_hc"])
+            raw_volume = raw.get("volume", "")
+            raw_hc = raw.get("required_hc", "")
+            volume = float(raw_volume) if raw_volume.strip() else None
+            required_hc = float(raw_hc) if raw_hc.strip() else None
         except (AttributeError, TypeError, ValueError) as exc:
             raise ValueError(f"Ligne {line_number} invalide: {exc}") from exc
-        if hc < 0:
+        if volume is not None and volume < 0:
+            raise ValueError(f"Ligne {line_number}: volume doit être >= 0.")
+        if required_hc is not None and required_hc < 0:
             raise ValueError(f"Ligne {line_number}: required_hc doit être >= 0.")
+        if volume is None and required_hc is None:
+            raise ValueError(f"Ligne {line_number}: volume obligatoire.")
         if start == end:
             raise ValueError(f"Ligne {line_number}: intervalle vide.")
         if (day, start) in seen:
@@ -113,12 +126,11 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
                 f"Ligne {line_number}: intervalle dupliqué pour {day} à {start:%H:%M}."
             )
         seen.add((day, start))
-        rows.append(ClientSTFRow(day, start, end, hc))
+        rows.append(ClientSTFRow(day, start, end, required_hc, volume))
 
     if not rows:
         raise ValueError("Le fichier STF client est vide.")
     return sorted(rows, key=lambda row: (row.date, row.interval_start))
-
 
 
 def _row_to_stf(
