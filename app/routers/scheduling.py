@@ -6,7 +6,7 @@ LTF/STF/Capacity. Le rapport d'impact des pauses est en lecture pour tout
 utilisateur connecté.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -229,6 +229,138 @@ def create_entry(
         )
 
     return RedirectResponse(url=f"/scheduling?target_date={entry_date}&campaign_id={campaign_id}&skill_id={skill_id}", status_code=303)
+
+
+
+# ============================================================================
+# Generate Schedule — workflow automatique hebdomadaire
+# ============================================================================
+
+@router.get("/generate")
+def generate_schedule_view(
+    request: Request,
+    week: Optional[str] = None,
+    campaign_id: Optional[int] = None,
+    skill_id: Optional[int] = None,
+    current_user: User = Depends(require_login),
+    session: Session = Depends(get_session),
+):
+    period = week or date.today().strftime("%G-W%V")
+    return _render_schedule_generator(
+        request,
+        session,
+        current_user,
+        period=period,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+        errors=[],
+    )
+
+
+@router.post("/generate", dependencies=[Depends(verify_csrf)])
+def generate_schedule_action(
+    request: Request,
+    period: str = Form(...),
+    campaign_id: int = Form(...),
+    skill_id: int = Form(...),
+    replace_existing: bool = Form(False),
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    try:
+        year_text, week_text = period.split("-W", 1)
+        week_start = date.fromisocalendar(int(year_text), int(week_text), 1)
+        auto_scheduler_service.generate_schedule(
+            session,
+            week_start_date=week_start,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+            replace_existing=replace_existing,
+        )
+        return RedirectResponse(
+            url=f"/scheduling/generate?week={period}&campaign_id={campaign_id}&skill_id={skill_id}&generated=1",
+            status_code=303,
+        )
+    except (ValueError, TypeError) as exc:
+        return _render_schedule_generator(
+            request,
+            session,
+            current_user,
+            period=period,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+            errors=[str(exc)],
+            status_code=400,
+        )
+
+
+def _render_schedule_generator(
+    request: Request,
+    session: Session,
+    current_user: User,
+    *,
+    period: str,
+    campaign_id: Optional[int],
+    skill_id: Optional[int],
+    errors: list[str],
+    status_code: int = 200,
+):
+    campaigns, skills, employees = _reference_data(session, campaign_id)
+    try:
+        year_text, week_text = period.split("-W", 1)
+        week_start = date.fromisocalendar(int(year_text), int(week_text), 1)
+    except (ValueError, TypeError):
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+        period = f"{week_start.isocalendar().year}-W{week_start.isocalendar().week:02d}"
+
+    entries = []
+    if campaign_id is not None and skill_id is not None:
+        for offset in range(5):
+            entries.extend(
+                scheduling_service.list_schedule_entries(
+                    session,
+                    target_date=week_start + timedelta(days=offset),
+                    campaign_id=campaign_id,
+                    skill_id=skill_id,
+                )
+            )
+
+    shifts_by_id = {shift.id: shift for shift in scheduling_service.list_shifts(session, active_only=False)}
+    week_days = [week_start + timedelta(days=i) for i in range(5)]
+    week_rows = []
+
+    for employee in employees:
+        cells = []
+        for day in week_days:
+            entry = next((item for item in entries if item.employee_id == employee.id and item.date == day), None)
+            absences = scheduling_service.list_absences(
+                session, employee_id=employee.id, start_date=day, end_date=day
+            )
+            absence = absences[0] if absences else None
+            shift = shifts_by_id.get(entry.shift_id) if entry and entry.shift_id else None
+            cells.append({"date": day, "entry": entry, "shift": shift, "absence": absence})
+        week_rows.append({"employee": employee, "days": cells})
+
+    return templates.TemplateResponse(
+        request,
+        "scheduling/generate.html",
+        {
+            "active_nav": "scheduling-generate",
+            "current_user": current_user,
+            "campaigns": campaigns,
+            "skills": skills,
+            "employees": employees,
+            "filters": {"period": period, "campaign_id": campaign_id, "skill_id": skill_id},
+            "week_rows": week_rows,
+            "week_days": week_days,
+            "generated": request.query_params.get("generated") == "1",
+            "errors": errors,
+            "can_edit": current_user.role in WRITE_ROLES,
+            "has_schedule": bool(entries),
+        },
+        status_code=status_code,
+    )
 
 
 
