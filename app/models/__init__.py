@@ -12,6 +12,7 @@ from app.models.weekly_parameters import WeeklyWFMParameter
 from app.models.recruitment import RecruitmentPlan, RecruitmentRampWeek
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.capacity import CapacityPlan
+from app.models.campaign_workforce import CampaignWorkforcePlan
 from app.models.config_parameter import ConfigParameter
 from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
@@ -30,6 +31,7 @@ __all__ = [
     "ClientSTFInterval",
     "ClientSTFPlan",
     "CapacityPlan",
+    "CampaignWorkforcePlan",
     "ConfigParameter",
     "Employee",
     "EmployeeAbsence",
