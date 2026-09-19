@@ -5,7 +5,7 @@
   <div>
     <span class="panel-kicker">CAMPAIGN WORKFORCE</span>
     <h1>{{ campaign.name }} <small class="page-header__meta">· {{ campaign.code }}</small></h1>
-    <p class="page-header__meta">Pilotez l'effectif, les disponibilités, les longues absences et les mouvements RH de cette campagne.</p>
+    <p class="page-header__meta">Pilotez mois par mois l'effectif, la disponibilité, les absences, l'attrition et les mouvements RH.</p>
   </div>
   <a class="btn-secondary" href="/settings">← Configuration</a>
 </div>
@@ -17,53 +17,85 @@
 
 <div class="kpi-grid">
   <div class="kpi-card"><div class="kpi-card__top"><span>Roster actif</span></div><div class="kpi-card__value">{{ roster.active_roster_hc }}<small>HC</small></div><div class="kpi-card__foot"><span>Base Employee</span><strong>{{ "%.1f"|format(roster.active_roster_fte) }} FTE</strong></div></div>
-  <div class="kpi-card"><div class="kpi-card__top"><span>Production disponible</span></div><div class="kpi-card__value">{{ "%.1f"|format(metrics.production_available_hc) if metrics else "—" }}<small>HC</small></div><div class="kpi-card__foot"><span>Après training/nesting</span><strong>{{ "%.1f"|format(metrics.availability_pct) if metrics else "—" }}%</strong></div></div>
-  <div class="kpi-card"><div class="kpi-card__top"><span>Projected EOM</span></div><div class="kpi-card__value">{{ "%.1f"|format(metrics.projected_hc) if metrics else "—" }}<small>HC</small></div><div class="kpi-card__foot"><span>Attrition incluse</span><strong>{{ "%.1f"|format(metrics.attrition_hc) if metrics else "—" }} HC</strong></div></div>
+  <div class="kpi-card"><div class="kpi-card__top"><span>Production disponible</span></div><div class="kpi-card__value">{{ "%.1f"|format(metrics.production_available_hc) if metrics else "—" }}<small>HC</small></div><div class="kpi-card__foot"><span>Disponibilité</span><strong>{{ "%.1f"|format(metrics.availability_pct) if metrics else "—" }}%</strong></div></div>
+  <div class="kpi-card"><div class="kpi-card__top"><span>Projected EOM</span></div><div class="kpi-card__value">{{ "%.1f"|format(metrics.projected_hc) if metrics else "—" }}<small>HC</small></div><div class="kpi-card__foot"><span>Attrition</span><strong>{{ "%.1f"|format(metrics.attrition_hc) if metrics else "—" }} HC</strong></div></div>
   <div class="kpi-card"><div class="kpi-card__top"><span>Gap projeté</span></div><div class="kpi-card__value">{{ "%+.1f"|format(metrics.projected_gap_hc) if metrics else "—" }}<small>HC</small></div><div class="kpi-card__foot"><span>Vs Required HC</span><strong>{{ "%.1f"|format(values.required_hc) }} HC</strong></div></div>
 </div>
 
 <div class="form-card campaign-workforce-card">
 <form method="post" action="/campaigns/{{ campaign.id }}/workforce">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <fieldset>
-    <legend>Effectif &amp; disponibilité</legend>
-    <div class="form-grid">
-      <div class="field"><label for="period">Période</label><input id="period" type="month" name="period" value="{{ values.period }}" required></div>
-      <div class="field"><label for="current_hc">Current HC / nombre d'agents</label><input id="current_hc" type="number" name="current_hc" min="0" step="0.5" value="{{ values.current_hc }}" required><span class="field__hint">Roster actif calculé : {{ roster.active_roster_hc }} HC.</span></div>
-      <div class="field"><label for="available_hc">Agents disponibles</label><input id="available_hc" type="number" name="available_hc" min="0" step="0.5" value="{{ values.available_hc }}" required><span class="field__hint">Agents réellement planifiables avant training/nesting.</span></div>
-      <div class="field"><label for="required_hc">Required HC campagne</label><input id="required_hc" type="number" name="required_hc" min="0" step="0.5" value="{{ values.required_hc }}" required><span class="field__hint">Cible HC de capacité pour la campagne.</span></div>
-    </div>
-  </fieldset>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-  <fieldset>
-    <legend>Disponibilité opérationnelle</legend>
-    <div class="form-grid">
-      <div class="field"><label for="long_leave_hc">Long leave / longue absence</label><input id="long_leave_hc" type="number" name="long_leave_hc" min="0" step="0.5" value="{{ values.long_leave_hc }}"></div>
-      <div class="field"><label for="training_hc">Agents en formation</label><input id="training_hc" type="number" name="training_hc" min="0" step="0.5" value="{{ values.training_hc }}"></div>
-      <div class="field"><label for="nesting_hc">Agents en nesting</label><input id="nesting_hc" type="number" name="nesting_hc" min="0" step="0.5" value="{{ values.nesting_hc }}"></div>
-      <div class="field"><label for="other_unavailable_hc">Autres indisponibles</label><input id="other_unavailable_hc" type="number" name="other_unavailable_hc" min="0" step="0.5" value="{{ values.other_unavailable_hc }}"><span class="field__hint">Projet, absence administrative, restriction temporaire, etc.</span></div>
-    </div>
-  </fieldset>
+<fieldset>
+<legend>Effectif & disponibilité</legend>
+<div class="form-grid">
+<div class="field"><label for="period">Période</label><input id="period" type="month" name="period" value="{{ values.period }}" required></div>
+<div class="field"><label for="current_hc">Current HC / nombre d'agents</label><input id="current_hc" type="number" name="current_hc" min="0" step="0.5" value="{{ values.current_hc }}" required><span class="field__hint">Roster actif calculé : {{ roster.active_roster_hc }} HC.</span></div>
+<div class="field"><label for="available_hc">Agents disponibles</label><input id="available_hc" type="number" name="available_hc" min="0" step="0.5" value="{{ values.available_hc }}" required><span class="field__hint">Agents planifiables avant training / nesting.</span></div>
+<div class="field"><label for="required_hc">Required HC campagne</label><input id="required_hc" type="number" name="required_hc" min="0" step="0.5" value="{{ values.required_hc }}" required></div>
+</div>
+</fieldset>
 
-  <fieldset>
-    <legend>Attrition &amp; mouvements</legend>
-    <div class="form-grid">
-      <div class="field"><label for="attrition_pct">Attrition prévue (%)</label><input id="attrition_pct" type="number" name="attrition_pct" min="0" max="100" step="0.1" value="{{ values.attrition_pct }}"></div>
-      <div class="field"><label for="hiring_hc">Recrutements prévus (HC)</label><input id="hiring_hc" type="number" name="hiring_hc" min="0" step="0.5" value="{{ values.hiring_hc }}"></div>
-      <div class="field"><label for="transfers_in_hc">Transferts entrants (HC)</label><input id="transfers_in_hc" type="number" name="transfers_in_hc" min="0" step="0.5" value="{{ values.transfers_in_hc }}"></div>
-      <div class="field"><label for="transfers_out_hc">Transferts sortants (HC)</label><input id="transfers_out_hc" type="number" name="transfers_out_hc" min="0" step="0.5" value="{{ values.transfers_out_hc }}"></div>
-    </div>
-    <p class="field__hint">Projected EOM = Current HC + recrutements + transferts entrants − transferts sortants − attrition.</p>
-  </fieldset>
+<fieldset>
+<legend>Absences & disponibilité opérationnelle</legend>
+<div class="form-grid">
+<div class="field"><label for="long_leave_hc">Long leave / longue absence</label><input id="long_leave_hc" type="number" name="long_leave_hc" min="0" step="0.5" value="{{ values.long_leave_hc }}"></div>
+<div class="field"><label for="planned_leave_hc">Congés planifiés</label><input id="planned_leave_hc" type="number" name="planned_leave_hc" min="0" step="0.5" value="{{ values.planned_leave_hc }}"></div>
+<div class="field"><label for="unplanned_absence_hc">Absentéisme / absences imprévues</label><input id="unplanned_absence_hc" type="number" name="unplanned_absence_hc" min="0" step="0.5" value="{{ values.unplanned_absence_hc }}"></div>
+<div class="field"><label for="training_hc">Agents en formation</label><input id="training_hc" type="number" name="training_hc" min="0" step="0.5" value="{{ values.training_hc }}"></div>
+<div class="field"><label for="nesting_hc">Agents en nesting</label><input id="nesting_hc" type="number" name="nesting_hc" min="0" step="0.5" value="{{ values.nesting_hc }}"></div>
+<div class="field"><label for="other_unavailable_hc">Autres indisponibles</label><input id="other_unavailable_hc" type="number" name="other_unavailable_hc" min="0" step="0.5" value="{{ values.other_unavailable_hc }}"></div>
+</div>
+</fieldset>
 
-  <fieldset>
-    <legend>Notes Workforce</legend>
-    <div class="field field--full"><textarea name="notes" rows="3" placeholder="Départs confirmés, longue absence, campagne de recrutement, transfert...">{{ values.notes or "" }}</textarea></div>
-  </fieldset>
+<fieldset>
+<legend>Attrition & mouvements RH</legend>
+<div class="form-grid">
+<div class="field"><label for="attrition_pct">Attrition prévue (%)</label><input id="attrition_pct" type="number" name="attrition_pct" min="0" max="100" step="0.1" value="{{ values.attrition_pct }}"></div>
+<div class="field"><label for="hiring_hc">Recrutements prévus (HC)</label><input id="hiring_hc" type="number" name="hiring_hc" min="0" step="0.5" value="{{ values.hiring_hc }}"></div>
+<div class="field"><label for="transfers_in_hc">Transferts entrants (HC)</label><input id="transfers_in_hc" type="number" name="transfers_in_hc" min="0" step="0.5" value="{{ values.transfers_in_hc }}"></div>
+<div class="field"><label for="transfers_out_hc">Transferts sortants (HC)</label><input id="transfers_out_hc" type="number" name="transfers_out_hc" min="0" step="0.5" value="{{ values.transfers_out_hc }}"></div>
+</div>
+<p class="field__hint">Projected EOM = Current HC + recrutements + transferts entrants − transferts sortants − attrition.</p>
+</fieldset>
 
-  {% if can_edit %}
-  <div class="form-actions"><button class="btn-primary" type="submit">Enregistrer le Workforce Plan</button></div>
-  {% endif %}
+<fieldset>
+<legend>Contrôle capacité</legend>
+<div class="form-grid">
+<div class="field"><label>Gap Current</label><div class="kpi-card__value">{{ "%+.1f"|format(metrics.current_gap_hc) if metrics else "—" }}<small>HC</small></div></div>
+<div class="field"><label>Production EOM</label><div class="kpi-card__value">{{ "%.1f"|format(metrics.projected_production_hc) if metrics else "—" }}<small>HC</small></div></div>
+<div class="field"><label>Disponibilité EOM</label><div class="kpi-card__value">{{ "%.1f"|format(metrics.projected_availability_pct) if metrics else "—" }}<small>%</small></div></div>
+<div class="field"><label>Gap EOM</label><div class="kpi-card__value">{{ "%+.1f"|format(metrics.projected_gap_hc) if metrics else "—" }}<small>HC</small></div></div>
+</div>
+</fieldset>
+
+<fieldset>
+<legend>Notes Workforce</legend>
+<div class="field field--full"><textarea name="notes" rows="3" placeholder="Départs confirmés, longues absences, recrutement, transferts, risques...">{{ values.notes or "" }}</textarea></div>
+</fieldset>
+
+{% if can_edit %}<div class="form-actions"><button class="btn-primary" type="submit">Enregistrer le Workforce Plan</button></div>{% endif %}
 </form>
 </div>
+
+<section class="data-table-wrapper data-table-wrapper--spaced">
+<div class="section-title-row"><div><div class="panel-kicker">HISTORIQUE</div><h2>12 dernières périodes</h2></div></div>
+<table class="data-table">
+<thead><tr><th>Période</th><th class="numeric">Current</th><th class="numeric">Disponible</th><th class="numeric">Long leave</th><th class="numeric">Attrition</th><th class="numeric">Projected EOM</th><th class="numeric">Production EOM</th><th class="numeric">Gap EOM</th></tr></thead>
+<tbody>
+{% for item in history %}
+<tr>
+<td><a href="/campaigns/{{ campaign.id }}/workforce?period={{ item.plan.period }}">{{ item.plan.period }}</a></td>
+<td class="numeric">{{ "%.1f"|format(item.plan.current_hc) }}</td>
+<td class="numeric">{{ "%.1f"|format(item.plan.available_hc) }}</td>
+<td class="numeric">{{ "%.1f"|format(item.plan.long_leave_hc) }}</td>
+<td class="numeric">{{ "%.1f"|format(item.metrics.attrition_hc) }}</td>
+<td class="numeric">{{ "%.1f"|format(item.metrics.projected_hc) }}</td>
+<td class="numeric">{{ "%.1f"|format(item.metrics.projected_production_hc) }}</td>
+<td class="numeric">{{ "%+.1f"|format(item.metrics.projected_gap_hc) }}</td>
+</tr>
+{% else %}<tr><td colspan="8"><div class="empty-state">Aucun Workforce Plan enregistré.</div></td></tr>{% endfor %}
+</tbody>
+</table>
+</section>
 {% endblock %}
