@@ -15,6 +15,7 @@ from app.services.erlang_service import (
     average_speed_of_answer_erlang_c,
     service_level_erlang_c,
     traffic_intensity_erlangs,
+    occupancy_from_traffic_pct,
 )
 
 INTERVAL_HOURS = 0.5
@@ -62,6 +63,9 @@ class OperationsScorecard:
     service_level_gap_pct: Optional[float]
     scheduled_asa_seconds: Optional[float]
     actual_asa_seconds: Optional[float]
+    asa_target_seconds: Optional[float]
+    asa_gap_seconds: Optional[float]
+    scheduled_occupancy_pct: float
     occupancy_pct: Optional[float]
     occupancy_target_pct: float
     occupancy_gap_pct: Optional[float]
@@ -124,14 +128,15 @@ def build_scorecard(
     *,
     occupancy_target_pct: float | None = None,
     aht_target_seconds: float | None = None,
+    asa_target_seconds: float | None = None,
 ) -> WFMScorecard:
     if not intervals:
         return WFMScorecard(
             forecast=ForecastScorecard(0, None, None, None, None, None, None, None),
             staffing=StaffingScorecard(0, 0, None, 0, 0, 0, 0, 0, None, 0, 0, 0, None),
             operations=OperationsScorecard(
-                0, None, aht_target_seconds, None, None, 0, None, 0, None,
-                None, None, occupancy_target_pct or 0, None, None, None, None, 0
+                0, None, aht_target_seconds, None, None, 0, None, asa_target_seconds, None,
+                0, None, occupancy_target_pct or 0, 0, None, None, None, None, 0
             ),
             alerts=[],
         )
@@ -240,11 +245,25 @@ def build_scorecard(
     scheduled_sl_weights: list[float] = []
     scheduled_asa_values: list[float] = []
     scheduled_asa_weights: list[float] = []
+    scheduled_occupancy_values: list[float] = []
+    scheduled_occupancy_weights: list[float] = []
     for interval in intervals:
         sl, asa = _scheduled_metrics(interval)
         if interval.forecast_volume > 0:
             scheduled_sl_values.append(sl)
             scheduled_sl_weights.append(interval.forecast_volume)
+            if interval.scheduled_hc > 0 and interval.forecast_aht_seconds > 0:
+                traffic = traffic_intensity_erlangs(
+                    interval.forecast_volume,
+                    interval.forecast_aht_seconds,
+                    INTERVAL_HOURS * 3600,
+                )
+                scheduled_occupancy_values.append(
+                    occupancy_from_traffic_pct(
+                        traffic, max(round(interval.scheduled_hc), 1)
+                    )
+                )
+                scheduled_occupancy_weights.append(interval.forecast_volume)
             if asa is not None:
                 scheduled_asa_values.append(asa)
                 scheduled_asa_weights.append(interval.forecast_volume)
@@ -256,6 +275,12 @@ def build_scorecard(
     scheduled_asa = (
         kpi_service.weighted_average(scheduled_asa_values, scheduled_asa_weights)
         if scheduled_asa_values else None
+    )
+    scheduled_occupancy = (
+        kpi_service.weighted_average(
+            scheduled_occupancy_values, scheduled_occupancy_weights
+        )
+        if scheduled_occupancy_values else 0.0
     )
     target_sl = _weighted_optional(
         [i.service_level_target_pct for i in intervals], forecast_values
@@ -286,6 +311,12 @@ def build_scorecard(
         service_level_gap_pct=(actual_sl - target_sl) if actual_sl is not None else None,
         scheduled_asa_seconds=scheduled_asa,
         actual_asa_seconds=actual_asa,
+        asa_target_seconds=asa_target_seconds,
+        asa_gap_seconds=(
+            actual_asa - asa_target_seconds
+            if actual_asa is not None and asa_target_seconds is not None else None
+        ),
+        scheduled_occupancy_pct=scheduled_occupancy,
         occupancy_pct=actual_occupancy,
         occupancy_target_pct=target_occ,
         occupancy_gap_pct=(
