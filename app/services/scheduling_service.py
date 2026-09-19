@@ -17,8 +17,9 @@ from sqlmodel import Session, select
 
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
+from app.models.employee import EmployeeAbsence
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import intraday_service, kpi_service
+from app.services import intraday_service, kpi_service, workforce_service
 
 
 # ============================================================================
@@ -31,7 +32,10 @@ def create_shift(session: Session, data: ShiftInput) -> Shift:
         start_time=data.start_time,
         end_time=data.end_time,
         break_minutes=data.break_minutes,
+        break_count=data.break_count,
+        break_paid=data.break_paid,
         lunch_minutes=data.lunch_minutes,
+        lunch_paid=data.lunch_paid,
     )
     session.add(shift)
     session.commit()
@@ -175,3 +179,54 @@ def compute_break_impact(
             )
         )
     return results
+
+
+# ============================================================================
+# Pauses / absentéisme contractuel
+# ============================================================================
+
+def shift_hours_summary(session: Session, *, employee_id: int, shift_id: int):
+    employee = session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, employee_id)
+    shift = session.get(Shift, shift_id)
+    if employee is None or shift is None:
+        raise ValueError("Employé ou shift introuvable.")
+    return workforce_service.shift_hours(
+        shift,
+        contract_daily_hours=workforce_service.daily_contract_hours(employee),
+    )
+
+
+def create_absence(session: Session, data) -> EmployeeAbsence:
+    workforce_service.validate_absence_type(data.absence_type)
+    employee = session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, data.employee_id)
+    if employee is None:
+        raise ValueError("Employé introuvable.")
+    absence = EmployeeAbsence(
+        employee_id=data.employee_id,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        absence_type=data.absence_type,
+        paid=data.paid,
+        notes=data.notes,
+    )
+    session.add(absence)
+    session.commit()
+    session.refresh(absence)
+    return absence
+
+
+def list_absences(
+    session: Session,
+    *,
+    employee_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> list[EmployeeAbsence]:
+    query = select(EmployeeAbsence)
+    if employee_id is not None:
+        query = query.where(EmployeeAbsence.employee_id == employee_id)
+    if start_date is not None:
+        query = query.where(EmployeeAbsence.end_date >= start_date)
+    if end_date is not None:
+        query = query.where(EmployeeAbsence.start_date <= end_date)
+    return list(session.exec(query.order_by(EmployeeAbsence.start_date.desc())).all())
