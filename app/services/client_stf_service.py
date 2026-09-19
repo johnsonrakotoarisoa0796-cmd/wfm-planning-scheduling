@@ -140,6 +140,7 @@ def _row_to_stf(
     date_key: str = "date",
     start_key: str = "interval_start",
     end_key: str = "interval_end",
+    volume_key: str = "volume",
     hc_key: str = "required_hc",
 ) -> ClientSTFRow:
     try:
@@ -154,15 +155,21 @@ def _row_to_stf(
         raw_end = raw[end_key]
         start = raw_start if isinstance(raw_start, time) else _parse_time(str(raw_start))
         end = raw_end if isinstance(raw_end, time) else _parse_time(str(raw_end))
-        hc = float(raw[hc_key])
+        raw_volume = raw.get(volume_key)
+        raw_hc = raw.get(hc_key)
+        volume = float(raw_volume) if raw_volume not in (None, "") else None
+        hc = float(raw_hc) if raw_hc not in (None, "") else None
     except (AttributeError, TypeError, ValueError, KeyError) as exc:
         raise ValueError(f"Ligne {line_number} invalide: {exc}") from exc
-    if hc < 0:
+    if volume is not None and volume < 0:
+        raise ValueError(f"Ligne {line_number}: volume doit être >= 0.")
+    if hc is not None and hc < 0:
         raise ValueError(f"Ligne {line_number}: required_hc doit être >= 0.")
+    if volume is None and hc is None:
+        raise ValueError(f"Ligne {line_number}: volume obligatoire.")
     if start == end:
         raise ValueError(f"Ligne {line_number}: intervalle vide.")
-    return ClientSTFRow(day, start, end, hc)
-
+    return ClientSTFRow(day, start, end, hc, volume)
 
 def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
     """Lit un classeur Excel: première feuille, première ligne = en-têtes."""
@@ -183,6 +190,7 @@ def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
         "date": ("date", "day"),
         "interval_start": ("interval_start", "start", "heure_debut"),
         "interval_end": ("interval_end", "end", "heure_fin"),
+        "volume": ("volume", "contacts", "offered", "forecast_volume"),
         "required_hc": ("required_hc", "stf", "required", "hc_requis"),
     }
     indexes: dict[str, int] = {}
@@ -191,10 +199,10 @@ def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
             if candidate in header_map:
                 indexes[target] = header_map[candidate]
                 break
-        if target not in indexes:
+        if target not in indexes and target != "required_hc":
             raise ValueError(
                 f"Colonne Excel manquante pour {target}. "
-                "Attendues: date, interval_start, interval_end, required_hc."
+                "Attendues: date, interval_start, interval_end, volume."
             )
 
     parsed: list[ClientSTFRow] = []
