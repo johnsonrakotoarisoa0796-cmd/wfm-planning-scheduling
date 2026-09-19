@@ -105,8 +105,9 @@ def new_ltf_form(
 @router.post("/new", dependencies=[Depends(verify_csrf)])
 def create_ltf(
     request: Request,
-    year: int = Form(...),
-    month: int = Form(...),
+    year: Optional[int] = Form(None),
+    month: Optional[int] = Form(None),
+    period: Optional[str] = Form(None),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
     forecast_volume: float = Form(...),
@@ -121,7 +122,21 @@ def create_ltf(
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
+    # Compatibilité avec les anciens formulaires qui envoient period=YYYY-MM.
+    if period is not None and (year is None or month is None):
+        try:
+            raw = period.strip()
+            parts = raw.split("-")
+            if len(parts) != 2:
+                raise ValueError
+            parsed_year, parsed_month = (int(part) for part in parts)
+            year = parsed_year
+            month = parsed_month
+        except (TypeError, ValueError):
+            year, month = None, None
+
     submitted_values = {
+        "period": period or (f"{year:04d}-{month:02d}" if year is not None and month is not None else ""),
         "year": year,
         "month": month,
         "campaign_id": campaign_id,
@@ -138,6 +153,8 @@ def create_ltf(
     }
 
     try:
+        if year is None or month is None:
+            raise ValueError("La période LTF est obligatoire au format YYYY-MM.")
         payload = LTFCreateInput(
             year=year,
             month=month,
