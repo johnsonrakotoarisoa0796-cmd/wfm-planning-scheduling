@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>{{ plan.period_key }} <span style="color: var(--text-muted); font-size: 16px;">({{ plan.period_type.value }})</span></h1>
+        <h1>{{ plan.period_key }} <span class="heading-meta">({{ plan.period_type.value }})</span></h1>
         <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
     </div>
     <a href="/overtime" class="btn-secondary">&larr; Retour à la liste</a>
@@ -47,15 +47,15 @@
             datasets: [{
                 label: 'OT Required (h)',
                 data: {{ chart_values|tojson }},
-                backgroundColor: '#34b8a8',
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
             }],
         },
         options: {
             responsive: true,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, ticks: { color: '#7c8798' }, grid: { color: '#2a3341' } },
-                x: { ticks: { color: '#7c8798' }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() }, grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--border').trim() } },
+                x: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-soft').trim() }, grid: { display: false } },
             },
         },
     });
@@ -66,7 +66,7 @@
 {% if can_enter_actual %}
 <fieldset>
     <legend>Saisir l'OT réellement effectué</legend>
-    <form method="post" action="/overtime/{{ plan.id }}/actual" class="form-card" style="max-width: 400px; padding: var(--space-5);">
+    <form method="post" action="/overtime/{{ plan.id }}/actual" class="form-card form-card--compact">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="field">
             <label for="ot_actual_hours">OT Actual (heures)</label>
