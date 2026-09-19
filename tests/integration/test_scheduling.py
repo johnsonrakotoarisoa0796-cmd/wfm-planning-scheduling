@@ -18,7 +18,7 @@ from app.core.database import get_session
 from app.core.security import hash_password
 from app.main import app
 from app.models.campaign import Campaign
-from app.models.employee import Employee, EmployeeSkill
+from app.models.employee import Employee, EmployeeSkill, EmployeeAbsence
 from app.models.enums import Channel, EmployeeStatus, UserRole
 from app.models.schedule import ScheduleEntry
 from app.models.skill import Skill
@@ -137,6 +137,98 @@ def test_viewer_cannot_create_shift(client: TestClient, engine):
         data={"csrf_token": csrf, "name": "Nuit", "start_time": "17:00", "end_time": "02:00"},
     )
     assert response.status_code == 403
+
+
+# --- Absences ------------------------------------------------------------------------
+
+def test_viewer_can_view_absences_page(client: TestClient, engine):
+    user = _make_user(engine, "viewer-absences@wfm.local", UserRole.VIEWER)
+    _login(client, user["email"], user["secret"])
+    response = client.get("/scheduling/absences")
+    assert response.status_code == 200
+    assert "Absences & congés" in response.text
+
+
+def test_analyst_can_create_absence(client: TestClient, engine, reference_data):
+    user = _make_user(engine, "analyst-absences@wfm.local", UserRole.WFM_ANALYST)
+    _login(client, user["email"], user["secret"])
+    csrf = client.cookies.get("csrf_token")
+    response = client.post(
+        "/scheduling/absences",
+        data={
+            "csrf_token": csrf,
+            "employee_id": str(reference_data["employee_ids"][0]),
+            "start_date": "2026-09-21",
+            "end_date": "2026-09-23",
+            "absence_type": "paid_leave",
+            "paid": "true",
+            "notes": "Congé annuel",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    with Session(engine) as session:
+        absence = session.exec(select(EmployeeAbsence)).first()
+        assert absence is not None
+        assert absence.employee_id == reference_data["employee_ids"][0]
+        assert absence.absence_type == "paid_leave"
+        assert absence.paid is True
+        assert absence.notes == "Congé annuel"
+
+    page = client.get("/scheduling/absences")
+    assert page.status_code == 200
+    assert "Congé annuel" in page.text
+
+
+def test_viewer_cannot_create_absence(client: TestClient, engine, reference_data):
+    user = _make_user(engine, "viewer-create-absence@wfm.local", UserRole.VIEWER)
+    _login(client, user["email"], user["secret"])
+    csrf = client.cookies.get("csrf_token")
+    response = client.post(
+        "/scheduling/absences",
+        data={
+            "csrf_token": csrf,
+            "employee_id": str(reference_data["employee_ids"][0]),
+            "start_date": "2026-09-21",
+            "end_date": "2026-09-23",
+            "absence_type": "paid_leave",
+            "paid": "true",
+        },
+    )
+    assert response.status_code == 403
+
+
+def test_absence_overlap_is_rejected_by_route(client: TestClient, engine, reference_data):
+    user = _make_user(engine, "analyst-overlap@wfm.local", UserRole.WFM_ANALYST)
+    _login(client, user["email"], user["secret"])
+    csrf = client.cookies.get("csrf_token")
+    first = client.post(
+        "/scheduling/absences",
+        data={
+            "csrf_token": csrf,
+            "employee_id": str(reference_data["employee_ids"][0]),
+            "start_date": "2026-09-21",
+            "end_date": "2026-09-23",
+            "absence_type": "availability",
+            "paid": "false",
+        },
+        follow_redirects=False,
+    )
+    assert first.status_code == 303
+    second = client.post(
+        "/scheduling/absences",
+        data={
+            "csrf_token": csrf,
+            "employee_id": str(reference_data["employee_ids"][0]),
+            "start_date": "2026-09-22",
+            "end_date": "2026-09-24",
+            "absence_type": "paid_leave",
+            "paid": "true",
+        },
+    )
+    assert second.status_code == 400
+    assert "Une absence existe déjà" in second.text
 
 
 # --- Upsert d'affectation ------------------------------------------------------------
