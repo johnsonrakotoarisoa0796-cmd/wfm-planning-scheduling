@@ -194,6 +194,9 @@ def test_campaign_workforce_page_prefills_roster(client, engine, reference_data)
     assert "Current HC / nombre d'agents" in response.text
     assert "Long leave / longue absence" in response.text
     assert "Attrition prévue" in response.text
+    assert "Congés planifiés" in response.text
+    assert "Absentéisme / absences imprévues" in response.text
+    assert "12 dernières périodes" in response.text
 
 
 def test_campaign_workforce_post_saves_plan(client, engine, reference_data):
@@ -209,6 +212,8 @@ def test_campaign_workforce_post_saves_plan(client, engine, reference_data):
             "current_hc": "20",
             "available_hc": "18",
             "long_leave_hc": "2",
+            "planned_leave_hc": "1",
+            "unplanned_absence_hc": "1",
             "training_hc": "1",
             "nesting_hc": "1",
             "other_unavailable_hc": "0",
@@ -231,6 +236,8 @@ def test_campaign_workforce_post_saves_plan(client, engine, reference_data):
         assert plan.available_hc == 18
         assert plan.attrition_pct == 5
         assert plan.long_leave_hc == 2
+        assert plan.planned_leave_hc == 1
+        assert plan.unplanned_absence_hc == 1
 
 
 def test_workforce_rejects_available_hc_above_current_hc(engine, reference_data):
@@ -265,3 +272,39 @@ def test_viewer_cannot_edit_workforce(client, engine, reference_data):
 
     assert response.status_code == 200
     assert "Enregistrer le Workforce Plan" not in response.text
+
+
+def test_history_contains_multiple_campaign_workforce_periods(client, engine, reference_data):
+    user = _make_user(engine, "analyst-history@wfm.local", UserRole.WFM_ANALYST)
+    _login(client, user["email"], user["secret"])
+    csrf = client.cookies.get("csrf_token")
+
+    for period, current_hc in (("2026-09", "20"), ("2026-10", "21")):
+        response = client.post(
+            f"/campaigns/{reference_data}/workforce",
+            data={
+                "csrf_token": client.cookies.get("csrf_token") or csrf,
+                "period": period,
+                "current_hc": current_hc,
+                "available_hc": "18",
+                "long_leave_hc": "1",
+                "planned_leave_hc": "1",
+                "unplanned_absence_hc": "1",
+                "training_hc": "1",
+                "nesting_hc": "0",
+                "other_unavailable_hc": "0",
+                "attrition_pct": "5",
+                "hiring_hc": "1",
+                "transfers_in_hc": "0",
+                "transfers_out_hc": "0",
+                "required_hc": "18",
+                "notes": "",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+    page = client.get(f"/campaigns/{reference_data}/workforce?period=2026-10")
+    assert page.status_code == 200
+    assert "2026-10" in page.text
+    assert "2026-09" in page.text
