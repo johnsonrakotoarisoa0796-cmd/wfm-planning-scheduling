@@ -13,6 +13,7 @@ class GenerateIntradayInput(BaseModel):
     target_date: date
     campaign_id: int
     skill_id: int
+    timezone_name: str = Field(default="UTC", min_length=1)
 
     daily_volume: float = Field(ge=0)
     daily_aht_seconds: float = Field(gt=0)
