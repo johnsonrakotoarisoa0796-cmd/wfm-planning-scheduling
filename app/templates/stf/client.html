@@ -16,7 +16,7 @@
   <section class="form-card">
     <div class="panel-kicker">IMPORT HEBDOMADAIRE</div>
     <h2>Recevoir un STF client</h2>
-    <p class="field__hint">CSV UTF-8 avec les colonnes <code>date,interval_start,interval_end,required_hc</code>. Une ligne = un intervalle.</p>
+    <p class="field__hint">CSV UTF-8 ou Excel (.xlsx) avec les colonnes <code>date,interval_start,interval_end,required_hc</code>. Une ligne = un intervalle.</p>
     <form method="post" action="/stf-client/import" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="form-grid">
@@ -48,13 +48,13 @@
         </div>
         <div class="field field--full">
           <label for="file">Fichier CSV</label>
-          <input type="file" id="file" name="file" accept=".csv,text/csv" required>
+          <input type="file" id="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
         </div>
       </div>
       <div class="form-actions"><button class="btn-primary" type="submit">Importer le STF client</button></div>
     </form>
     <div class="csv-example">
-      <strong>Exemple</strong>
+      <strong>CSV / Excel · exemple de colonnes</strong>
       <pre>date,interval_start,interval_end,required_hc
 2026-09-21,07:00,07:30,18
 2026-09-21,07:30,08:00,20
