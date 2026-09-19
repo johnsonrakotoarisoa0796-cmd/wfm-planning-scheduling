@@ -1,0 +1,18 @@
+{% extends "app_base.html" %}
+{% block title %}Imports opérationnels — WFM{% endblock %}
+{% block content %}
+<div class="page-header"><div><span class="panel-kicker">DATA INGESTION</span><h1>Imports opérationnels</h1><p class="page-header__meta">Chargez les actuals ACD/Excel dans le staging et rapprochez-les automatiquement des intervalles Daily.</p></div></div>
+<section class="form-card form-card--wide">
+{% if errors %}<div class="error-banner">{% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+<div class="panel-kicker">FORMAT</div>
+<p>CSV ou XLSX. Colonnes attendues :</p>
+<code>date, interval_start, campaign_id, skill_id, offered, handled, abandoned, talk_time_seconds, hold_time_seconds, acw_seconds, agents_staffed, paid_hours</code>
+<form method="post" action="/imports/actuals" enctype="multipart/form-data" style="margin-top:18px">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="field"><label>Fichier</label><input type="file" name="file" accept=".csv,.xlsx,.xls" required></div>
+<div class="form-actions"><button class="btn-primary" type="submit">Importer les actuals</button></div>
+</form>
+{% if result %}<div class="success-banner" style="margin-top:18px">Batch {{ result.batch_id }} · {{ result.imported }} lignes importées · {{ result.matched }} intervalles mis à jour.</div>{% endif %}
+</section>
+<section class="form-card form-card--wide" style="margin-top:18px"><div class="panel-kicker">RÈGLE</div><p>Les lignes sont conservées dans <strong>ActualPerformanceRaw</strong>. Lorsqu'un intervalle correspondant existe, Actual Volume, AHT, HC, abandon, occupancy et staffing gap sont mis à jour. Service Level/ASA restent inchangés tant que les données de file d'attente nécessaires ne sont pas disponibles.</p></section>
+{% endblock %}
