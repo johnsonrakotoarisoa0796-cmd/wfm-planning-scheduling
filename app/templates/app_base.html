@@ -1,31 +1,80 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0b1220">
-<title>{% block title %}WFM Planning & Scheduling{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/base.css"><link rel="stylesheet" href="/static/css/app.css">{% block extra_head %}{% endblock %}
-</head>
-<body><div class="app-shell">
-<aside class="sidebar" id="sidebar">
-<div class="sidebar__top"><a class="brand" href="/dashboard"><span class="brand__mark">W</span><span class="brand__copy"><strong>WFM</strong><small>Planning &amp; Scheduling</small></span></a><button class="sidebar__toggle" type="button" aria-label="Fermer le menu" data-sidebar-toggle>×</button></div>
-<div class="sidebar__section-label">Pilotage</div><nav class="sidebar__nav" aria-label="Navigation principale">
-<a class="sidebar__link{% if active_nav == 'dashboard' %} sidebar__link--active{% endif %}" href="/dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></a>
-<a class="sidebar__link{% if active_nav == 'ltf' %} sidebar__link--active{% endif %}" href="/ltf"><span class="nav-icon">◷</span><span>LTF Monthly</span></a>
-<a class="sidebar__link{% if active_nav == 'stf' %} sidebar__link--active{% endif %}" href="/stf"><span class="nav-icon">↗</span><span>STF Weekly</span></a><a class="sidebar__link{% if active_nav == 'stf' %} sidebar__link--active{% endif %}" href="/stf-client"><span class="nav-icon">⇢</span><span>STF Client</span></a>
-<a class="sidebar__link{% if active_nav == 'daily' %} sidebar__link--active{% endif %}" href="/daily"><span class="nav-icon">◫</span><span>Daily / Intraday</span></a></nav>
-<div class="sidebar__section-label">Ressources</div><nav class="sidebar__nav" aria-label="Ressources">
-<a class="sidebar__link{% if active_nav == 'capacity' %} sidebar__link--active{% endif %}" href="/capacity"><span class="nav-icon">◎</span><span>Capacity Planning</span></a>
-<a class="sidebar__link{% if active_nav == 'shrinkage' %} sidebar__link--active{% endif %}" href="/shrinkage"><span class="nav-icon">◒</span><span>Shrinkage</span></a>
-<a class="sidebar__link{% if active_nav == 'overtime' %} sidebar__link--active{% endif %}" href="/overtime"><span class="nav-icon">⏱</span><span>Overtime</span></a>
-<a class="sidebar__link{% if active_nav == 'scheduling' %} sidebar__link--active{% endif %}" href="/scheduling"><span class="nav-icon">▦</span><span>Scheduling</span></a><a class="sidebar__link{% if active_nav == 'scheduling' %} sidebar__link--active{% endif %}" href="/scheduling/planner"><span class="nav-icon">✦</span><span>Planner</span></a><a class="sidebar__link{% if active_nav == 'scheduling' %} sidebar__link--active{% endif %}" href="/scheduling/absences"><span class="nav-icon">◌</span><span>Absences &amp; congés</span></a><a class="sidebar__link{% if active_nav == 'markets' %} sidebar__link--active{% endif %}" href="/markets"><span class="nav-icon">◎</span><span>Marchés</span></a>
-<a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings"><span class="nav-icon">⚙</span><span>Configuration</span></a></nav>
-<div class="sidebar__footer">{% if current_user %}<div class="sidebar__user"><span class="avatar">{{ current_user.email[0]|upper }}</span><span class="sidebar__user-copy"><strong>{{ current_user.email }}</strong><small>{{ current_user.role.value }}</small></span></div>
-<form method="post" action="/logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn-logout"><span>↪</span> Se déconnecter</button></form>{% endif %}</div>
-</aside>
-<div class="mobile-backdrop" data-sidebar-toggle></div>
-<main class="main-content"><header class="topbar"><button class="mobile-menu" type="button" aria-label="Ouvrir le menu" data-sidebar-toggle>☰</button><div class="topbar__context"><span class="topbar__eyebrow">WORKFORCE MANAGEMENT</span><span class="topbar__status"><i></i> Système opérationnel</span></div><div class="topbar__date">{{ current_user.email if current_user else '' }}</div></header>{% block content %}{% endblock %}</main>
+{% extends "base.html" %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar__top">
+            <a class="brand" href="/dashboard" aria-label="WFM Planning & Scheduling — Dashboard">
+                <span class="brand__mark" aria-hidden="true">W</span>
+                <span class="brand__copy"><strong>WFM</strong><small>Planning &amp; Scheduling</small></span>
+            </a>
+            <button class="sidebar__toggle" type="button" aria-label="Fermer le menu" data-sidebar-toggle>×</button>
+        </div>
+
+        <div class="sidebar__section-label">Pilotage</div>
+        <nav class="sidebar__nav" aria-label="Navigation principale">
+            <a class="sidebar__link{% if active_nav == 'dashboard' %} sidebar__link--active{% endif %}" href="/dashboard"{% if active_nav == 'dashboard' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌂</span><span>Dashboard</span></a>
+            <a class="sidebar__link{% if active_nav == 'ltf' %} sidebar__link--active{% endif %}" href="/ltf"{% if active_nav == 'ltf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◷</span><span>LTF Monthly</span></a>
+            <a class="sidebar__link{% if active_nav == 'stf' %} sidebar__link--active{% endif %}" href="/stf"{% if active_nav == 'stf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">↗</span><span>STF Weekly</span></a>
+            <a class="sidebar__link{% if active_nav == 'stf-client' %} sidebar__link--active{% endif %}" href="/stf-client"{% if active_nav == 'stf-client' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⇢</span><span>STF Client</span></a>
+            <a class="sidebar__link{% if active_nav == 'daily' %} sidebar__link--active{% endif %}" href="/daily"{% if active_nav == 'daily' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◫</span><span>Daily / Intraday</span></a>
+        </nav>
+
+        <div class="sidebar__section-label">Ressources</div>
+        <nav class="sidebar__nav" aria-label="Ressources">
+            <a class="sidebar__link{% if active_nav == 'capacity' %} sidebar__link--active{% endif %}" href="/capacity"{% if active_nav == 'capacity' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◎</span><span>Capacity Planning</span></a>
+            <a class="sidebar__link{% if active_nav == 'shrinkage' %} sidebar__link--active{% endif %}" href="/shrinkage"{% if active_nav == 'shrinkage' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◒</span><span>Shrinkage</span></a>
+            <a class="sidebar__link{% if active_nav == 'overtime' %} sidebar__link--active{% endif %}" href="/overtime"{% if active_nav == 'overtime' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⏱</span><span>Overtime</span></a>
+            <a class="sidebar__link{% if active_nav == 'scheduling' %} sidebar__link--active{% endif %}" href="/scheduling"{% if active_nav == 'scheduling' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▦</span><span>Scheduling</span></a>
+            <a class="sidebar__link{% if active_nav == 'scheduling-planner' %} sidebar__link--active{% endif %}" href="/scheduling/planner"{% if active_nav == 'scheduling-planner' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">✦</span><span>Planner</span></a>
+            <a class="sidebar__link{% if active_nav == 'scheduling-absences' %} sidebar__link--active{% endif %}" href="/scheduling/absences"{% if active_nav == 'scheduling-absences' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◌</span><span>Absences &amp; congés</span></a>
+            <a class="sidebar__link{% if active_nav == 'markets' %} sidebar__link--active{% endif %}" href="/markets"{% if active_nav == 'markets' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◎</span><span>Marchés</span></a>
+            <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span><span>Configuration</span></a>
+        </nav>
+
+        <div class="sidebar__footer">
+            {% if current_user %}
+            <div class="sidebar__user">
+                <span class="avatar" aria-hidden="true">{{ current_user.email[0]|upper }}</span>
+                <span class="sidebar__user-copy"><strong>{{ current_user.email }}</strong><small>{{ current_user.role.value }}</small></span>
+            </div>
+            <form method="post" action="/logout">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-logout"><span aria-hidden="true">↪</span> Se déconnecter</button>
+            </form>
+            {% endif %}
+        </div>
+    </aside>
+
+    <div class="mobile-backdrop" data-sidebar-toggle aria-hidden="true"></div>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar__left">
+                <button class="mobile-menu" type="button" aria-label="Ouvrir le menu" data-sidebar-toggle>☰</button>
+                <div class="topbar__context">
+                    <span class="topbar__eyebrow">WORKFORCE MANAGEMENT</span>
+                    <span class="topbar__status"><i aria-hidden="true"></i> Système opérationnel</span>
+                </div>
+            </div>
+            <div class="topbar__actions">
+                <span class="topbar__user">{{ current_user.email if current_user else '' }}</span>
+                {% include "partials/theme_toggle.html" %}
+            </div>
+        </header>
+        {% block page_content %}{% block content %}{% endblock %}{% endblock %}
+    </main>
 </div>
-<script>(()=>{const shell=document.querySelector('.app-shell');document.querySelectorAll('[data-sidebar-toggle]').forEach(b=>b.addEventListener('click',()=>shell.classList.toggle('sidebar-open')));document.querySelectorAll('.sidebar__link').forEach(a=>a.addEventListener('click',()=>shell.classList.remove('sidebar-open')));})();</script>
-</body></html>
+<script>
+(() => {
+    const shell = document.querySelector(".app-shell");
+    if (!shell) return;
+    document.querySelectorAll("[data-sidebar-toggle]").forEach((button) => {
+        button.addEventListener("click", () => shell.classList.toggle("sidebar-open"));
+    });
+    document.querySelectorAll(".sidebar__link").forEach((link) => {
+        link.addEventListener("click", () => shell.classList.remove("sidebar-open"));
+    });
+})();
+</script>
+{% endblock %}
