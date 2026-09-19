@@ -64,3 +64,4 @@ def test_generate_schedule_template_has_teleopti_style_board():
     assert "teleopti-grid" in template
     assert "Generate Schedule" in template
     assert "replace_existing" in template
+\n\ndef test_campaign_settings_exposes_workforce_management_link():\n    template = (TEMPLATES / "settings" / "index.html").read_text(encoding="utf-8")\n    assert "/campaigns/{{ c.id }}/workforce" in template\n    assert "Workforce" in template\n
