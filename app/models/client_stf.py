@@ -5,7 +5,7 @@ Le STF client devient la référence de staffing opérationnel pour les
 intervalles couverts par son import, sans recalculer le besoin à partir du
 volume.
 """
-from datetime import date, datetime, time
+from datetime import date as DateType, datetime, time
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
@@ -19,7 +19,7 @@ class ClientSTFPlan(SQLModel, table=True):
     __tablename__ = "client_stf_plans"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    week_start_date: date = Field(index=True, nullable=False)
+    week_start_date: DateType = Field(index=True, nullable=False)
     campaign_id: int = Field(foreign_key="campaigns.id", index=True, nullable=False)
     skill_id: int = Field(foreign_key="skills.id", index=True, nullable=False)
     label: str = Field(default="STF client", nullable=False)
@@ -38,7 +38,7 @@ class ClientSTFInterval(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     plan_id: int = Field(foreign_key="client_stf_plans.id", index=True, nullable=False)
-    date: date = Field(index=True, nullable=False)
+    date: DateType = Field(index=True, nullable=False)
     interval_start: time = Field(nullable=False)
     interval_end: time = Field(nullable=False)
     required_hc: float = Field(default=0, nullable=False)
