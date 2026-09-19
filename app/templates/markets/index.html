@@ -1,0 +1,55 @@
+{% extends "app_base.html" %}
+{% block title %}Marchés — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Marchés</h1>
+    <p class="page-header__meta">FR, UK, DE, IN, ES, JP, NL… Chaque marché possède sa langue et son fuseau IANA.</p>
+  </div>
+</div>
+
+{% if errors %}
+<div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+{% endif %}
+
+<div class="market-grid">
+<section class="form-card">
+<div class="panel-kicker">NOUVEAU MARCHÉ</div>
+<h2>Ajouter un marché</h2>
+{% if can_edit %}
+<form method="post" action="/markets/new">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="form-grid">
+<div class="field"><label>Code</label><input name="code" placeholder="FR" maxlength="10" required></div>
+<div class="field"><label>Nom</label><input name="name" placeholder="France" required></div>
+<div class="field"><label>Langue</label><input name="language_code" placeholder="fr" maxlength="10" required></div>
+<div class="field"><label>Fuseau IANA</label><input name="timezone_name" placeholder="Europe/Paris" required></div>
+</div>
+<div class="form-actions"><button class="btn-primary" type="submit">Créer le marché</button></div>
+</form>
+{% else %}<p class="field__hint">La gestion des marchés est réservée aux rôles WFM autorisés.</p>{% endif %}
+</section>
+
+<section>
+<div class="data-table-wrapper">
+<table class="data-table">
+<thead><tr><th>Code</th><th>Marché</th><th>Langue</th><th>Fuseau</th><th>Statut</th></tr></thead>
+<tbody>
+{% for market in markets %}
+<tr>
+<td><strong>{{ market.code }}</strong></td>
+<td>{{ market.name }}</td>
+<td>{{ market.language_code }}</td>
+<td>{{ market.timezone_name }}</td>
+<td>{% if market.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</section>
+</div>
+{% endblock %}
+{% block extra_head %}<style>
+.market-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:16px}.market-grid h2{font-size:16px;margin:4px 0 15px}@media(max-width:900px){.market-grid{grid-template-columns:1fr}}
+</style>{% endblock %}
