@@ -16,6 +16,8 @@ pour brancher une base de test) et casserait silencieusement l'isolation
 des tests.
 """
 
+import os
+
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
@@ -25,6 +27,9 @@ def _global_context(request: Request) -> dict:
         # Posé par CSRFCookieMiddleware (app/core/middleware.py), garantit
         # la même valeur que le cookie envoyé au navigateur.
         "csrf_token": getattr(request.state, "csrf_token", ""),
+        # Render expose le SHA du commit déployé : il sert à invalider
+        # automatiquement le cache navigateur des assets statiques après chaque release.
+        "asset_version": os.environ.get("RENDER_GIT_COMMIT", "dev"),
     }
 
 
