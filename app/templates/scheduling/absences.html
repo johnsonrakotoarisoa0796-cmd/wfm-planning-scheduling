@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header"><div><h1>Absences & congés</h1><p class="page-header__meta">Maternité, disponibilité, congés payés et congés sans solde. Une absence bloque le staffing; son statut payé détermine les heures payées.</p></div></div>
 {% if can_edit %}
-<div class="form-card" style="margin-bottom:24px">
+<div class="form-card form-card--wide">
 {% if errors %}<div class="error-banner">{% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
 <form method="post" action="/scheduling/absences"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div class="form-grid">
