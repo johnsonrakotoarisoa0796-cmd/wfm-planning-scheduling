@@ -101,6 +101,7 @@ def create_day(
     target_date: DateType = Form(...),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
+    timezone_name: str = Form("UTC"),
     daily_volume: float = Form(...),
     daily_aht_seconds: float = Form(...),
     service_level_target_pct: float = Form(...),
@@ -112,6 +113,7 @@ def create_day(
 ):
     submitted_values = {
         "target_date": target_date, "campaign_id": campaign_id, "skill_id": skill_id,
+        "timezone_name": timezone_name,
         "daily_volume": daily_volume, "daily_aht_seconds": daily_aht_seconds,
         "service_level_target_pct": service_level_target_pct,
         "answer_time_target_seconds": answer_time_target_seconds,
