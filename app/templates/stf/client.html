@@ -4,7 +4,7 @@
 <div class="page-header">
   <div>
     <h1>STF client intervalisé</h1>
-    <p class="page-header__meta">Importez le besoin déjà calculé par le client. Le STF client devient le besoin opérationnel de référence sur les intervalles importés.</p>
+    <p class="page-header__meta">Le client fournit uniquement le volume par intervalle. WFM calcule automatiquement le HC requis à partir des paramètres hebdomadaires AHT, occupancy, SLA et shrinkage.</p>
   </div>
 </div>
 
@@ -16,7 +16,7 @@
   <section class="form-card">
     <div class="panel-kicker">IMPORT HEBDOMADAIRE</div>
     <h2>Recevoir un STF client</h2>
-    <p class="field__hint">CSV UTF-8 ou Excel (.xlsx) avec les colonnes <code>date,interval_start,interval_end,required_hc</code>. Une ligne = un intervalle.</p>
+    <p class="field__hint">CSV UTF-8 ou Excel (.xlsx) avec les colonnes <code>date,interval_start,interval_end,volume</code>. Une ligne = un intervalle. Le HC requis n'est pas fourni par le client.</p>
     <form method="post" action="/stf-client/import" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="form-grid">
@@ -26,16 +26,16 @@
         </div>
         <div class="field">
           <label for="campaign_id">Campagne</label>
-          <select id="campaign_id" name="campaign_id" required>
+          <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
             <option value="" disabled selected>Choisir...</option>
             {% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
           <label for="skill_id">Skill</label>
-          <select id="skill_id" name="skill_id" required>
+          <select id="skill_id" name="skill_id" data-filtered-skill-select required>
             <option value="" disabled selected>Choisir...</option>
-            {% for s in skills %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            {% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
@@ -55,10 +55,10 @@
     </form>
     <div class="csv-example">
       <strong>CSV / Excel · exemple de colonnes</strong>
-      <pre>date,interval_start,interval_end,required_hc
-2026-09-21,07:00,07:30,18
-2026-09-21,07:30,08:00,20
-2026-09-21,08:00,08:30,22</pre>
+      <pre>date,interval_start,interval_end,volume
+2026-09-21,07:00,07:30,180
+2026-09-21,07:30,08:00,210
+2026-09-21,08:00,08:30,240</pre>
     </div>
   </section>
 
@@ -112,10 +112,10 @@
 <div class="section-title-row"><div><div class="panel-kicker">DÉTAIL INTERVALLES</div><h2>Besoin reçu</h2></div></div>
 <div class="data-table-wrapper">
 <table class="data-table">
-<thead><tr><th>Date</th><th>Intervalle</th><th class="numeric">STF client</th></tr></thead>
+<thead><tr><th>Date</th><th>Intervalle</th><th class="numeric">Volume</th><th class="numeric">AHT</th><th class="numeric">Occupancy</th><th class="numeric">HC requis calculé</th></tr></thead>
 <tbody>
 {% for row in rows[:200] %}
-<tr><td>{{ row.date }}</td><td>{{ row.start.strftime("%H:%M") }} → {{ row.end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.1f"|format(row.required_hc) }}</td></tr>
+<tr><td>{{ row.date }}</td><td>{{ row.start.strftime("%H:%M") }} → {{ row.end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.0f"|format(row.volume) if row.volume is not none else "—" }}</td><td class="numeric">{{ "%.0f"|format(row.aht_seconds) if row.aht_seconds is not none else "—" }}</td><td class="numeric">{{ "%.1f"|format(row.occupancy_pct) if row.occupancy_pct is not none else "—" }}{% if row.occupancy_pct is not none %}%{% endif %}</td><td class="numeric">{{ "%.1f"|format(row.required_hc) }}</td></tr>
 {% endfor %}
 </tbody>
 </table>

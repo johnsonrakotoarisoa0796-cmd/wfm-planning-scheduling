@@ -3,10 +3,10 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>{{ month_label }} {{ ltf.year }}</h1>
-        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+        <h1>{% if ltf.iso_year and ltf.iso_week %}Semaine {{ ltf.iso_week }} — {{ ltf.iso_year }}{% else %}{{ month_label }} {{ ltf.year }}{% endif %}</h1>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}{% if ltf.week_start_date %} · semaine du {{ ltf.week_start_date }}{% endif %}</p>
     </div>
-    <a href="/ltf" class="btn-secondary">&larr; Retour à la liste</a>
+    <a href="/ltf" class="btn-secondary">&larr; Retour à la liste</a>{% if ltf.iso_week and current_user.role.value in ["admin", "wfm_analyst"] %}<form method="post" action="/ltf/{{ ltf.id }}/disperse" class="form-actions-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-primary btn-small" type="submit">Disperser vers Daily</button></form>{% endif %}
 </div>
 
 <fieldset>

@@ -1,20 +1,22 @@
-"""Schémas Pydantic pour le module LTF Monthly."""
+"""Schémas Pydantic pour le forecast LTF.
 
+Le modèle courant est hebdomadaire. Les champs year/month restent acceptés
+pour compatibilité avec les forecasts mensuels historiques.
+"""
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class LTFCreateInput(BaseModel):
-    """Entrées d'un formulaire de création LTF, validées avant tout calcul.
+    # Nouveau mode hebdomadaire.
+    iso_year: Optional[int] = Field(default=None, ge=2000, le=2100)
+    iso_week: Optional[int] = Field(default=None, ge=1, le=53)
 
-    Toute règle de cohérence (bornes, sommes de pourcentages...) est
-    vérifiée ici plutôt que dans le router ou le service, pour des messages
-    d'erreur clairs et centralisés.
-    """
+    # Compatibilité historique mensuelle.
+    year: Optional[int] = Field(default=None, ge=2000, le=2100)
+    month: Optional[int] = Field(default=None, ge=1, le=12)
 
-    year: int = Field(ge=2000, le=2100)
-    month: int = Field(ge=1, le=12)
     campaign_id: int
     skill_id: int
 
@@ -31,10 +33,18 @@ class LTFCreateInput(BaseModel):
 
     notes: Optional[str] = None
 
-    @field_validator("outdoor_shrinkage_pct")
-    @classmethod
-    def _total_shrinkage_under_100(cls, v: float, info) -> float:
-        indoor = info.data.get("indoor_shrinkage_pct", 0.0)
-        if indoor + v >= 100:
+    @model_validator(mode="after")
+    def _validate_period(self):
+        has_week = self.iso_year is not None or self.iso_week is not None
+        has_month = self.year is not None or self.month is not None
+        if has_week:
+            if self.iso_year is None or self.iso_week is None:
+                raise ValueError("Le mode hebdomadaire exige iso_year et iso_week.")
+        elif has_month:
+            if self.year is None or self.month is None:
+                raise ValueError("Le mode mensuel exige year et month.")
+        else:
+            raise ValueError("Une période LTF est obligatoire.")
+        if self.indoor_shrinkage_pct + self.outdoor_shrinkage_pct >= 100:
             raise ValueError("La somme du shrinkage indoor + outdoor doit rester strictement inférieure à 100%.")
-        return v
+        return self

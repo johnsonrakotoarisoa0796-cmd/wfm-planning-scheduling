@@ -82,6 +82,9 @@ def client_stf_page(
                 "date": row.date,
                 "start": row.interval_start,
                 "end": row.interval_end,
+                "volume": row.volume,
+                "aht_seconds": row.aht_seconds,
+                "occupancy_pct": row.occupancy_pct,
                 "required_hc": row.required_hc,
             }
             for row in stf_rows

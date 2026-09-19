@@ -368,3 +368,4 @@ label {
     min-height: 42px;
   }
 }
+.checkbox-input{width:auto;min-width:0;inline-size:auto;}

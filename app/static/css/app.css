@@ -957,3 +957,15 @@ table.data-table {
   .data-table th,
   .data-table td { padding: 10px 11px; }
 }
+/* Decorative interval-strip heights: class-driven so layout never depends on inline styles. */
+.interval-strip__bar--h13{height:13%}.interval-strip__bar--h14{height:14%}.interval-strip__bar--h20{height:20%}
+.interval-strip__bar--h23{height:23%}.interval-strip__bar--h28{height:28%}.interval-strip__bar--h37{height:37%}
+.interval-strip__bar--h40{height:40%}.interval-strip__bar--h54{height:54%}.interval-strip__bar--h56{height:56%}
+.interval-strip__bar--h57{height:57%}.interval-strip__bar--h58{height:58%}.interval-strip__bar--h63{height:63%}
+.interval-strip__bar--h68{height:68%}.interval-strip__bar--h70{height:70%}.interval-strip__bar--h74{height:74%}
+.interval-strip__bar--h76{height:76%}.interval-strip__bar--h79{height:79%}.interval-strip__bar--h84{height:84%}
+.interval-strip__bar--h87{height:87%}.interval-strip__bar--h88{height:88%}.interval-strip__bar--h89{height:89%}
+.interval-strip__bar--h94{height:94%}
+
+.form-actions-inline{display:inline-flex;align-items:center;margin-left:.5rem}.form-actions-inline form{display:inline-flex}
+.table-input{width:7rem;min-width:0}.btn-small{padding:.45rem .75rem;font-size:.82rem}

@@ -41,4 +41,12 @@ class ClientSTFInterval(SQLModel, table=True):
     date: DateType = Field(index=True, nullable=False)
     interval_start: time = Field(nullable=False)
     interval_end: time = Field(nullable=False)
+    # STF client = volume + interval; le HC est calculé côté WFM. Les
+    # anciens imports avec required_hc seul restent lisibles.
+    volume: Optional[float] = Field(default=None, nullable=True)
+    aht_seconds: Optional[float] = Field(default=None, nullable=True)
+    occupancy_pct: Optional[float] = Field(default=None, nullable=True)
+    service_level_target_pct: Optional[float] = Field(default=None, nullable=True)
+    answer_time_target_seconds: Optional[float] = Field(default=None, nullable=True)
+    shrinkage_pct: Optional[float] = Field(default=None, nullable=True)
     required_hc: float = Field(default=0, nullable=False)

@@ -22,6 +22,43 @@
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le skill</button></div></form>
 {% else %}<p class="field__hint">Réservé aux rôles WFM autorisés.</p>{% endif %}</section></div>
+<section class="form-card">
+<div class="panel-kicker">PARAMÈTRES HEBDOMADAIRES</div>
+<h2>Hypothèses WFM par semaine</h2>
+<p class="field__hint">Ces paramètres alimentent le calcul automatique du HC requis du STF client : le client transmet uniquement volume + intervalle.</p>
+{% if can_edit %}
+<form method="post" action="/settings/weekly-parameters">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="form-grid">
+<div class="field"><label for="weekly_period">Semaine</label><input id="weekly_period" type="week" name="period" required></div>
+<div class="field"><label for="weekly_campaign_id">Campagne</label><select id="weekly_campaign_id" name="campaign_id" data-skill-filter="#weekly_skill_id" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="weekly_skill_id">Skill</label><select id="weekly_skill_id" name="skill_id" required><option value="">Choisir...</option>{% for s in skill_rows %}<option value="{{ s.skill.id }}" data-campaign-id="{{ s.skill.campaign_id }}">{{ s.skill.name }} · {{ s.campaign.name if s.campaign else "—" }}</option>{% endfor %}</select></div>
+<div class="field"><label for="aht_seconds">AHT / Handle Time (s)</label><input id="aht_seconds" type="number" name="aht_seconds" min="1" step="1" value="300" required></div>
+<div class="field"><label for="occupancy_pct">Occupancy cible (%)</label><input id="occupancy_pct" type="number" name="occupancy_pct" min="1" max="100" step="0.1" value="85" required></div>
+<div class="field"><label for="service_level_target_pct">Service Level (%)</label><input id="service_level_target_pct" type="number" name="service_level_target_pct" min="0" max="100" step="0.1" value="80" required></div>
+<div class="field"><label for="answer_time_target_seconds">ASA / Answer Time cible (s)</label><input id="answer_time_target_seconds" type="number" name="answer_time_target_seconds" min="0" step="1" value="20" required></div>
+<div class="field"><label for="shrinkage_pct">Shrinkage (%)</label><input id="shrinkage_pct" type="number" name="shrinkage_pct" min="0" max="99" step="0.1" value="0" required></div>
+<div class="field"><label for="interval_minutes">Intervalle (minutes)</label><input id="interval_minutes" type="number" name="interval_minutes" min="5" step="5" value="30" required></div>
+</div>
+<div class="field"><label for="weekly_notes">Notes</label><textarea id="weekly_notes" name="notes" rows="2" placeholder="Hypothèses AHT, évolution attendue, SLA contractuel..."></textarea></div>
+<div class="form-actions"><button class="btn-primary" type="submit">Enregistrer les paramètres</button></div>
+</form>
+{% endif %}
+</section>
+
+<section class="data-table-wrapper data-table-wrapper--spaced">
+<div class="section-title-row"><div><div class="panel-kicker">HISTORIQUE DES HYPOTHÈSES</div><h2>Paramètres actifs / récents</h2></div></div>
+<table class="data-table">
+<thead><tr><th>Semaine</th><th>Campagne</th><th>Skill</th><th class="numeric">AHT</th><th class="numeric">Occupancy</th><th class="numeric">SL</th><th class="numeric">Shrinkage</th></tr></thead>
+<tbody>
+{% for item in weekly_rows %}
+{% set row = item.row %}
+<tr><td>{{ row.iso_year }}-W{{ "%02d"|format(row.iso_week) }}</td><td>{{ item.campaign_name }}</td><td>{{ item.skill_name }}</td><td class="numeric">{{ "%.0f"|format(row.aht_seconds) }} s</td><td class="numeric">{{ "%.1f"|format(row.occupancy_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.service_level_target_pct) }}%</td><td class="numeric">{{ "%.1f"|format(row.shrinkage_pct) }}%</td></tr>
+{% else %}<tr><td colspan="7">Aucun paramètre hebdomadaire enregistré.</td></tr>{% endfor %}
+</tbody>
+</table>
+</section>
+
 <section class="data-table-wrapper data-table-wrapper--spaced"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
 {% for c in campaigns %}<tr><td><strong>{{ c.name }}</strong></td><td>{{ c.code }}</td><td>{{ c.description or "—" }}</td><td>{% if c.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4">Aucune campagne.</td></tr>{% endfor %}
 </tbody></table></section>

@@ -1,9 +1,9 @@
 {% extends "app_base.html" %}
-{% block title %}Nouveau forecast LTF — WFM Planning & Scheduling{% endblock %}
+{% block title %}Nouveau forecast LTF hebdomadaire — WFM Planning & Scheduling{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Nouveau forecast LTF</h1>
+        <h1>Nouveau forecast LTF hebdomadaire</h1>
         <p class="page-header__meta">Crée une nouvelle version — un forecast existant pour cette période n'est jamais écrasé.</p>
     </div>
 </div>
@@ -18,21 +18,13 @@
             <legend>Période &amp; périmètre</legend>
             <div class="form-grid">
                 <div class="field">
-                    <label for="year">Année</label>
-                    <input type="number" id="year" name="year" min="2000" max="2100" step="1" value="{{ values.year or '' }}" required>
-                </div>
-                <div class="field">
-                    <label for="month">Mois</label>
-                    <select id="month" name="month" required>
-                        <option value="" disabled {% if not values.month %}selected{% endif %}>Choisir...</option>
-                        {% for m in range(1, 13) %}
-                        <option value="{{ m }}" {% if values.month == m %}selected{% endif %}>{{ month_labels_fr[m] }}</option>
-                        {% endfor %}
-                    </select>
+                    <label for="period">Semaine ISO</label>
+                    <input type="week" id="period" name="period" value="{{ values.period or '' }}" required>
+                    <div class="field__hint">Le LTF alimente ensuite le STF, puis la dispersion quotidienne et intraday.</div>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
-                    <select id="campaign_id" name="campaign_id" required>
+                    <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
                         <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
                         {% for c in campaigns %}
                         <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -41,10 +33,10 @@
                 </div>
                 <div class="field">
                     <label for="skill_id">Skill</label>
-                    <select id="skill_id" name="skill_id" required>
+                    <select id="skill_id" name="skill_id" data-filtered-skill-select required>
                         <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
                         {% for s in skills %}
-                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        <option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
