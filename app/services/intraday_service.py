@@ -22,6 +22,7 @@ from sqlmodel import Session, select
 from app.models.intraday import IntervalForecast
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
 from app.services import kpi_service
+from app.services.workforce_service import seasonal_operating_window, validate_timezone_name
 from app.services.erlang_service import (
     apply_shrinkage,
     average_speed_of_answer_erlang_c,
@@ -54,6 +55,34 @@ def _default_profile_raw_weights() -> list[float]:
         night_floor = 0.03 if (hour < 7 or hour >= 21) else 0.0
         weights.append(morning_peak + afternoon_peak + night_floor)
     return weights
+
+
+def profile_for_operating_window(
+    target_date: DateType,
+    timezone_name: str,
+    profile_pct: list[float] | None = None,
+) -> list[float]:
+    """Masque les tranches hors fenêtre opérationnelle puis renormalise à 100%."""
+    validate_timezone_name(timezone_name)
+    profile = list(profile_pct or default_intraday_profile_pct())
+    if len(profile) != SLOTS_PER_DAY:
+        raise ValueError(f"Le profil doit contenir {SLOTS_PER_DAY} tranches.")
+    window = seasonal_operating_window(target_date, timezone_name)
+    masked = []
+    for slot_index, pct in enumerate(profile):
+        start, _ = slot_bounds(slot_index)
+        inside = (
+            window.start_local <= window.end_local
+            and window.start_local <= start < window.end_local
+        ) or (
+            window.start_local > window.end_local
+            and (start >= window.start_local or start < window.end_local)
+        )
+        masked.append(pct if inside else 0.0)
+    total = sum(masked)
+    if total <= 0:
+        raise ValueError("La fenêtre opérationnelle ne recouvre aucun intervalle.")
+    return [pct / total * 100 for pct in masked]
 
 
 def default_intraday_profile_pct() -> list[float]:
@@ -110,7 +139,7 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
             "— supprimez-les avant de régénérer."
         )
 
-    profile_pct = default_intraday_profile_pct()
+    profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
     created: list[IntervalForecast] = []
 
     for slot_index, pct in enumerate(profile_pct):
