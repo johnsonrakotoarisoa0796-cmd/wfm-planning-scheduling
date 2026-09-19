@@ -161,7 +161,13 @@ def bootstrap_demo_data_if_configured(*, db_engine=None) -> None:
         session.commit()
         session.refresh(campaign)
 
-        skill = Skill(campaign_id=campaign.id, name="Voix Niveau 1", channel=Channel.VOICE)
+        france = session.exec(select(Market).where(Market.code == "FR")).first()
+        skill = Skill(
+            campaign_id=campaign.id,
+            market_id=france.id if france is not None else None,
+            name="Voix Niveau 1",
+            channel=Channel.VOICE,
+        )
         session.add(skill)
         session.commit()
         session.refresh(skill)
