@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h1>{{ target_date }}</h1>
-        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
+        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }} · <strong>{{ channel_name }}</strong> · {{ "%.0f"|format(channel_concurrency) }} simultanéité{% if client_stf_active %} · <strong>STF client actif</strong>{% endif %}</p>
     </div>
     <a href="/daily" class="btn-secondary">&larr; Retour à la liste</a>
 </div>
@@ -61,6 +61,6 @@
             </tbody>
         </table>
     </div>
-    <p class="field__hint">SL/ASA/Occupancy "actuals" sont des estimations Erlang C à partir du volume/AHT/HC réels saisis — la V1 n'a pas d'intégration ACD pour mesurer ces valeurs directement.</p>
+    <p class="field__hint">{% if channel_name == "Phone" %}SL/ASA/Occupancy utilisent Erlang C pour Phone.{% else %}Pour {{ channel_name }}, le staffing et l’Occupancy tiennent compte de la simultanéité ; SL/ASA Erlang C ne s’appliquent pas à ce canal asynchrone.{% endif %} {% if client_stf_active %}Le Required HC affiché suit le STF client sur les intervalles importés.{% endif %}</p>
 </fieldset>
 {% endblock %}
