@@ -243,10 +243,18 @@ def planner_view(
             session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
         )
         shifts = scheduling_service.list_shifts(session, active_only=True)
+        existing_entries = scheduling_service.list_schedule_entries(
+            session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
+        )
+        assigned_employee_ids = {entry.employee_id for entry in existing_entries}
         available_employee_count = sum(
             1
             for employee in employees
-            if employee.status.value == "active" and employee.campaign_id == campaign_id
+            if (
+                employee.status.value == "active"
+                and employee.campaign_id == campaign_id
+                and employee.id not in assigned_employee_ids
+            )
         )
         recommendations = planner_service.recommend_shift_mix(
             intervals, shifts, max_agents=available_employee_count
@@ -260,6 +268,7 @@ def planner_view(
             "campaigns": campaigns,
             "skills": skills,
             "employees": employees,
+            "available_employee_count": available_employee_count if campaign_id is not None and skill_id is not None else 0,
             "filters": {
                 "target_date": target_date,
                 "campaign_id": campaign_id,
