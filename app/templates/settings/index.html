@@ -59,8 +59,8 @@
 </table>
 </section>
 
-<section class="data-table-wrapper data-table-wrapper--spaced"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th></tr></thead><tbody>
-{% for c in campaigns %}<tr><td><strong>{{ c.name }}</strong></td><td>{{ c.code }}</td><td>{{ c.description or "—" }}</td><td>{% if c.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4">Aucune campagne.</td></tr>{% endfor %}
+<section class="data-table-wrapper data-table-wrapper--spaced"><table class="data-table"><thead><tr><th>Campagne</th><th>Code</th><th>Description</th><th>Statut</th><th>Workforce</th></tr></thead><tbody>
+{% for c in campaigns %}<tr><td><strong>{{ c.name }}</strong></td><td>{{ c.code }}</td><td>{{ c.description or "—" }}</td><td>{% if c.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td><td><a class="btn-secondary btn-small" href="/campaigns/{{ c.id }}/workforce">⚙ Workforce</a></td></tr>{% else %}<tr><td colspan="5">Aucune campagne.</td></tr>{% endfor %}
 </tbody></table></section>
 <section class="data-table-wrapper"><table class="data-table"><thead><tr><th>Campagne</th><th>Skill</th><th>Canal</th><th>Marché</th><th>Statut</th></tr></thead><tbody>
 {% for row in skill_rows %}<tr><td>{{ row.campaign.name if row.campaign else "—" }}</td><td><strong>{{ row.skill.name }}</strong></td><td>{{ row.channel_label }}</td><td>{{ (row.market.code ~ " · " ~ row.market.name) if row.market else "—" }}</td><td>{% if row.skill.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="5">Aucun skill. Créez-en un pour alimenter le Dashboard et le Planner.</td></tr>{% endfor %}
