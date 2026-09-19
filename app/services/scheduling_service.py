@@ -198,9 +198,18 @@ def shift_hours_summary(session: Session, *, employee_id: int, shift_id: int):
 
 def create_absence(session: Session, data) -> EmployeeAbsence:
     workforce_service.validate_absence_type(data.absence_type)
-    employee = session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, data.employee_id)
+    employee = session.get(Employee, data.employee_id)
     if employee is None:
         raise ValueError("Employé introuvable.")
+    overlap = session.exec(
+        select(EmployeeAbsence).where(
+            EmployeeAbsence.employee_id == data.employee_id,
+            EmployeeAbsence.start_date <= data.end_date,
+            EmployeeAbsence.end_date >= data.start_date,
+        )
+    ).first()
+    if overlap is not None:
+        raise ValueError("Une absence existe déjà sur une partie de cette période.")
     absence = EmployeeAbsence(
         employee_id=data.employee_id,
         start_date=data.start_date,
