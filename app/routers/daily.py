@@ -19,6 +19,7 @@ from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
 from app.models.enums import UserRole
+from app.models.market import Market
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
@@ -101,7 +102,7 @@ def create_day(
     target_date: DateType = Form(...),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
-    timezone_name: str = Form("UTC"),
+    timezone_name: str = Form(""),
     daily_volume: float = Form(...),
     daily_aht_seconds: float = Form(...),
     service_level_target_pct: float = Form(...),
@@ -111,9 +112,18 @@ def create_day(
     current_user: User = Depends(require_role(*GENERATE_ROLES)),
     session: Session = Depends(get_session),
 ):
+    effective_timezone = timezone_name.strip()
+    if not effective_timezone:
+        skill = session.get(Skill, skill_id)
+        if skill is not None and skill.market_id is not None:
+            market = session.get(Market, skill.market_id)
+            effective_timezone = market.timezone_name if market is not None else "UTC"
+        else:
+            effective_timezone = "UTC"
+
     submitted_values = {
         "target_date": target_date, "campaign_id": campaign_id, "skill_id": skill_id,
-        "timezone_name": timezone_name,
+        "timezone_name": effective_timezone,
         "daily_volume": daily_volume, "daily_aht_seconds": daily_aht_seconds,
         "service_level_target_pct": service_level_target_pct,
         "answer_time_target_seconds": answer_time_target_seconds,
