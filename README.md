@@ -376,3 +376,16 @@ Les KPI de staffing sont alors recalculés sur le besoin client : **Required HC-
 Le STF client ne contient pas nécessairement le volume/AHT : dans ce cas, il ne remplace pas les données de trafic utilisées pour Erlang C. Les KPI **Service Level, ASA et Occupancy** continuent de dépendre du volume/AHT/actuals disponibles. Ainsi, on évite de fabriquer un SL/ASA à partir du seul STF.
 
 Le Planner, le Dashboard, Daily, l'impact des pauses et Overtime consomment tous ce besoin effectif. Le fichier client devient donc une vraie source de staffing, pas seulement une pièce jointe ou une valeur d'affichage.
+
+
+## Canaux et marchés
+
+Le moteur supporte trois canaux opérationnels principaux :
+
+- **Phone** : simultanéité 1 conversation par agent ; dimensionnement Erlang C pour SL/ASA/Occupancy.
+- **Email** : jusqu'à **3 emails simultanés** par agent ; dimensionnement par charge de travail / simultanéité / occupancy.
+- **Message Us** : jusqu'à **2 conversations simultanées** par agent ; même logique asynchrone.
+
+Les marchés sont séparés des campagnes et des skills : **FR, UK, DE, IN, ES, JP, NL** sont préconfigurés, avec code, langue et fuseau IANA. Un skill peut être rattaché à un marché, ce qui permet de conserver plusieurs marchés dans une même campagne sans mélanger leurs horaires ou KPI.
+
+Pour les canaux asynchrones, le système ne transforme pas artificiellement le staffing en Erlang C : le calcul repose sur la charge `Volume × AHT`, divisée par la simultanéité autorisée, puis contrainte par l'occupancy cible. Le SL/ASA de type Erlang reste réservé au Phone tant qu'un modèle SLA spécifique de file/message n'est pas alimenté.
