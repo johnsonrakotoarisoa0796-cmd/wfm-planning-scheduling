@@ -32,5 +32,8 @@ class IntervalUpdateInput(BaseModel):
     scheduled_hc: Optional[float] = Field(default=None, ge=0)
     actual_volume: Optional[float] = Field(default=None, ge=0)
     actual_aht_seconds: Optional[float] = Field(default=None, gt=0)
+    actual_talk_time_seconds: Optional[float] = Field(default=None, ge=0)
+    actual_hold_time_seconds: Optional[float] = Field(default=None, ge=0)
+    actual_acw_seconds: Optional[float] = Field(default=None, ge=0)
     actual_hc: Optional[float] = Field(default=None, ge=0)
     abandoned_contacts: Optional[float] = Field(default=None, ge=0)

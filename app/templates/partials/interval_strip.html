@@ -5,7 +5,7 @@
 {% set peak_indices = [7, 15] %}
 <div class="interval-strip" role="img" aria-label="Illustration d'une courbe de volume d'appels sur une journee">
     {% for h in heights %}
-    <div class="interval-strip__bar{% if loop.index0 in peak_indices %} interval-strip__bar--peak{% endif %}" style="height: {{ h }}%;"></div>
+    <div class="interval-strip__bar interval-strip__bar--h{{ h }}{% if loop.index0 in peak_indices %} interval-strip__bar--peak{% endif %}"></div>
     {% endfor %}
 </div>
 <div class="interval-strip__caption">

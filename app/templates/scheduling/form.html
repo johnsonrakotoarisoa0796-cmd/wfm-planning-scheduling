@@ -36,7 +36,7 @@
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
-                    <select id="campaign_id" name="campaign_id" required>
+                    <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
                         <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
                         {% for c in campaigns %}
                         <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -45,10 +45,10 @@
                 </div>
                 <div class="field">
                     <label for="skill_id">Skill</label>
-                    <select id="skill_id" name="skill_id" required>
+                    <select id="skill_id" name="skill_id" data-filtered-skill-select required>
                         <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
                         {% for s in skills %}
-                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                        <option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -59,7 +59,7 @@
             <legend>Jour de repos ?</legend>
             <div class="field">
                 <label class="checkbox-label">
-                    <input type="checkbox" name="is_day_off" value="true" style="width:auto;">
+                    <input type="checkbox" name="is_day_off" value="true" class="checkbox-input">
                     Jour de repos (ignore le shift et les pauses ci-dessous)
                 </label>
             </div>

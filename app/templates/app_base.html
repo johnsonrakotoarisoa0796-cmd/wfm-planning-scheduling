@@ -14,7 +14,7 @@
         <div class="sidebar__section-label">Pilotage</div>
         <nav class="sidebar__nav" aria-label="Navigation principale">
             <a class="sidebar__link{% if active_nav == 'dashboard' %} sidebar__link--active{% endif %}" href="/dashboard"{% if active_nav == 'dashboard' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌂</span><span>Dashboard</span></a>
-            <a class="sidebar__link{% if active_nav == 'ltf' %} sidebar__link--active{% endif %}" href="/ltf"{% if active_nav == 'ltf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◷</span><span>LTF Monthly</span></a>
+            <a class="sidebar__link{% if active_nav == 'ltf' %} sidebar__link--active{% endif %}" href="/ltf"{% if active_nav == 'ltf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◷</span><span>LTF Weekly</span></a>
             <a class="sidebar__link{% if active_nav == 'stf' %} sidebar__link--active{% endif %}" href="/stf"{% if active_nav == 'stf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">↗</span><span>STF Weekly</span></a>
             <a class="sidebar__link{% if active_nav == 'stf-client' %} sidebar__link--active{% endif %}" href="/stf-client"{% if active_nav == 'stf-client' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⇢</span><span>STF Client</span></a>
             <a class="sidebar__link{% if active_nav == 'daily' %} sidebar__link--active{% endif %}" href="/daily"{% if active_nav == 'daily' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◫</span><span>Daily / Intraday</span></a>
@@ -22,6 +22,7 @@
 
         <div class="sidebar__section-label">Ressources</div>
         <nav class="sidebar__nav" aria-label="Ressources">
+            <a class="sidebar__link{% if active_nav == 'recruitment' %} sidebar__link--active{% endif %}" href="/recruitment"{% if active_nav == 'recruitment' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">♙</span><span>Recrutement &amp; Ramp-up</span></a>
             <a class="sidebar__link{% if active_nav == 'capacity' %} sidebar__link--active{% endif %}" href="/capacity"{% if active_nav == 'capacity' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◎</span><span>Capacity Planning</span></a>
             <a class="sidebar__link{% if active_nav == 'shrinkage' %} sidebar__link--active{% endif %}" href="/shrinkage"{% if active_nav == 'shrinkage' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◒</span><span>Shrinkage</span></a>
             <a class="sidebar__link{% if active_nav == 'overtime' %} sidebar__link--active{% endif %}" href="/overtime"{% if active_nav == 'overtime' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⏱</span><span>Overtime</span></a>

@@ -119,26 +119,26 @@ def slot_bounds(slot_index: int) -> tuple[time, time]:
 # Génération (Erlang C par intervalle)
 # ============================================================================
 
-def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) -> list[IntervalForecast]:
-    """Génère les 48 IntervalForecast d'une journée à partir d'un volume
-    total et du profil de distribution par défaut.
-
-    Échoue si des intervalles existent déjà pour cette date/campagne/skill
-    — pas d'écrasement silencieux ; il faut les supprimer explicitement
-    avant de régénérer.
-    """
-    existing = session.exec(
-        select(IntervalForecast).where(
-            IntervalForecast.date == data.target_date,
-            IntervalForecast.campaign_id == data.campaign_id,
-            IntervalForecast.skill_id == data.skill_id,
-        )
-    ).first()
-    if existing is not None:
-        raise ValueError(
-            f"Des intervalles existent déjà pour le {data.target_date} sur cette campagne/skill "
-            "— supprimez-les avant de régénérer."
-        )
+def build_intraday_forecast_rows(
+    session: Session,
+    data: GenerateIntradayInput,
+    *,
+    check_existing: bool = True,
+) -> list[IntervalForecast]:
+    """Construit les intervalles sans persister ; réutilisable par Daily et Weekly."""
+    if check_existing:
+        existing = session.exec(
+            select(IntervalForecast).where(
+                IntervalForecast.date == data.target_date,
+                IntervalForecast.campaign_id == data.campaign_id,
+                IntervalForecast.skill_id == data.skill_id,
+            )
+        ).first()
+        if existing is not None:
+            raise ValueError(
+                f"Des intervalles existent déjà pour le {data.target_date} sur cette campagne/skill "
+                "— supprimez-les avant de régénérer."
+            )
 
     profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
     skill = session.get(Skill, data.skill_id)
@@ -169,25 +169,34 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
                 occupancy_target_pct=data.occupancy_target_pct,
                 channel=channel,
             )
+
         gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
-
-        interval = IntervalForecast(
-            date=data.target_date,
-            interval_start=interval_start,
-            interval_end=interval_end,
-            campaign_id=data.campaign_id,
-            skill_id=data.skill_id,
-            channel=channel,
-            forecast_volume=interval_volume,
-            forecast_aht_seconds=data.daily_aht_seconds,
-            required_hc=gross_required_hc,
-            scheduled_hc=0.0,
-            service_level_target_pct=data.service_level_target_pct,
-            answer_time_target_seconds=data.answer_time_target_seconds,
+        created.append(
+            IntervalForecast(
+                date=data.target_date,
+                interval_start=interval_start,
+                interval_end=interval_end,
+                campaign_id=data.campaign_id,
+                skill_id=data.skill_id,
+                channel=channel,
+                forecast_volume=interval_volume,
+                forecast_aht_seconds=data.daily_aht_seconds,
+                required_hc=gross_required_hc,
+                scheduled_hc=0.0,
+                service_level_target_pct=data.service_level_target_pct,
+                answer_time_target_seconds=data.answer_time_target_seconds,
+            )
         )
-        session.add(interval)
-        created.append(interval)
+    return created
 
+
+def generate_intraday_forecast(
+    session: Session,
+    data: GenerateIntradayInput,
+) -> list[IntervalForecast]:
+    """Génère et persiste les intervalles d'une journée."""
+    created = build_intraday_forecast_rows(session, data, check_existing=True)
+    session.add_all(created)
     session.commit()
     for interval in created:
         session.refresh(interval)
@@ -219,6 +228,28 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
         interval.actual_volume = data.actual_volume
     if data.actual_aht_seconds is not None:
         interval.actual_aht_seconds = data.actual_aht_seconds
+    if data.actual_talk_time_seconds is not None:
+        interval.actual_talk_time_seconds = data.actual_talk_time_seconds
+    if data.actual_hold_time_seconds is not None:
+        interval.actual_hold_time_seconds = data.actual_hold_time_seconds
+    if data.actual_acw_seconds is not None:
+        interval.actual_acw_seconds = data.actual_acw_seconds
+
+    handle_components = (
+        data.actual_talk_time_seconds,
+        data.actual_hold_time_seconds,
+        data.actual_acw_seconds,
+    )
+    if any(value is not None for value in handle_components):
+        if any(value is None for value in handle_components):
+            raise ValueError("Talk Time, Hold Time et ACW doivent être renseignés ensemble.")
+        interval.actual_aht_seconds = kpi_service.handle_time_seconds(
+            data.actual_talk_time_seconds,
+            data.actual_hold_time_seconds,
+            data.actual_acw_seconds,
+        )
+        if interval.actual_aht_seconds <= 0:
+            raise ValueError("Handle Time calculé doit être strictement positif.")
     if data.actual_hc is not None:
         interval.actual_hc = data.actual_hc
 
@@ -325,6 +356,7 @@ class DailySummary:
     peak_scheduled_hc: float
     peak_actual_hc: Optional[float]
     avg_service_level_pct: Optional[float]
+    avg_actual_aht_seconds: Optional[float]
 
 
 def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
@@ -333,6 +365,18 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
     peak_required_hc = max((i.required_hc for i in intervals), default=0.0)
     peak_scheduled_hc = max((i.scheduled_hc for i in intervals), default=0.0)
     actual_hcs = [i.actual_hc for i in intervals if i.actual_hc is not None]
+    aht_points = [
+        (i.actual_aht_seconds, i.actual_volume)
+        for i in intervals
+        if i.actual_aht_seconds is not None and i.actual_volume is not None
+    ]
+    avg_actual_aht_seconds = (
+        kpi_service.weighted_average(
+            [aht for aht, _ in aht_points],
+            [volume for _, volume in aht_points],
+        )
+        if aht_points else None
+    )
     service_level_points = [
         (i.service_level_pct, i.actual_volume or i.forecast_volume)
         for i in intervals
@@ -353,6 +397,7 @@ def compute_daily_summary(intervals: list[IntervalForecast]) -> DailySummary:
         peak_scheduled_hc=peak_scheduled_hc,
         peak_actual_hc=max(actual_hcs) if actual_hcs else None,
         avg_service_level_pct=avg_service_level_pct,
+        avg_actual_aht_seconds=avg_actual_aht_seconds,
     )
 
 

@@ -6,7 +6,7 @@
         <h1>Semaine {{ stf.iso_week }} — {{ stf.iso_year }}</h1>
         <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }} · débute le {{ stf.week_start_date }}</p>
     </div>
-    <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>
+    <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>{% if current_user.role.value in ["admin", "wfm_analyst"] %}<form method="post" action="/stf/{{ stf.id }}/disperse" class="form-actions-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-primary btn-small" type="submit">Disperser vers Daily</button></form>{% endif %}
 </div>
 
 {% if comparison %}
@@ -38,7 +38,7 @@
     </div>
     <p class="field__hint">
         Adjustment = STF − LTF · Adjustment % = (STF − LTF) / LTF × 100 (§8).
-        LTF de référence : <a href="/ltf/{{ parent_ltf.id }}">{{ parent_ltf.year }}-{{ '%02d'|format(parent_ltf.month) }}</a>
+        LTF de référence : <a href="/ltf/{{ parent_ltf.id }}">{% if parent_ltf.iso_year and parent_ltf.iso_week %}{{ parent_ltf.iso_year }}-W{{ "%02d"|format(parent_ltf.iso_week) }}{% else %}{{ parent_ltf.year }}-{{ "%02d"|format(parent_ltf.month) }}{% endif %}</a>
     </p>
 </fieldset>
 {% else %}

@@ -12,6 +12,8 @@ from app.models.enums import Channel, UserRole
 from app.models.market import Market
 from app.models.skill import Skill
 from app.models.user import User
+from app.models.weekly_parameters import WeeklyWFMParameter
+from app.services.weekly_parameter_service import upsert_weekly_parameters
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST)
@@ -49,6 +51,26 @@ def settings_page(
     session: Session = Depends(get_session),
 ):
     campaigns, markets, rows = _page_data(session)
+    weekly_rows_raw = list(
+        session.exec(
+            select(WeeklyWFMParameter).order_by(
+                WeeklyWFMParameter.iso_year.desc(),
+                WeeklyWFMParameter.iso_week.desc(),
+                WeeklyWFMParameter.campaign_id,
+                WeeklyWFMParameter.skill_id,
+            )
+        ).all()
+    )
+    campaigns_by_id = {c.id: c for c in campaigns}
+    skills_by_id = {row["skill"].id: row["skill"] for row in rows}
+    weekly_rows = [
+        {
+            "row": row,
+            "campaign_name": campaigns_by_id.get(row.campaign_id).name if row.campaign_id in campaigns_by_id else "—",
+            "skill_name": skills_by_id.get(row.skill_id).name if row.skill_id in skills_by_id else "—",
+        }
+        for row in weekly_rows_raw
+    ]
     return templates.TemplateResponse(
         request,
         "settings/index.html",
@@ -60,9 +82,53 @@ def settings_page(
             "skill_rows": rows,
             "channel_labels": CHANNEL_LABELS,
             "can_edit": current_user.role in WRITE_ROLES,
+            "weekly_rows": weekly_rows,
         },
     )
 
+
+
+@router.post("/weekly-parameters", dependencies=[Depends(verify_csrf)])
+def save_weekly_parameters(
+    period: str = Form(...),
+    campaign_id: int = Form(...),
+    skill_id: int = Form(...),
+    aht_seconds: float = Form(...),
+    occupancy_pct: float = Form(...),
+    service_level_target_pct: float = Form(...),
+    answer_time_target_seconds: float = Form(...),
+    shrinkage_pct: float = Form(...),
+    interval_minutes: int = Form(30),
+    notes: str = Form(""),
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    try:
+        if "-W" not in period:
+            raise ValueError("La semaine doit être au format YYYY-Www.")
+        year_text, week_text = period.split("-W", 1)
+        iso_year, iso_week = int(year_text), int(week_text)
+        campaign = session.get(Campaign, campaign_id)
+        skill = session.get(Skill, skill_id)
+        if campaign is None or skill is None or skill.campaign_id != campaign_id:
+            raise ValueError("Le skill doit appartenir à la campagne sélectionnée.")
+        upsert_weekly_parameters(
+            session,
+            iso_year=iso_year,
+            iso_week=iso_week,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+            aht_seconds=aht_seconds,
+            occupancy_pct=occupancy_pct,
+            service_level_target_pct=service_level_target_pct,
+            answer_time_target_seconds=answer_time_target_seconds,
+            shrinkage_pct=shrinkage_pct,
+            interval_minutes=interval_minutes,
+            notes=notes,
+        )
+    except ValueError as exc:
+        return RedirectResponse(f"/settings?error={str(exc).replace(' ', '+')}", status_code=303)
+    return RedirectResponse("/settings", status_code=303)
 
 @router.post("/campaigns", dependencies=[Depends(verify_csrf)])
 def create_campaign(

@@ -45,6 +45,11 @@ class LTFForecast(SQLModel, table=True):
     forecast_version_id: int = Field(foreign_key="forecast_versions.id", index=True, nullable=False)
     year: int = Field(index=True, nullable=False)
     month: int = Field(index=True, nullable=False)
+    # Période hebdomadaire utilisée par le nouveau LTF. Les colonnes
+    # year/month restent pour l'historique mensuel existant.
+    iso_year: Optional[int] = Field(default=None, index=True)
+    iso_week: Optional[int] = Field(default=None, index=True)
+    week_start_date: Optional[date] = Field(default=None, index=True)
     campaign_id: int = Field(foreign_key="campaigns.id", index=True, nullable=False)
     skill_id: int = Field(foreign_key="skills.id", index=True, nullable=False)
 

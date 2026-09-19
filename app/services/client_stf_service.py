@@ -1,4 +1,4 @@
-"""Import, validation et calculs du STF client par intervalle."""
+"""Import du STF client : le client fournit volume + intervalle ; WFM calcule le HC requis."""
 from __future__ import annotations
 
 import csv
@@ -13,11 +13,14 @@ from uuid import uuid4
 from openpyxl import load_workbook
 from sqlmodel import Session, select
 
+from app.models.campaign import Campaign
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.intraday import IntervalForecast
-from app.services import kpi_service
+from app.models.skill import Skill
+from app.services import channel_service, kpi_service
+from app.services.erlang_service import apply_shrinkage, find_required_agents
+from app.services.weekly_parameter_service import get_weekly_parameters
 
-INTERVAL_HOURS = 0.5
 
 
 @dataclass(frozen=True)
@@ -25,7 +28,10 @@ class ClientSTFRow:
     date: date
     interval_start: time
     interval_end: time
-    required_hc: float
+    # Legacy position remains the fourth positional argument.
+    required_hc: float | None = None
+    # New contract: client supplies volume; WFM calculates required HC.
+    volume: float | None = None
 
 
 @dataclass(frozen=True)
@@ -78,13 +84,19 @@ def _parse_time(value: str) -> time:
 
 
 def parse_csv(content: str) -> list[ClientSTFRow]:
-    """CSV attendu: date,interval_start,interval_end,required_hc."""
+    """CSV: date,interval_start,interval_end,volume.
+
+    required_hc est accepté uniquement pour compatibilité avec les anciens
+    fichiers ; il n'est plus demandé au client.
+    """
     reader = csv.DictReader(io.StringIO(content))
-    required_headers = {"date", "interval_start", "interval_end", "required_hc"}
-    headers = {h.strip() for h in (reader.fieldnames or [])}
+    headers = {h.strip().lower() for h in (reader.fieldnames or [])}
+    required_headers = {"date", "interval_start", "interval_end"}
     missing = required_headers - headers
     if missing:
         raise ValueError("Colonnes manquantes: " + ", ".join(sorted(missing)))
+    if "volume" not in headers and "required_hc" not in headers:
+        raise ValueError("Colonne manquante: volume (le HC requis est calculé par WFM).")
 
     rows: list[ClientSTFRow] = []
     seen: set[tuple[date, time]] = set()
@@ -92,14 +104,22 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
         if not any((value or "").strip() for value in raw.values()):
             continue
         try:
-            day = date.fromisoformat(raw["date"].strip())
-            start = _parse_time(raw["interval_start"])
-            end = _parse_time(raw["interval_end"])
-            hc = float(raw["required_hc"])
+            normalized = {str(k).strip().lower(): v for k, v in raw.items()}
+            day = date.fromisoformat(str(normalized["date"]).strip())
+            start = _parse_time(str(normalized["interval_start"]))
+            end = _parse_time(str(normalized["interval_end"]))
+            raw_volume = str(normalized.get("volume", "") or "")
+            raw_hc = str(normalized.get("required_hc", "") or "")
+            volume = float(raw_volume) if raw_volume.strip() else None
+            required_hc = float(raw_hc) if raw_hc.strip() else None
         except (AttributeError, TypeError, ValueError) as exc:
             raise ValueError(f"Ligne {line_number} invalide: {exc}") from exc
-        if hc < 0:
+        if volume is not None and volume < 0:
+            raise ValueError(f"Ligne {line_number}: volume doit être >= 0.")
+        if required_hc is not None and required_hc < 0:
             raise ValueError(f"Ligne {line_number}: required_hc doit être >= 0.")
+        if volume is None and required_hc is None:
+            raise ValueError(f"Ligne {line_number}: volume obligatoire.")
         if start == end:
             raise ValueError(f"Ligne {line_number}: intervalle vide.")
         if (day, start) in seen:
@@ -107,12 +127,11 @@ def parse_csv(content: str) -> list[ClientSTFRow]:
                 f"Ligne {line_number}: intervalle dupliqué pour {day} à {start:%H:%M}."
             )
         seen.add((day, start))
-        rows.append(ClientSTFRow(day, start, end, hc))
+        rows.append(ClientSTFRow(day, start, end, required_hc, volume))
 
     if not rows:
         raise ValueError("Le fichier STF client est vide.")
     return sorted(rows, key=lambda row: (row.date, row.interval_start))
-
 
 
 def _row_to_stf(
@@ -122,6 +141,7 @@ def _row_to_stf(
     date_key: str = "date",
     start_key: str = "interval_start",
     end_key: str = "interval_end",
+    volume_key: str = "volume",
     hc_key: str = "required_hc",
 ) -> ClientSTFRow:
     try:
@@ -136,15 +156,21 @@ def _row_to_stf(
         raw_end = raw[end_key]
         start = raw_start if isinstance(raw_start, time) else _parse_time(str(raw_start))
         end = raw_end if isinstance(raw_end, time) else _parse_time(str(raw_end))
-        hc = float(raw[hc_key])
+        raw_volume = raw.get(volume_key)
+        raw_hc = raw.get(hc_key)
+        volume = float(raw_volume) if raw_volume not in (None, "") else None
+        hc = float(raw_hc) if raw_hc not in (None, "") else None
     except (AttributeError, TypeError, ValueError, KeyError) as exc:
         raise ValueError(f"Ligne {line_number} invalide: {exc}") from exc
-    if hc < 0:
+    if volume is not None and volume < 0:
+        raise ValueError(f"Ligne {line_number}: volume doit être >= 0.")
+    if hc is not None and hc < 0:
         raise ValueError(f"Ligne {line_number}: required_hc doit être >= 0.")
+    if volume is None and hc is None:
+        raise ValueError(f"Ligne {line_number}: volume obligatoire.")
     if start == end:
         raise ValueError(f"Ligne {line_number}: intervalle vide.")
-    return ClientSTFRow(day, start, end, hc)
-
+    return ClientSTFRow(day, start, end, hc, volume)
 
 def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
     """Lit un classeur Excel: première feuille, première ligne = en-têtes."""
@@ -165,6 +191,7 @@ def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
         "date": ("date", "day"),
         "interval_start": ("interval_start", "start", "heure_debut"),
         "interval_end": ("interval_end", "end", "heure_fin"),
+        "volume": ("volume", "contacts", "offered", "forecast_volume"),
         "required_hc": ("required_hc", "stf", "required", "hc_requis"),
     }
     indexes: dict[str, int] = {}
@@ -173,10 +200,10 @@ def parse_xlsx(content: bytes) -> list[ClientSTFRow]:
             if candidate in header_map:
                 indexes[target] = header_map[candidate]
                 break
-        if target not in indexes:
+        if target not in indexes and target != "required_hc":
             raise ValueError(
                 f"Colonne Excel manquante pour {target}. "
-                "Attendues: date, interval_start, interval_end, required_hc."
+                "Attendues: date, interval_start, interval_end, volume."
             )
 
     parsed: list[ClientSTFRow] = []
@@ -233,49 +260,109 @@ def create_plan(
                 f"Intervalle dupliqué: {row.date} {row.interval_start:%H:%M}."
             )
         seen.add(key)
-        if row.required_hc < 0:
-            raise ValueError("required_hc doit être >= 0.")
+        if row.volume is not None and row.volume < 0:
+            raise ValueError("volume doit être >= 0.")
+        if row.volume is None and (row.required_hc is None or row.required_hc < 0):
+            raise ValueError("volume obligatoire.")
 
-    batch_id = uuid4().hex
-    current = session.exec(
-        select(ClientSTFPlan).where(
-            ClientSTFPlan.week_start_date == week_start_date,
-            ClientSTFPlan.campaign_id == campaign_id,
-            ClientSTFPlan.skill_id == skill_id,
-            ClientSTFPlan.is_current == True,  # noqa: E712
-        )
-    ).all()
-    for plan in current:
-        plan.is_current = False
-        session.add(plan)
+    try:
+            batch_id = uuid4().hex
+            current = session.exec(
+                select(ClientSTFPlan).where(
+                    ClientSTFPlan.week_start_date == week_start_date,
+                    ClientSTFPlan.campaign_id == campaign_id,
+                    ClientSTFPlan.skill_id == skill_id,
+                    ClientSTFPlan.is_current == True,  # noqa: E712
+                )
+            ).all()
+            for plan in current:
+                plan.is_current = False
+                session.add(plan)
 
-    plan = ClientSTFPlan(
-        week_start_date=week_start_date,
-        campaign_id=campaign_id,
-        skill_id=skill_id,
-        label=label or "STF client",
-        notes=notes,
-        created_by=created_by_user_id,
-        import_batch_id=batch_id,
-        is_current=True,
-    )
-    session.add(plan)
-    session.flush()
-
-    for row in materialized:
-        session.add(
-            ClientSTFInterval(
-                plan_id=plan.id,
-                date=row.date,
-                interval_start=row.interval_start,
-                interval_end=row.interval_end,
-                required_hc=row.required_hc,
+            plan = ClientSTFPlan(
+                week_start_date=week_start_date,
+                campaign_id=campaign_id,
+                skill_id=skill_id,
+                label=label or "STF client",
+                notes=notes,
+                created_by=created_by_user_id,
+                import_batch_id=batch_id,
+                is_current=True,
             )
-        )
+            session.add(plan)
+            session.flush()
 
-    session.commit()
-    session.refresh(plan)
-    return plan
+            skill = session.get(Skill, skill_id)
+            campaign = session.get(Campaign, campaign_id)
+            if campaign is None or skill is None:
+                raise ValueError("Campagne ou skill introuvable.")
+            if skill.campaign_id != campaign_id:
+                raise ValueError("Le skill sélectionné n'appartient pas à la campagne.")
+            if not skill.is_active:
+                raise ValueError("Le skill sélectionné est désactivé.")
+
+            week_iso = week_start_date.isocalendar()
+            parameters = get_weekly_parameters(
+                session,
+                iso_year=week_iso.year,
+                iso_week=week_iso.week,
+                campaign_id=campaign_id,
+                skill_id=skill_id,
+            )
+
+            for row in materialized:
+                end_seconds = row.interval_end.hour * 3600 + row.interval_end.minute * 60 + row.interval_end.second
+                start_seconds = row.interval_start.hour * 3600 + row.interval_start.minute * 60 + row.interval_start.second
+                if end_seconds <= start_seconds:
+                    end_seconds += 24 * 3600
+                interval_seconds = end_seconds - start_seconds
+
+                if row.volume is not None:
+                    if channel_service.is_realtime_channel(skill.channel):
+                        result = find_required_agents(
+                            volume_contacts=row.volume,
+                            aht_seconds=parameters.aht_seconds,
+                            interval_seconds=interval_seconds,
+                            service_level_target_pct=parameters.service_level_target_pct,
+                            answer_time_target_seconds=parameters.answer_time_target_seconds,
+                            occupancy_target_pct=parameters.occupancy_pct,
+                        )
+                        net_required_hc = result.net_required_hc
+                    else:
+                        net_required_hc = channel_service.required_hc_for_async(
+                            volume_contacts=row.volume,
+                            aht_seconds=parameters.aht_seconds,
+                            interval_seconds=interval_seconds,
+                            occupancy_target_pct=parameters.occupancy_pct,
+                            channel=skill.channel,
+                        )
+                    required_hc = apply_shrinkage(net_required_hc, parameters.shrinkage_pct)
+                else:
+                    required_hc = row.required_hc or 0.0
+
+                session.add(
+                    ClientSTFInterval(
+                        plan_id=plan.id,
+                        date=row.date,
+                        interval_start=row.interval_start,
+                        interval_end=row.interval_end,
+                        volume=row.volume,
+                        aht_seconds=parameters.aht_seconds if row.volume is not None else None,
+                        occupancy_pct=parameters.occupancy_pct if row.volume is not None else None,
+                        service_level_target_pct=parameters.service_level_target_pct if row.volume is not None else None,
+                        answer_time_target_seconds=parameters.answer_time_target_seconds if row.volume is not None else None,
+                        shrinkage_pct=parameters.shrinkage_pct if row.volume is not None else None,
+                        required_hc=required_hc,
+                    )
+                )
+
+            session.commit()
+            session.refresh(plan)
+            return plan
+
+    except Exception:
+        session.rollback()
+        raise
 
 
 def current_plan(
@@ -346,6 +433,14 @@ def effective_intervals_for_range(
     return effective_intervals(intervals, rows)
 
 
+
+def _interval_hours(start: time, end: time) -> float:
+    start_seconds = start.hour * 3600 + start.minute * 60 + start.second
+    end_seconds = end.hour * 3600 + end.minute * 60 + end.second
+    if end_seconds <= start_seconds:
+        end_seconds += 24 * 3600
+    return max((end_seconds - start_seconds) / 3600.0, 0.0)
+
 def scorecard(
     intervals: list[IntervalForecast | EffectiveInterval],
     *,
@@ -358,42 +453,47 @@ def scorecard(
         for interval in intervals
         if (interval.date, interval.interval_start) in row_by_key
     ]
-    required = sum(max(stf_hc, 0) * INTERVAL_HOURS for _, stf_hc in matched)
-    scheduled = sum(max(interval.scheduled_hc, 0) * INTERVAL_HOURS for interval, _ in matched)
-    actual_values = [interval.actual_hc for interval, _ in matched if interval.actual_hc is not None]
-    actual = sum(actual_values) * INTERVAL_HOURS if actual_values else None
-    shortage = sum(
-        max(stf_hc - max(interval.scheduled_hc, 0), 0) * INTERVAL_HOURS
-        for interval, stf_hc in matched
+
+    def hours(interval) -> float:
+        return _interval_hours(interval.interval_start, interval.interval_end)
+
+    required = sum(max(stf_hc, 0) * hours(interval) for interval, stf_hc in matched)
+    scheduled = sum(max(interval.scheduled_hc, 0) * hours(interval) for interval, _ in matched)
+    actual = (
+        sum((interval.actual_hc or 0.0) * hours(interval) for interval, _ in matched if interval.actual_hc is not None)
+        if any(interval.actual_hc is not None for interval, _ in matched)
+        else None
     )
-    surplus = sum(
-        max(max(interval.scheduled_hc, 0) - stf_hc, 0) * INTERVAL_HOURS
-        for interval, stf_hc in matched
-    )
-    covered = sum(
-        min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * INTERVAL_HOURS
-        for interval, stf_hc in matched
-    )
+    shortage = sum(max(stf_hc - max(interval.scheduled_hc, 0), 0) * hours(interval) for interval, stf_hc in matched)
+    surplus = sum(max(max(interval.scheduled_hc, 0) - stf_hc, 0) * hours(interval) for interval, stf_hc in matched)
+    covered = sum(min(max(stf_hc, 0), max(interval.scheduled_hc, 0)) * hours(interval) for interval, stf_hc in matched)
+
     peak_stf = max((stf_hc for _, stf_hc in matched), default=0)
     peak_scheduled = max((interval.scheduled_hc for interval, _ in matched), default=0)
+    actual_values = [interval.actual_hc for interval, _ in matched if interval.actual_hc is not None]
     peak_actual = max(actual_values) if actual_values else None
 
-    model_variance_hours: float | None = None
-    model_variance_pct: float | None = None
-    model_pairs = [
+    model_rows = [
         (
+            interval,
             stf_hc,
-            interval.interval.required_hc
-            if isinstance(interval, EffectiveInterval)
-            else interval.required_hc,
+            interval.interval.required_hc if isinstance(interval, EffectiveInterval) else interval.required_hc,
         )
         for interval, stf_hc in matched
     ]
-    if model_pairs:
-        model_variance_hours = sum((stf - model) * INTERVAL_HOURS for stf, model in model_pairs)
-        model_total = sum(max(model, 0) * INTERVAL_HOURS for _, model in model_pairs)
-        if model_total:
-            model_variance_pct = model_variance_hours / model_total * 100
+    model_variance_hours = (
+        sum((stf_hc - model_hc) * hours(interval) for interval, stf_hc, model_hc in model_rows)
+        if model_rows else None
+    )
+    model_total = (
+        sum(max(model_hc, 0) * hours(interval) for interval, _, model_hc in model_rows)
+        if model_rows else 0.0
+    )
+    model_variance_pct = (
+        model_variance_hours / model_total * 100
+        if model_variance_hours is not None and model_total > 0
+        else None
+    )
 
     return ClientSTFScorecard(
         required_hc_hours=required,
@@ -405,14 +505,11 @@ def scorecard(
         peak_stf_hc=peak_stf,
         peak_scheduled_hc=peak_scheduled,
         peak_actual_hc=peak_actual,
-        understaffed_intervals=sum(
-            1 for interval, stf_hc in matched if stf_hc - interval.scheduled_hc > 0.5
-        ),
-        overstaffed_intervals=sum(
-            1 for interval, stf_hc in matched if interval.scheduled_hc - stf_hc > 0.5
-        ),
+        understaffed_intervals=sum(1 for interval, stf_hc in matched if stf_hc - interval.scheduled_hc > 0.5),
+        overstaffed_intervals=sum(1 for interval, stf_hc in matched if interval.scheduled_hc - stf_hc > 0.5),
         overtime_required_hours=shortage,
         fte_equivalent_week=required / weekly_contract_hours if weekly_contract_hours > 0 else 0,
         model_variance_hc_hours=model_variance_hours,
         model_variance_pct=model_variance_pct,
     )
+

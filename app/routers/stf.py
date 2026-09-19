@@ -20,7 +20,7 @@ from app.models.forecast import STFForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.stf import STFCreateInput
-from app.services import forecast_service
+from app.services import forecast_service, weekly_intraday_service
 
 router = APIRouter(prefix="/stf", tags=["stf"])
 
@@ -156,6 +156,25 @@ def create_stf(
     return RedirectResponse(url=f"/stf/{stf.id}", status_code=303)
 
 
+@router.post("/{stf_id}/disperse", dependencies=[Depends(verify_csrf)])
+def disperse_stf(
+    stf_id: int,
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    stf = session.get(STFForecast, stf_id)
+    if stf is None:
+        raise HTTPException(status_code=404, detail="Forecast STF introuvable.")
+    try:
+        weekly_intraday_service.disperse_stf(session, stf)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(
+        url=f"/daily?campaign_id={stf.campaign_id}&skill_id={stf.skill_id}",
+        status_code=303,
+    )
+
+
 @router.get("/{stf_id}")
 def view_stf(
     stf_id: int,
@@ -171,9 +190,21 @@ def view_stf(
     skill = session.get(Skill, stf.skill_id)
 
     week_start = stf.week_start_date
-    parent_ltf = forecast_service.get_current_ltf_forecast(
-        session, year=week_start.year, month=week_start.month, campaign_id=stf.campaign_id, skill_id=stf.skill_id
+    parent_ltf = forecast_service.get_current_weekly_ltf_forecast(
+        session,
+        iso_year=stf.iso_year,
+        iso_week=stf.iso_week,
+        campaign_id=stf.campaign_id,
+        skill_id=stf.skill_id,
     )
+    if parent_ltf is None:
+        parent_ltf = forecast_service.get_current_ltf_forecast(
+            session,
+            year=week_start.year,
+            month=week_start.month,
+            campaign_id=stf.campaign_id,
+            skill_id=stf.skill_id,
+        )
     comparison = forecast_service.compare_ltf_stf(parent_ltf, stf) if parent_ltf else None
 
     history = forecast_service.get_stf_version_history(
