@@ -1,5 +1,5 @@
 """Board hebdomadaire type Teleopti : lecture consolidée du planning."""
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -36,6 +36,7 @@ def schedule_board(
             week_start = today - __import__("datetime").timedelta(days=today.weekday())
     else:
         week_start = today - __import__("datetime").timedelta(days=today.weekday())
+    week_days = [week_start + timedelta(days=i) for i in range(5)]
     rows = []
     if campaign_id is not None and skill_id is not None:
         rows = build_week_board(session, week_start=week_start, campaign_id=campaign_id, skill_id=skill_id)
@@ -50,5 +51,6 @@ def schedule_board(
             "filters": {"week": f"{week_start.isocalendar().year}-W{week_start.isocalendar().week:02d}", "campaign_id": campaign_id, "skill_id": skill_id},
             "rows": rows,
             "week_start": week_start,
+            "week_days": week_days,
         },
     )
