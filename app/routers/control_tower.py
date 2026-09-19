@@ -28,6 +28,10 @@ def control_tower(
     campaigns = list(session.exec(select(Campaign).where(Campaign.is_active == True).order_by(Campaign.name)).all())  # noqa: E712
     skills = list(session.exec(select(Skill).where(Skill.is_active == True).order_by(Skill.name)).all())
     target_date = target_date or date.today()
+    if campaign_id is not None and skill_id is not None:
+        valid_skill_ids = {s.id for s in skills}
+        if skill_id not in valid_skill_ids:
+            skill_id = None
     data = None
     if campaign_id is not None and skill_id is not None:
         data = build_control_tower(
