@@ -40,3 +40,24 @@ def normalized_workload_hours(volume_contacts: float, aht_seconds: float, channe
     if volume_contacts < 0 or aht_seconds < 0:
         raise ValueError("volume_contacts et aht_seconds doivent être positifs ou nuls.")
     return (volume_contacts * aht_seconds / 3600.0) / concurrency_for_channel(channel)
+
+
+def required_hc_for_async(
+    volume_contacts: float,
+    aht_seconds: float,
+    interval_seconds: int,
+    occupancy_target_pct: float,
+    channel: Channel,
+) -> float:
+    """Agents requis pour Email/Message Us via charge + simultanéité."""
+    if interval_seconds <= 0:
+        raise ValueError("interval_seconds doit être strictement positif.")
+    if occupancy_target_pct <= 0 or occupancy_target_pct > 100:
+        raise ValueError("occupancy_target_pct doit être dans ]0,100].")
+    workload_hours = normalized_workload_hours(volume_contacts, aht_seconds, channel)
+    interval_hours = interval_seconds / 3600.0
+    return workload_hours / (interval_hours * (occupancy_target_pct / 100.0))
+
+
+def is_realtime_channel(channel: Channel) -> bool:
+    return channel in {Channel.VOICE}
