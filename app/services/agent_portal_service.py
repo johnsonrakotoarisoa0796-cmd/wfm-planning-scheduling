@@ -117,14 +117,16 @@ def review_request(session: Session, *, request_id: int, reviewer_id: int, decis
         raise ValueError("Demande introuvable.")
     if item.status != "pending":
         raise ValueError("Cette demande a déjà été traitée.")
-    item.status = decision
-    item.reviewed_by = reviewer_id
-    item.reviewed_at = utc_now()
-    session.add(item)
-    session.commit()
-    session.refresh(item)
-
     if decision == "approved":
+        existing_absence = session.exec(
+            select(EmployeeAbsence).where(
+                EmployeeAbsence.employee_id == item.employee_id,
+                EmployeeAbsence.start_date <= item.end_date,
+                EmployeeAbsence.end_date >= item.start_date,
+            )
+        ).first()
+        if existing_absence is not None:
+            raise ValueError("Une absence existe déjà sur cette période.")
         session.add(
             EmployeeAbsence(
                 employee_id=item.employee_id,
@@ -135,5 +137,10 @@ def review_request(session: Session, *, request_id: int, reviewer_id: int, decis
                 notes=f"Demande agent #{item.id}",
             )
         )
-        session.commit()
+    item.status = decision
+    item.reviewed_by = reviewer_id
+    item.reviewed_at = utc_now()
+    session.add(item)
+    session.commit()
+    session.refresh(item)
     return item
