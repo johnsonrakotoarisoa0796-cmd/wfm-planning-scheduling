@@ -12,7 +12,7 @@ from datetime import date
 
 import qrcode
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select
 
@@ -399,30 +399,14 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError
 async def application_error_handler(request: Request, exc: Exception):
     """Retourne une page lisible au lieu d'un écran blanc sur erreur applicative."""
     print(f"[application-error] {request.method} {request.url.path}: {exc!r}")
-    detail = (
-        f"<pre>{type(exc).__name__}: {exc}</pre>"
-        if not settings.is_production
-        else "<p>Erreur interne. Consultez les logs de déploiement.</p>"
+    error_detail = None if settings.is_production else f"{type(exc).__name__}: {exc}"
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"error_detail": error_detail},
+        status_code=500,
+        headers={"Cache-Control": "no-store"},
     )
-    html = (
-        "<!doctype html><html lang='fr'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>WFM — Erreur</title>"
-        "<style>body{margin:0;background:#f4f7fb;color:#172033;font-family:system-ui,sans-serif}"
-        "main{min-height:100vh;display:grid;place-items:center;padding:24px}"
-        ".card{max-width:680px;width:100%;background:#fff;border:1px solid #e4e9f0;border-radius:16px;padding:32px;box-shadow:0 18px 45px rgba(16,24,40,.08)}"
-        ".badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#fff0f0;color:#b42318;font-size:12px;font-weight:700}"
-        "h1{margin:14px 0 8px;font-size:28px}p{color:#667085;line-height:1.6}a{display:inline-block;margin:6px 8px 0 0;padding:10px 14px;border-radius:9px;background:#315efb;color:#fff;text-decoration:none;font-weight:700}"
-        "pre{margin-top:18px;padding:14px;background:#101828;color:#e5e7eb;border-radius:10px;overflow:auto}"
-        "</style></head><body><main><section class='card'><span class='badge'>ERREUR SERVEUR</span>"
-        "<h1>Le tableau WFM n'a pas pu être chargé.</h1>"
-        "<p>Une erreur applicative empêche le rendu de cette page.</p>"
-        + detail +
-        "<p><a href='/health'>Vérifier le service</a><a href='/login'>Retour à la connexion</a></p>"
-        "</section></main></body></html>"
-    )
-    return HTMLResponse(content=html, status_code=500, headers={"Cache-Control": "no-store"})
-
 
 @app.get("/health", tags=["system"])
 def health_check() -> dict:
