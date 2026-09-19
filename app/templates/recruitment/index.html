@@ -40,13 +40,11 @@
       <tbody>
       {% for projection in item.weeks %}
         <tr>
-          <form method="post" action="/recruitment/{{ item.plan.id }}/weeks/{{ projection.week.id }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <td>{{ projection.week.week_number }}</td>
-            <td>{{ projection.week.week_start_date }}</td>
-            <td>
+          <td>{{ projection.week.week_number }}</td>
+          <td>{{ projection.week.week_start_date }}</td>
+          <td>
               {% if can_edit %}
-              <select name="stage">
+              <select form="ramp-form-{{ projection.week.id }}" name="stage">
                 <option value="training" {% if projection.week.stage == "training" %}selected{% endif %}>Formation</option>
                 <option value="nesting" {% if projection.week.stage == "nesting" %}selected{% endif %}>Nesting</option>
                 <option value="production" {% if projection.week.stage == "production" %}selected{% endif %}>Production</option>
@@ -54,19 +52,24 @@
               {% else %}{{ projection.week.stage }}{% endif %}
             </td>
             <td class="numeric">
-              {% if can_edit %}<input class="table-input" type="number" name="aht_seconds" min="1" step="1" value="{{ "%.0f"|format(projection.week.aht_seconds) }}">{% else %}{{ "%.0f"|format(projection.week.aht_seconds) }} s{% endif %}
+              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="aht_seconds" min="1" step="1" value="{{ "%.0f"|format(projection.week.aht_seconds) }}">{% else %}{{ "%.0f"|format(projection.week.aht_seconds) }} s{% endif %}
             </td>
             <td class="numeric">
-              {% if can_edit %}<input class="table-input" type="number" name="occupancy_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.occupancy_pct) }}">{% else %}{{ "%.1f"|format(projection.week.occupancy_pct) }}%{% endif %}
+              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="occupancy_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.occupancy_pct) }}">{% else %}{{ "%.1f"|format(projection.week.occupancy_pct) }}%{% endif %}
             </td>
             <td class="numeric">
-              {% if can_edit %}<input class="table-input" type="number" name="capacity_factor_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.capacity_factor_pct) }}">{% else %}{{ "%.1f"|format(projection.week.capacity_factor_pct) }}%{% endif %}
+              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="capacity_factor_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.capacity_factor_pct) }}">{% else %}{{ "%.1f"|format(projection.week.capacity_factor_pct) }}%{% endif %}
             </td>
             <td class="numeric">{{ "{:,.0f}".format(projection.capacity_contacts).replace(",", " ") }}</td>
             {% if can_edit %}
-            <td><input class="table-input" type="text" name="notes" value="{{ projection.week.notes or '' }}" placeholder="Note"><button class="btn-secondary btn-small" type="submit">Enregistrer</button></td>
+            <td>
+              <form id="ramp-form-{{ projection.week.id }}" method="post" action="/recruitment/{{ item.plan.id }}/weeks/{{ projection.week.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input class="table-input" type="text" name="notes" value="{{ projection.week.notes or '' }}" placeholder="Note">
+                <button class="btn-secondary btn-small" type="submit">Enregistrer</button>
+              </form>
+            </td>
             {% endif %}
-          </form>
         </tr>
       {% endfor %}
       </tbody>
