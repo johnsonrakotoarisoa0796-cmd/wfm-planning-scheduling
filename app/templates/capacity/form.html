@@ -9,11 +9,7 @@
 </div>
 
 <div class="form-card">
-    {% if errors %}
-    <div class="error-banner">
-        {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
-    </div>
-    {% endif %}
+    {% include "partials/form_errors.html" %}
 
     <form method="post" action="/capacity/new">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
