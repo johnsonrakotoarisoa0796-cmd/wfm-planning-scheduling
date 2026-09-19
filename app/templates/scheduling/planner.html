@@ -1,7 +1,7 @@
 {% extends "app_base.html" %}
 {% block title %}Planner — WFM Planning & Scheduling{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Planner de staffing</h1><p class="page-header__meta">Simulation automatique du mix de shifts qui réduit le sous-staffing intraday sans modifier votre planning.</p></div></div>
+<div class="page-header"><div><h1>Planner de staffing</h1><p class="page-header__meta">Simulation automatique du mix de shifts qui réduit le sous-staffing intraday sans modifier votre planning.{% if client_stf_active %} <strong>STF client actif&nbsp;: les besoins affichés viennent du client.</strong>{% endif %}</p></div></div>
 <form class="filter-bar" method="get" action="/scheduling/planner">
 <div class="field"><label for="target_date">JOUR</label><input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}"></div>
 <div class="field"><label for="campaign_id">CAMPAGNE</label><select id="campaign_id" name="campaign_id"><option value="">Choisir</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
@@ -19,7 +19,7 @@
 {% for rec in recommendations %}<article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">{{ rec.headcount }}×</div><div><h3>{{ rec.shift_name }}</h3><p>{{ rec.start_time.strftime("%H:%M") }} → {{ rec.end_time.strftime("%H:%M") }}</p></div></div><div class="recommendation-card__result"><span>Reste après simulation</span><strong>{{ "%.1f"|format(rec.shortage_hours_after) }} h</strong><small>surplus {{ "%.1f"|format(rec.surplus_hours_after) }} HC-h</small></div></article>{% endfor %}
 {% else %}<div class="planner-empty"><strong>Le planning actuel couvre déjà la demande</strong><br>Aucun ajout de shift n'améliore le score avec les gabarits disponibles.</div>{% endif %}
 </div>
-<div class="data-table-wrapper planner-table"><table class="data-table"><thead><tr><th>Heure</th><th class="numeric">Required</th><th class="numeric">Scheduled</th><th class="numeric">Gap</th><th>Action</th></tr></thead><tbody>
+<div class="data-table-wrapper planner-table"><table class="data-table"><thead><tr><th>Heure</th><th class="numeric">STF requis</th><th class="numeric">Scheduled</th><th class="numeric">Gap</th><th>Action</th></tr></thead><tbody>
 {% for i in intervals %}<tr><td>{{ i.interval_start.strftime("%H:%M") }}–{{ i.interval_end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.1f"|format(i.required_hc) }}</td><td class="numeric">{{ "%.1f"|format(i.scheduled_hc) }}</td><td class="numeric {% if i.scheduled_hc < i.required_hc %}negative{% elif i.scheduled_hc > i.required_hc %}positive{% endif %}">{{ "%+.1f"|format(i.scheduled_hc - i.required_hc) }}</td><td>{% if i.scheduled_hc + .5 < i.required_hc %}<span class="status-pill status-pill--critical">Ajouter du HC</span>{% elif i.scheduled_hc > i.required_hc + 1 %}<span class="status-pill status-pill--warning">Libérer / réaffecter</span>{% else %}<span class="status-pill status-pill--balanced">Équilibré</span>{% endif %}</td></tr>{% endfor %}
 </tbody></table></div>
 {% endif %}
