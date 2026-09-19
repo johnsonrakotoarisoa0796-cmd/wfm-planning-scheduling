@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
-from app.models.employee import EmployeeAbsence
+from app.models.employee import Employee, EmployeeAbsence
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
 from app.services import intraday_service, kpi_service, workforce_service
 
@@ -186,7 +186,7 @@ def compute_break_impact(
 # ============================================================================
 
 def shift_hours_summary(session: Session, *, employee_id: int, shift_id: int):
-    employee = session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, employee_id)
+    employee = session.get(Employee, employee_id)
     shift = session.get(Shift, shift_id)
     if employee is None or shift is None:
         raise ValueError("Employé ou shift introuvable.")
