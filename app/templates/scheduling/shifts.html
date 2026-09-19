@@ -10,7 +10,7 @@
 </div>
 
 {% if can_edit %}
-<div class="form-card" style="margin-bottom: var(--space-6);">
+<div class="form-card form-card--wide">
     {% if errors %}
     <div class="error-banner">
         {% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
