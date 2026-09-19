@@ -26,16 +26,16 @@
         </div>
         <div class="field">
           <label for="campaign_id">Campagne</label>
-          <select id="campaign_id" name="campaign_id" required>
+          <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
             <option value="" disabled selected>Choisir...</option>
             {% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
           <label for="skill_id">Skill</label>
-          <select id="skill_id" name="skill_id" required>
+          <select id="skill_id" name="skill_id" data-filtered-skill-select required>
             <option value="" disabled selected>Choisir...</option>
-            {% for s in skills %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            {% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
