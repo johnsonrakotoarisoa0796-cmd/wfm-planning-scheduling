@@ -1,4 +1,4 @@
-"""Module LTF Monthly (§6-§9) — forecast mensuel, plan de référence long terme.
+"""Module LTF Weekly (§6-§9) — forecast hebdomadaire, plan de référence long terme.
 
 Lecture ouverte à tout utilisateur connecté ; création réservée à
 admin/wfm_analyst (un team_lead ou viewer consulte mais ne modifie pas le
