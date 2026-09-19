@@ -3,7 +3,7 @@
 {% block content %}
 <main class="error-page">
     <section class="error-page__card" aria-labelledby="error-title">
-        <div style="display:flex;justify-content:flex-end">{% include "partials/theme_toggle.html" %}</div>
+        <div class="error-page__toolbar">{% include "partials/theme_toggle.html" %}</div>
         <span class="error-page__badge">ERREUR SERVEUR</span>
         <h1 id="error-title">Le tableau WFM n’a pas pu être chargé.</h1>
         <p>Une erreur applicative empêche le rendu de cette page.</p>
