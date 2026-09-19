@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Erreur — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<main class="error-page">
+    <section class="error-page__card" aria-labelledby="error-title">
+        <div style="display:flex;justify-content:flex-end">{% include "partials/theme_toggle.html" %}</div>
+        <span class="error-page__badge">ERREUR SERVEUR</span>
+        <h1 id="error-title">Le tableau WFM n’a pas pu être chargé.</h1>
+        <p>Une erreur applicative empêche le rendu de cette page.</p>
+        {% if error_detail %}
+        <pre class="error-page__detail">{{ error_detail }}</pre>
+        {% endif %}
+        <div class="error-page__actions">
+            <a class="btn-primary" href="/health">Vérifier le service</a>
+            <a class="btn-secondary" href="/login">Retour à la connexion</a>
+        </div>
+    </section>
+</main>
+{% endblock %}
