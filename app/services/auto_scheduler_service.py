@@ -366,7 +366,8 @@ def generate_schedule(
             for item in generated
             if item.entry.date == day
             for row in intervals
-            if scheduling_service._shift_covers_interval(item.shift, row.interval_start, row.interval_end)
+            if not item.entry.is_day_off
+            and scheduling_service._shift_covers_interval(item.shift, row.interval_start, row.interval_end)
         )
         covered_h = sum(
             min(
@@ -375,6 +376,7 @@ def generate_schedule(
                     1
                     for item in generated
                     if item.entry.date == day
+                    and not item.entry.is_day_off
                     and scheduling_service._shift_covers_interval(item.shift, row.interval_start, row.interval_end)
                 ),
             ) * settings.interval_minutes / 60
