@@ -13,7 +13,7 @@
 {% elif not intervals %}
 <div class="planner-empty"><strong>Aucun forecast intraday</strong><br>Générez d'abord la journée dans Daily / Intraday.</div>
 {% else %}
-<section class="planner-hero"><div><span class="panel-kicker">OPTIMISATION</span><h2>Mix de shifts recommandé</h2><p>Le moteur teste les shifts configurés contre le besoin des intervalles et cherche à réduire les heures de sous-staffing.</p></div><div class="planner-hero__stats"><div><span>Intervalles</span><strong>{{ intervals|length }}</strong></div><div><span>Agents disponibles</span><strong>{{ employees|length }}</strong></div></div></section>
+<section class="planner-hero"><div><span class="panel-kicker">OPTIMISATION</span><h2>Mix de shifts recommandé</h2><p>Le moteur teste les shifts configurés contre le besoin des intervalles et cherche à réduire les heures de sous-staffing.</p></div><div class="planner-hero__stats"><div><span>Intervalles</span><strong>{{ intervals|length }}</strong></div><div><span>Agents disponibles</span><strong>{{ available_employee_count }}</strong></div></div></section>
 <div class="recommendations">
 {% if recommendations %}
 {% for rec in recommendations %}<article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">{{ rec.headcount }}×</div><div><h3>{{ rec.shift_name }}</h3><p>{{ rec.start_time.strftime("%H:%M") }} → {{ rec.end_time.strftime("%H:%M") }}</p></div></div><div class="recommendation-card__result"><span>Reste après simulation</span><strong>{{ "%.1f"|format(rec.shortage_hours_after) }} h</strong><small>surplus {{ "%.1f"|format(rec.surplus_hours_after) }} HC-h</small></div></article>{% endfor %}
