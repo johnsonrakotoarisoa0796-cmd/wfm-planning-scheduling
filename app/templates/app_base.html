@@ -13,6 +13,7 @@
 
         <div class="sidebar__section-label">Pilotage</div>
         <nav class="sidebar__nav" aria-label="Navigation principale">
+            <a class="sidebar__link{% if active_nav == 'control-tower' %} sidebar__link--active{% endif %}" href="/control-tower"><span class="nav-icon" aria-hidden="true">◈</span><span>Control Tower</span></a>
             <a class="sidebar__link{% if active_nav == 'dashboard' %} sidebar__link--active{% endif %}" href="/dashboard"{% if active_nav == 'dashboard' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⌂</span><span>Dashboard</span></a>
             <a class="sidebar__link{% if active_nav == 'ltf' %} sidebar__link--active{% endif %}" href="/ltf"{% if active_nav == 'ltf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◷</span><span>LTF Weekly</span></a>
             <a class="sidebar__link{% if active_nav == 'stf' %} sidebar__link--active{% endif %}" href="/stf"{% if active_nav == 'stf' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">↗</span><span>STF Weekly</span></a>
@@ -28,9 +29,11 @@
             <a class="sidebar__link{% if active_nav == 'overtime' %} sidebar__link--active{% endif %}" href="/overtime"{% if active_nav == 'overtime' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⏱</span><span>Overtime</span></a>
             <a class="sidebar__link{% if active_nav == 'scheduling' %} sidebar__link--active{% endif %}" href="/scheduling"{% if active_nav == 'scheduling' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">▦</span><span>Scheduling</span></a>
             <a class="sidebar__link{% if active_nav == 'scheduling-planner' %} sidebar__link--active{% endif %}" href="/scheduling/planner"{% if active_nav == 'scheduling-planner' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">✦</span><span>Planner</span></a>
+            <a class="sidebar__link{% if active_nav == 'schedule-board' %} sidebar__link--active{% endif %}" href="/schedule-board"><span class="nav-icon" aria-hidden="true">▤</span><span>Schedule Board</span></a>
             <a class="sidebar__link{% if active_nav == 'scheduling-generate' %} sidebar__link--active{% endif %}" href="/scheduling/generate"{% if active_nav == 'scheduling-generate' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span><span>Generate Schedule</span></a>
             <a class="sidebar__link{% if active_nav == 'scheduling-absences' %} sidebar__link--active{% endif %}" href="/scheduling/absences"{% if active_nav == 'scheduling-absences' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◌</span><span>Absences &amp; congés</span></a>
             <a class="sidebar__link{% if active_nav == 'markets' %} sidebar__link--active{% endif %}" href="/markets"{% if active_nav == 'markets' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">◎</span><span>Marchés</span></a>
+            <a class="sidebar__link{% if active_nav == 'guide' %} sidebar__link--active{% endif %}" href="/guide"><span class="nav-icon" aria-hidden="true">?</span><span>Mode d’emploi</span></a>
             <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span><span>Configuration</span></a>
         </nav>
 
