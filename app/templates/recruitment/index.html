@@ -1,0 +1,80 @@
+{% extends "app_base.html" %}
+{% block title %}Recrutement & Ramp-up — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Recrutement &amp; Ramp-up</h1>
+    <p class="page-header__meta">Planifiez les cohortes, la formation, le nesting et la montée en capacité semaine par semaine.</p>
+  </div>
+  {% if can_edit %}<a href="/recruitment/new" class="btn-primary">+ Nouvelle cohorte</a>{% endif %}
+</div>
+
+{% if plans %}
+{% for item in plans %}
+<section class="wfm-control" id="plan-{{ item.plan.id }}">
+  <div class="wfm-control__head">
+    <div>
+      <span class="panel-kicker">COHORTE {{ item.plan.cohort_name }}</span>
+      <h2>{{ item.campaign.name if item.campaign else "—" }} · {{ item.skill.name if item.skill else "—" }}</h2>
+      <p>{{ item.plan.headcount }} recrues · démarrage {{ item.plan.start_date }} · formation {{ item.plan.training_weeks }} sem. · nesting {{ item.plan.nesting_weeks }} sem.</p>
+    </div>
+  </div>
+
+  <div class="control-grid">
+    <div class="control-card"><span>Headcount</span><strong>{{ item.plan.headcount }}</strong><small>Recrues de la cohorte</small></div>
+    <div class="control-card"><span>Formation</span><strong>{{ item.plan.training_weeks }} sem.</strong><small>Capacité opérationnelle 0%</small></div>
+    <div class="control-card"><span>Nesting</span><strong>{{ item.plan.nesting_weeks }} sem.</strong><small>Facteur configurable par semaine</small></div>
+    <div class="control-card"><span>Production</span><strong>{{ item.weeks[-1].week.week_start_date if item.weeks else "—" }}</strong><small>Première semaine à 100%</small></div>
+  </div>
+
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Sem.</th><th>Date</th><th>Étape</th>
+          <th class="numeric">AHT</th><th class="numeric">Occupancy</th>
+          <th class="numeric">Facteur capacité</th><th class="numeric">Capacité contacts</th>
+          {% if can_edit %}<th>Action</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for projection in item.weeks %}
+        <tr>
+          <form method="post" action="/recruitment/{{ item.plan.id }}/weeks/{{ projection.week.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <td>{{ projection.week.week_number }}</td>
+            <td>{{ projection.week.week_start_date }}</td>
+            <td>
+              {% if can_edit %}
+              <select name="stage">
+                <option value="training" {% if projection.week.stage == "training" %}selected{% endif %}>Formation</option>
+                <option value="nesting" {% if projection.week.stage == "nesting" %}selected{% endif %}>Nesting</option>
+                <option value="production" {% if projection.week.stage == "production" %}selected{% endif %}>Production</option>
+              </select>
+              {% else %}{{ projection.week.stage }}{% endif %}
+            </td>
+            <td class="numeric">
+              {% if can_edit %}<input class="table-input" type="number" name="aht_seconds" min="1" step="1" value="{{ "%.0f"|format(projection.week.aht_seconds) }}">{% else %}{{ "%.0f"|format(projection.week.aht_seconds) }} s{% endif %}
+            </td>
+            <td class="numeric">
+              {% if can_edit %}<input class="table-input" type="number" name="occupancy_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.occupancy_pct) }}">{% else %}{{ "%.1f"|format(projection.week.occupancy_pct) }}%{% endif %}
+            </td>
+            <td class="numeric">
+              {% if can_edit %}<input class="table-input" type="number" name="capacity_factor_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.capacity_factor_pct) }}">{% else %}{{ "%.1f"|format(projection.week.capacity_factor_pct) }}%{% endif %}
+            </td>
+            <td class="numeric">{{ "{:,.0f}".format(projection.capacity_contacts).replace(",", " ") }}</td>
+            {% if can_edit %}
+            <td><input class="table-input" type="text" name="notes" value="{{ projection.week.notes or '' }}" placeholder="Note"><button class="btn-secondary btn-small" type="submit">Enregistrer</button></td>
+            {% endif %}
+          </form>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}
+{% else %}
+<div class="data-table-wrapper"><div class="empty-state">Aucune cohorte de recrutement.</div></div>
+{% endif %}
+{% endblock %}
