@@ -23,7 +23,7 @@ from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.scheduling import EmployeeAbsenceInput, ScheduleEntryInput, ShiftInput
-from app.services import client_stf_service, planner_service, scheduling_service, intraday_service
+from app.services import client_stf_service, planner_service, scheduling_service, intraday_service, auto_scheduler_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -183,6 +183,8 @@ def create_entry(
     shift_id: Optional[int] = Form(None),
     break_start: Optional[str] = Form(None),
     break_end: Optional[str] = Form(None),
+    break2_start: Optional[str] = Form(None),
+    break2_end: Optional[str] = Form(None),
     lunch_start: Optional[str] = Form(None),
     lunch_end: Optional[str] = Form(None),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
@@ -191,7 +193,8 @@ def create_entry(
     submitted_values = {
         "employee_id": employee_id, "entry_date": entry_date, "campaign_id": campaign_id,
         "skill_id": skill_id, "is_day_off": is_day_off, "shift_id": shift_id,
-        "break_start": break_start, "break_end": break_end, "lunch_start": lunch_start, "lunch_end": lunch_end,
+        "break_start": break_start, "break_end": break_end, "break2_start": break2_start, "break2_end": break2_end,
+        "lunch_start": lunch_start, "lunch_end": lunch_end,
     }
     try:
         payload = ScheduleEntryInput(**{
@@ -199,6 +202,8 @@ def create_entry(
             "shift_id": shift_id or None,
             "break_start": break_start or None,
             "break_end": break_end or None,
+            "break2_start": break2_start or None,
+            "break2_end": break2_end or None,
             "lunch_start": lunch_start or None,
             "lunch_end": lunch_end or None,
         })
