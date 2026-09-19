@@ -10,7 +10,7 @@ from datetime import time
 from typing import Optional
 
 from app.models.intraday import IntervalForecast
-from app.services import kpi_service
+from app.services import channel_service, kpi_service
 from app.services.erlang_service import (
     average_speed_of_answer_erlang_c,
     service_level_erlang_c,
@@ -100,27 +100,40 @@ def _weighted_optional(values: list[Optional[float]], weights: list[float]) -> O
     return kpi_service.weighted_average([v for v, _ in pairs], [w for _, w in pairs])
 
 
-def _scheduled_metrics(interval: IntervalForecast) -> tuple[float, Optional[float]]:
+def _scheduled_metrics(interval: IntervalForecast) -> tuple[Optional[float], Optional[float], float]:
     if interval.scheduled_hc <= 0 or interval.forecast_volume <= 0 or interval.forecast_aht_seconds <= 0:
-        return 0.0, None
-    traffic = traffic_intensity_erlangs(
-        interval.forecast_volume,
-        interval.forecast_aht_seconds,
-        INTERVAL_HOURS * 3600,
-    )
+        return 0.0, None, 0.0
     agents = max(round(interval.scheduled_hc), 0)
     if agents <= 0:
-        return 0.0, None
-    sl = service_level_erlang_c(
-        agents,
-        traffic,
+        return 0.0, None, 0.0
+    if channel_service.is_realtime_channel(interval.channel):
+        traffic = traffic_intensity_erlangs(
+            interval.forecast_volume,
+            interval.forecast_aht_seconds,
+            INTERVAL_HOURS * 3600,
+        )
+        sl = service_level_erlang_c(
+            agents,
+            traffic,
+            interval.forecast_aht_seconds,
+            interval.answer_time_target_seconds,
+        )
+        asa = average_speed_of_answer_erlang_c(
+            agents, traffic, interval.forecast_aht_seconds
+        )
+        occupancy = occupancy_from_traffic_pct(
+            traffic, agents
+        )
+        return sl, asa if asa != float("inf") else None, occupancy
+
+    workload_hours = channel_service.normalized_workload_hours(
+        interval.forecast_volume,
         interval.forecast_aht_seconds,
-        interval.answer_time_target_seconds,
+        interval.channel,
     )
-    asa = average_speed_of_answer_erlang_c(
-        agents, traffic, interval.forecast_aht_seconds
-    )
-    return sl, asa if asa != float("inf") else None
+    capacity_hours = agents * INTERVAL_HOURS
+    occupancy = (workload_hours / capacity_hours * 100.0) if capacity_hours else 0.0
+    return None, None, occupancy
 
 
 def build_scorecard(
@@ -267,21 +280,13 @@ def build_scorecard(
     scheduled_occupancy_values: list[float] = []
     scheduled_occupancy_weights: list[float] = []
     for interval in intervals:
-        sl, asa = _scheduled_metrics(interval)
+        sl, asa, occupancy = _scheduled_metrics(interval)
         if interval.forecast_volume > 0:
-            scheduled_sl_values.append(sl)
-            scheduled_sl_weights.append(interval.forecast_volume)
+            if sl is not None:
+                scheduled_sl_values.append(sl)
+                scheduled_sl_weights.append(interval.forecast_volume)
             if interval.scheduled_hc > 0 and interval.forecast_aht_seconds > 0:
-                traffic = traffic_intensity_erlangs(
-                    interval.forecast_volume,
-                    interval.forecast_aht_seconds,
-                    INTERVAL_HOURS * 3600,
-                )
-                scheduled_occupancy_values.append(
-                    occupancy_from_traffic_pct(
-                        traffic, max(round(interval.scheduled_hc), 1)
-                    )
-                )
+                scheduled_occupancy_values.append(occupancy)
                 scheduled_occupancy_weights.append(interval.forecast_volume)
             if asa is not None:
                 scheduled_asa_values.append(asa)
