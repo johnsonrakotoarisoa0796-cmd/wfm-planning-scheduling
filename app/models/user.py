@@ -19,4 +19,5 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True, nullable=False)
     # totp_secret est rempli lors de l'activation du 2FA (commit 03).
     totp_secret: Optional[str] = Field(default=None)
+    employee_id: Optional[int] = Field(default=None, foreign_key="employees.id", index=True)
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
