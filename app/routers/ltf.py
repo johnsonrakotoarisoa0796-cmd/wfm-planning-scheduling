@@ -105,9 +105,9 @@ def new_ltf_form(
 @router.post("/new", dependencies=[Depends(verify_csrf)])
 def create_ltf(
     request: Request,
+    period: str = Form(""),
     year: Optional[int] = Form(None),
     month: Optional[int] = Form(None),
-    period: Optional[str] = Form(None),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
     forecast_volume: float = Form(...),
@@ -122,21 +122,27 @@ def create_ltf(
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
-    # Compatibilité avec les anciens formulaires qui envoient period=YYYY-MM.
-    if period is not None and (year is None or month is None):
-        try:
-            raw = period.strip()
-            parts = raw.split("-")
-            if len(parts) != 2:
-                raise ValueError
-            parsed_year, parsed_month = (int(part) for part in parts)
-            year = parsed_year
-            month = parsed_month
-        except (TypeError, ValueError):
-            year, month = None, None
+    iso_year = iso_week = None
+    raw_period = period.strip()
+    try:
+        if "-W" in raw_period:
+            raw_year, raw_week = raw_period.split("-W", 1)
+            iso_year, iso_week = int(raw_year), int(raw_week)
+            year = month = None
+        elif raw_period:
+            raw_year, raw_month = raw_period.split("-", 1)
+            year, month = int(raw_year), int(raw_month)
+        elif year is None or month is None:
+            raise ValueError("La période LTF est obligatoire au format YYYY-Www.")
+    except (TypeError, ValueError):
+        iso_year = iso_week = None
+        if not raw_period:
+            year = month = None
 
     submitted_values = {
-        "period": period or (f"{year:04d}-{month:02d}" if year is not None and month is not None else ""),
+        "period": raw_period,
+        "iso_year": iso_year,
+        "iso_week": iso_week,
         "year": year,
         "month": month,
         "campaign_id": campaign_id,
@@ -153,9 +159,9 @@ def create_ltf(
     }
 
     try:
-        if year is None or month is None:
-            raise ValueError("La période LTF est obligatoire au format YYYY-MM.")
         payload = LTFCreateInput(
+            iso_year=iso_year,
+            iso_week=iso_week,
             year=year,
             month=month,
             campaign_id=campaign_id,
