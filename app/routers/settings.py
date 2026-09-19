@@ -89,7 +89,7 @@ def create_skill(
     campaign_id: int = Form(...),
     name: str = Form(...),
     channel: Channel = Form(...),
-    market_id: int | None = Form(None),
+    market_id: str = Form(""),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
@@ -99,7 +99,8 @@ def create_skill(
         return RedirectResponse("/settings?error=Campagne+introuvable", status_code=303)
     if not name:
         return RedirectResponse("/settings?error=Nom+du+skill+obligatoire", status_code=303)
-    if market_id is not None and session.get(Market, market_id) is None:
+    market_id_value = int(market_id) if market_id.strip() else None
+    if market_id_value is not None and session.get(Market, market_id_value) is None:
         return RedirectResponse("/settings?error=Marché+introuvable", status_code=303)
     duplicate = session.exec(
         select(Skill).where(Skill.campaign_id == campaign_id, Skill.name == name)
@@ -109,11 +110,66 @@ def create_skill(
     session.add(
         Skill(
             campaign_id=campaign_id,
-            market_id=market_id,
+            market_id=market_id_value,
             name=name,
             channel=channel,
             is_active=True,
         )
     )
     session.commit()
+    return RedirectResponse("/settings", status_code=303)
+
+@router.post("/demo", dependencies=[Depends(verify_csrf)])
+def seed_demo_configuration(
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    """Charge un jeu de données de démonstration multi-marché/multi-canal.
+
+    Idempotent : une campagne ou un skill déjà présent est conservé.
+    """
+    markets = list(
+        session.exec(select(Market).where(Market.is_active == True).order_by(Market.code)).all()  # noqa: E712
+    )
+    for market in markets:
+        code = f"SUP-{market.code}"
+        campaign = session.exec(select(Campaign).where(Campaign.code == code)).first()
+        if campaign is None:
+            campaign = Campaign(
+                name=f"Support Client {market.code}",
+                code=code,
+                description=f"Jeu de démonstration WFM — marché {market.code}.",
+                is_active=True,
+            )
+            session.add(campaign)
+            session.commit()
+            session.refresh(campaign)
+
+        channels = (
+            (Channel.VOICE, "Phone"),
+            (Channel.EMAIL, "Email"),
+            (Channel.CHAT, "Message Us"),
+            (Channel.BACKOFFICE, "Backoffice"),
+        )
+        for channel, default_name in channels:
+            existing = session.exec(
+                select(Skill).where(
+                    Skill.campaign_id == campaign.id,
+                    Skill.channel == channel,
+                    Skill.is_active == True,  # noqa: E712
+                )
+            ).first()
+            if existing is not None:
+                continue
+            session.add(
+                Skill(
+                    campaign_id=campaign.id,
+                    market_id=market.id,
+                    name=default_name,
+                    channel=channel,
+                    is_active=True,
+                )
+            )
+        session.commit()
+
     return RedirectResponse("/settings", status_code=303)
