@@ -102,7 +102,7 @@ def client_stf_page(
         request,
         "stf/client.html",
         {
-            "active_nav": "stf",
+            "active_nav": "stf-client",
             "current_user": current_user,
             "campaigns": campaigns,
             "skills": skills,
@@ -164,7 +164,7 @@ def import_client_stf(
         request,
         "stf/client.html",
         {
-            "active_nav": "stf",
+            "active_nav": "stf-client",
             "current_user": current_user,
             "campaigns": campaigns,
             "skills": skills,
