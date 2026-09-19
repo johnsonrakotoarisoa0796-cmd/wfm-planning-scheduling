@@ -133,8 +133,11 @@ def import_client_stf(
     try:
         week_start = _week_start_from_input(period)
         raw = file.file.read()
-        content = raw.decode("utf-8-sig")
-        rows = client_stf_service.parse_csv(content)
+        if (file.filename or "").lower().endswith(".xlsx"):
+            rows = client_stf_service.parse_xlsx(raw)
+        else:
+            content = raw.decode("utf-8-sig")
+            rows = client_stf_service.parse_csv(content)
         plan = client_stf_service.create_plan(
             session,
             week_start_date=week_start,
