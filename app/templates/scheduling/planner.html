@@ -1,0 +1,29 @@
+{% extends "app_base.html" %}
+{% block title %}Planner — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Planner de staffing</h1><p class="page-header__meta">Simulation automatique du mix de shifts qui réduit le sous-staffing intraday sans modifier votre planning.</p></div></div>
+<form class="filter-bar" method="get" action="/scheduling/planner">
+<div class="field"><label for="target_date">JOUR</label><input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}"></div>
+<div class="field"><label for="campaign_id">CAMPAGNE</label><select id="campaign_id" name="campaign_id"><option value="">Choisir</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="skill_id">SKILL</label><select id="skill_id" name="skill_id"><option value="">Choisir</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+<button type="submit">Optimiser le staffing</button>
+</form>
+{% if not filters.campaign_id or not filters.skill_id %}
+<div class="planner-empty">Sélectionnez une campagne et un skill pour lancer la simulation.</div>
+{% elif not intervals %}
+<div class="planner-empty"><strong>Aucun forecast intraday</strong><br>Générez d'abord la journée dans Daily / Intraday.</div>
+{% else %}
+<section class="planner-hero"><div><span class="panel-kicker">OPTIMISATION</span><h2>Mix de shifts recommandé</h2><p>Le moteur teste les shifts configurés contre le besoin des intervalles et cherche à réduire les heures de sous-staffing.</p></div><div class="planner-hero__stats"><div><span>Intervalles</span><strong>{{ intervals|length }}</strong></div><div><span>Agents disponibles</span><strong>{{ employees|length }}</strong></div></div></section>
+<div class="recommendations">
+{% if recommendations %}
+{% for rec in recommendations %}<article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">{{ rec.headcount }}×</div><div><h3>{{ rec.shift_name }}</h3><p>{{ rec.start_time.strftime("%H:%M") }} → {{ rec.end_time.strftime("%H:%M") }}</p></div></div><div class="recommendation-card__result"><span>Reste après simulation</span><strong>{{ "%.1f"|format(rec.shortage_hours_after) }} h</strong><small>surplus {{ "%.1f"|format(rec.surplus_hours_after) }} HC-h</small></div></article>{% endfor %}
+{% else %}<div class="planner-empty"><strong>Le planning actuel couvre déjà la demande</strong><br>Aucun ajout de shift n'améliore le score avec les gabarits disponibles.</div>{% endif %}
+</div>
+<div class="data-table-wrapper planner-table"><table class="data-table"><thead><tr><th>Heure</th><th class="numeric">Required</th><th class="numeric">Scheduled</th><th class="numeric">Gap</th><th>Action</th></tr></thead><tbody>
+{% for i in intervals %}<tr><td>{{ i.interval_start.strftime("%H:%M") }}–{{ i.interval_end.strftime("%H:%M") }}</td><td class="numeric">{{ "%.1f"|format(i.required_hc) }}</td><td class="numeric">{{ "%.1f"|format(i.scheduled_hc) }}</td><td class="numeric {% if i.scheduled_hc < i.required_hc %}negative{% elif i.scheduled_hc > i.required_hc %}positive{% endif %}">{{ "%+.1f"|format(i.scheduled_hc - i.required_hc) }}</td><td>{% if i.scheduled_hc + .5 < i.required_hc %}<span class="status-pill status-pill--critical">Ajouter du HC</span>{% elif i.scheduled_hc > i.required_hc + 1 %}<span class="status-pill status-pill--warning">Libérer / réaffecter</span>{% else %}<span class="status-pill status-pill--balanced">Équilibré</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endblock %}
+{% block extra_head %}<style>
+.planner-hero{display:flex;justify-content:space-between;gap:20px;padding:22px;margin-bottom:16px;background:linear-gradient(135deg,#0b1220,#16233b);border-radius:14px;color:#fff}.planner-hero p{max-width:700px;color:#9eabc0;margin-top:6px}.planner-hero h2{margin-top:4px;font-size:20px}.planner-hero__stats{display:flex;gap:18px;align-items:center}.planner-hero__stats div{min-width:92px;padding-left:18px;border-left:1px solid #293852}.planner-hero__stats span{display:block;color:#93a1b7;font-size:10px}.planner-hero__stats strong{display:block;margin-top:4px;font-size:22px}.recommendations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.recommendation-card{padding:16px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm)}.recommendation-card__main{display:flex;align-items:center;gap:11px}.recommendation-card__badge{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:800}.recommendation-card h3{font-size:14px}.recommendation-card p{font-size:11px}.recommendation-card__result{margin-top:15px;padding-top:11px;border-top:1px solid #edf0f4}.recommendation-card__result span,.recommendation-card__result small{display:block;color:#98a2b3;font-size:10px}.recommendation-card__result strong{display:block;margin:3px 0;font-family:var(--font-mono);font-size:16px}.planner-empty{padding:34px;background:#fff;border:1px dashed #cfd7e2;border-radius:12px;text-align:center;color:var(--text-muted);margin-bottom:16px}.planner-table .negative{color:#b42318}.planner-table .positive{color:#087443}@media(max-width:900px){.planner-hero{flex-direction:column}.recommendations{grid-template-columns:1fr}}@media(max-width:640px){.planner-hero__stats{width:100%}.planner-hero__stats div{flex:1}}
+</style>{% endblock %}
