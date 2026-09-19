@@ -9,7 +9,7 @@ ajoutee ici.
 from app.models.campaign import Campaign
 from app.models.capacity import CapacityPlan
 from app.models.config_parameter import ConfigParameter
-from app.models.employee import Employee, EmployeeSkill
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
 from app.models.intraday import ActualPerformanceRaw, DailyForecast, IntervalForecast
 from app.models.overtime import OvertimePlan
@@ -25,6 +25,7 @@ __all__ = [
     "CapacityPlan",
     "ConfigParameter",
     "Employee",
+    "EmployeeAbsence",
     "EmployeeSkill",
     "ForecastVersion",
     "LTFForecast",
