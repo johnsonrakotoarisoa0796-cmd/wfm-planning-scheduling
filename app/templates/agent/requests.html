@@ -1,0 +1,8 @@
+{% extends "app_base.html" %}
+{% block title %}Demandes agents — WFM{% endblock %}
+{% block content %}
+<div class="page-header"><div><span class="panel-kicker">SUPERVISION</span><h1>Demandes agents</h1><p class="page-header__meta">Validez ou refusez les demandes self-service en attente.</p></div><a class="btn-secondary" href="/agent">Agent Hub</a></div>
+<section class="data-table-wrapper"><table class="data-table"><thead><tr><th>Agent</th><th>Période</th><th>Type</th><th>Commentaire</th><th>Action</th></tr></thead><tbody>
+{% for item in items %}{% set employee = employees.get(item.employee_id) %}<tr><td><strong>{{ employee.first_name }} {{ employee.last_name }}</strong><div class="field__hint">{{ employee.employee_code }}</div></td><td>{{ item.start_date }} → {{ item.end_date }}</td><td>{{ item.request_type }}</td><td>{{ item.notes or "—" }}</td><td><form method="post" action="/agent/requests/{{ item.id }}/review" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="decision" value="approved"><button class="btn-primary btn-small" type="submit">Approuver</button></form> <form method="post" action="/agent/requests/{{ item.id }}/review" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="decision" value="rejected"><button class="btn-secondary btn-small" type="submit">Refuser</button></form></td></tr>{% else %}<tr><td colspan="5">Aucune demande en attente.</td></tr>{% endfor %}
+</tbody></table></section>
+{% endblock %}
