@@ -259,8 +259,10 @@ def create_plan(
                 f"Intervalle dupliqué: {row.date} {row.interval_start:%H:%M}."
             )
         seen.add(key)
-        if row.required_hc < 0:
-            raise ValueError("required_hc doit être >= 0.")
+        if row.volume is not None and row.volume < 0:
+            raise ValueError("volume doit être >= 0.")
+        if row.volume is None and (row.required_hc is None or row.required_hc < 0):
+            raise ValueError("volume obligatoire.")
 
     batch_id = uuid4().hex
     current = session.exec(
@@ -288,14 +290,62 @@ def create_plan(
     session.add(plan)
     session.flush()
 
+    skill = session.get(Skill, skill_id)
+    if skill is None:
+        raise ValueError("Skill introuvable.")
+
+    week_iso = week_start_date.isocalendar()
+    parameters = get_weekly_parameters(
+        session,
+        iso_year=week_iso.year,
+        iso_week=week_iso.week,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+
     for row in materialized:
+        end_seconds = row.interval_end.hour * 3600 + row.interval_end.minute * 60 + row.interval_end.second
+        start_seconds = row.interval_start.hour * 3600 + row.interval_start.minute * 60 + row.interval_start.second
+        if end_seconds <= start_seconds:
+            end_seconds += 24 * 3600
+        interval_seconds = end_seconds - start_seconds
+
+        if row.volume is not None:
+            if channel_service.is_realtime_channel(skill.channel):
+                result = find_required_agents(
+                    volume_contacts=row.volume,
+                    aht_seconds=parameters.aht_seconds,
+                    interval_seconds=interval_seconds,
+                    service_level_target_pct=parameters.service_level_target_pct,
+                    answer_time_target_seconds=parameters.answer_time_target_seconds,
+                    occupancy_target_pct=parameters.occupancy_pct,
+                )
+                net_required_hc = result.net_required_hc
+            else:
+                net_required_hc = channel_service.required_hc_for_async(
+                    volume_contacts=row.volume,
+                    aht_seconds=parameters.aht_seconds,
+                    interval_seconds=interval_seconds,
+                    occupancy_target_pct=parameters.occupancy_pct,
+                    channel=skill.channel,
+                )
+            required_hc = apply_shrinkage(net_required_hc, parameters.shrinkage_pct)
+        else:
+            required_hc = row.required_hc or 0.0
+
         session.add(
             ClientSTFInterval(
                 plan_id=plan.id,
                 date=row.date,
                 interval_start=row.interval_start,
                 interval_end=row.interval_end,
-                required_hc=row.required_hc,
+                volume=row.volume,
+                aht_seconds=parameters.aht_seconds if row.volume is not None else None,
+                occupancy_pct=parameters.occupancy_pct if row.volume is not None else None,
+                service_level_target_pct=parameters.service_level_target_pct if row.volume is not None else None,
+                answer_time_target_seconds=parameters.answer_time_target_seconds if row.volume is not None else None,
+                shrinkage_pct=parameters.shrinkage_pct if row.volume is not None else None,
+                required_hc=required_hc,
             )
         )
 
