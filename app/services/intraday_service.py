@@ -21,7 +21,7 @@ from sqlmodel import Session, select
 
 from app.models.intraday import IntervalForecast
 from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import kpi_service
+from app.services import client_stf_service, kpi_service
 from app.services.workforce_service import seasonal_operating_window, validate_timezone_name
 from app.services.erlang_service import (
     apply_shrinkage,
@@ -206,6 +206,25 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
     if data.actual_hc is not None:
         interval.actual_hc = data.actual_hc
 
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=interval.date,
+        campaign_id=interval.campaign_id,
+        skill_id=interval.skill_id,
+    )
+    effective_required_hc = interval.required_hc
+    if client_plan is not None:
+        client_rows = client_stf_service.list_intervals(session, client_plan.id)
+        matched = next(
+            (
+                row for row in client_rows
+                if row.date == interval.date and row.interval_start == interval.interval_start
+            ),
+            None,
+        )
+        if matched is not None:
+            effective_required_hc = matched.required_hc
+
     if interval.actual_volume is not None and interval.actual_aht_seconds is not None and interval.actual_hc:
         agents = max(round(interval.actual_hc), 0)
         traffic_actual = traffic_intensity_erlangs(interval.actual_volume, interval.actual_aht_seconds, INTERVAL_SECONDS)
@@ -219,7 +238,7 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
         asa_estimate = average_speed_of_answer_erlang_c(agents, traffic_actual, interval.actual_aht_seconds) if agents else None
         interval.asa_seconds = asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
 
-        interval.staffing_gap = kpi_service.staffing_gap(interval.actual_hc, interval.required_hc)
+        interval.staffing_gap = kpi_service.staffing_gap(interval.actual_hc, effective_required_hc)
 
     if data.abandoned_contacts is not None and interval.actual_volume:
         interval.abandon_rate_pct = kpi_service.abandon_rate_pct(data.abandoned_contacts, interval.actual_volume)
