@@ -24,5 +24,7 @@ class ScheduleEntry(SQLModel, table=True):
     is_day_off: bool = Field(default=False, nullable=False)
     break_start: Optional[time] = Field(default=None)
     break_end: Optional[time] = Field(default=None)
+    break2_start: Optional[time] = Field(default=None)
+    break2_end: Optional[time] = Field(default=None)
     lunch_start: Optional[time] = Field(default=None)
     lunch_end: Optional[time] = Field(default=None)
