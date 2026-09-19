@@ -119,26 +119,26 @@ def slot_bounds(slot_index: int) -> tuple[time, time]:
 # Génération (Erlang C par intervalle)
 # ============================================================================
 
-def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) -> list[IntervalForecast]:
-    """Génère les 48 IntervalForecast d'une journée à partir d'un volume
-    total et du profil de distribution par défaut.
-
-    Échoue si des intervalles existent déjà pour cette date/campagne/skill
-    — pas d'écrasement silencieux ; il faut les supprimer explicitement
-    avant de régénérer.
-    """
-    existing = session.exec(
-        select(IntervalForecast).where(
-            IntervalForecast.date == data.target_date,
-            IntervalForecast.campaign_id == data.campaign_id,
-            IntervalForecast.skill_id == data.skill_id,
-        )
-    ).first()
-    if existing is not None:
-        raise ValueError(
-            f"Des intervalles existent déjà pour le {data.target_date} sur cette campagne/skill "
-            "— supprimez-les avant de régénérer."
-        )
+def build_intraday_forecast_rows(
+    session: Session,
+    data: GenerateIntradayInput,
+    *,
+    check_existing: bool = True,
+) -> list[IntervalForecast]:
+    """Construit les intervalles sans persister ; réutilisable par Daily et Weekly."""
+    if check_existing:
+        existing = session.exec(
+            select(IntervalForecast).where(
+                IntervalForecast.date == data.target_date,
+                IntervalForecast.campaign_id == data.campaign_id,
+                IntervalForecast.skill_id == data.skill_id,
+            )
+        ).first()
+        if existing is not None:
+            raise ValueError(
+                f"Des intervalles existent déjà pour le {data.target_date} sur cette campagne/skill "
+                "— supprimez-les avant de régénérer."
+            )
 
     profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
     skill = session.get(Skill, data.skill_id)
@@ -169,25 +169,34 @@ def generate_intraday_forecast(session: Session, data: GenerateIntradayInput) ->
                 occupancy_target_pct=data.occupancy_target_pct,
                 channel=channel,
             )
+
         gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
-
-        interval = IntervalForecast(
-            date=data.target_date,
-            interval_start=interval_start,
-            interval_end=interval_end,
-            campaign_id=data.campaign_id,
-            skill_id=data.skill_id,
-            channel=channel,
-            forecast_volume=interval_volume,
-            forecast_aht_seconds=data.daily_aht_seconds,
-            required_hc=gross_required_hc,
-            scheduled_hc=0.0,
-            service_level_target_pct=data.service_level_target_pct,
-            answer_time_target_seconds=data.answer_time_target_seconds,
+        created.append(
+            IntervalForecast(
+                date=data.target_date,
+                interval_start=interval_start,
+                interval_end=interval_end,
+                campaign_id=data.campaign_id,
+                skill_id=data.skill_id,
+                channel=channel,
+                forecast_volume=interval_volume,
+                forecast_aht_seconds=data.daily_aht_seconds,
+                required_hc=gross_required_hc,
+                scheduled_hc=0.0,
+                service_level_target_pct=data.service_level_target_pct,
+                answer_time_target_seconds=data.answer_time_target_seconds,
+            )
         )
-        session.add(interval)
-        created.append(interval)
+    return created
 
+
+def generate_intraday_forecast(
+    session: Session,
+    data: GenerateIntradayInput,
+) -> list[IntervalForecast]:
+    """Génère et persiste les intervalles d'une journée."""
+    created = build_intraday_forecast_rows(session, data, check_existing=True)
+    session.add_all(created)
     session.commit()
     for interval in created:
         session.refresh(interval)
