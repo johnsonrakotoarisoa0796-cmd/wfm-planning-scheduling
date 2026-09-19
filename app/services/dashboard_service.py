@@ -8,7 +8,7 @@ from typing import Optional
 from sqlmodel import Session
 
 from app.models.forecast import LTFForecast
-from app.services import capacity_service, forecast_service, kpi_service, overtime_service, shrinkage_service
+from app.services import capacity_service, client_stf_service, forecast_service, kpi_service, overtime_service, shrinkage_service
 from app.services.intraday_service import compute_daily_summary, list_intervals_for_day
 from app.services.wfm_metrics_service import WFMScorecard, build_scorecard
 
@@ -106,19 +106,36 @@ def build_dashboard(
         skill_id=skill_id,
     )
 
+    client_plan = client_stf_service.current_plan(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    client_stf_rows = (
+        client_stf_service.list_intervals(session, client_plan.id)
+        if client_plan is not None
+        else []
+    )
+    effective_intervals = (
+        client_stf_service.effective_intervals(intervals, client_stf_rows)
+        if client_stf_rows
+        else intervals
+    )
+
     scorecard = build_scorecard(
-        intervals,
+        effective_intervals,
         occupancy_target_pct=ltf.occupancy_required_pct if ltf else None,
         aht_target_seconds=ltf.aht_required_seconds if ltf else None,
         asa_target_seconds=ltf.asa_target_seconds if ltf else None,
-    ) if intervals else None
+    ) if effective_intervals else None
 
     kpi_rows: list[KPIRow] = []
     staffing = None
     forecast_volume = actual_volume = forecast_accuracy = None
 
     if intervals:
-        summary = compute_daily_summary(intervals)
+        summary = compute_daily_summary(effective_intervals)
         forecast_volume = summary.forecast_volume
         actual_volume = summary.actual_volume
         forecast_accuracy = (
