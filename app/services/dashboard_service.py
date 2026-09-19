@@ -8,6 +8,8 @@ from typing import Optional
 from sqlmodel import Session
 
 from app.models.forecast import LTFForecast
+from app.models.skill import Skill
+from app.services.channel_service import channel_label, concurrency_for_channel
 from app.services import capacity_service, client_stf_service, forecast_service, kpi_service, overtime_service, shrinkage_service
 from app.services.intraday_service import compute_daily_summary, list_intervals_for_day
 from app.services.wfm_metrics_service import WFMScorecard, build_scorecard
@@ -56,6 +58,9 @@ class DashboardData:
     monthly_production_hours: Optional[float] = None
     monthly_waiting_hours: Optional[float] = None
     wfm_scorecard: Optional[WFMScorecard] = None
+    channel_label: str = "Phone"
+    channel_concurrency: float = 1.0
+    market_code: Optional[str] = None
 
 
 def _row(
@@ -99,6 +104,14 @@ def build_dashboard(
         campaign_id=campaign_id,
         skill_id=skill_id,
     )
+    skill = session.get(Skill, skill_id)
+    selected_channel_label = channel_label(skill.channel) if skill else "Phone"
+    selected_concurrency = concurrency_for_channel(skill.channel) if skill else 1.0
+    market_code = None
+    if skill is not None and skill.market_id is not None:
+        from app.models.market import Market
+        market = session.get(Market, skill.market_id)
+        market_code = market.code if market else None
     intervals = list_intervals_for_day(
         session,
         target_date=target_date,
@@ -237,4 +250,7 @@ def build_dashboard(
         monthly_production_hours=ltf.production_hours if ltf else None,
         monthly_waiting_hours=ltf.waiting_hours if ltf else None,
         wfm_scorecard=scorecard,
+        channel_label=selected_channel_label,
+        channel_concurrency=selected_concurrency,
+        market_code=market_code,
     )
