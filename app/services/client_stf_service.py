@@ -226,6 +226,33 @@ def effective_intervals(
     ]
 
 
+
+def effective_intervals_for_range(
+    session: Session,
+    intervals: list[IntervalForecast],
+    *,
+    campaign_id: int,
+    skill_id: int,
+) -> list[EffectiveInterval]:
+    """Applique le STF client courant à tous les intervalles d'une plage."""
+    if not intervals:
+        return []
+    week_starts = sorted({monday_of_week(interval.date) for interval in intervals})
+    rows: list[ClientSTFInterval] = []
+    for week_start in week_starts:
+        plan = session.exec(
+            select(ClientSTFPlan).where(
+                ClientSTFPlan.week_start_date == week_start,
+                ClientSTFPlan.campaign_id == campaign_id,
+                ClientSTFPlan.skill_id == skill_id,
+                ClientSTFPlan.is_current == True,  # noqa: E712
+            )
+        ).first()
+        if plan is not None:
+            rows.extend(list_intervals(session, plan.id))
+    return effective_intervals(intervals, rows)
+
+
 def scorecard(
     intervals: list[IntervalForecast | EffectiveInterval],
     *,
