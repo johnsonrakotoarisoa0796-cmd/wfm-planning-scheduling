@@ -1,18 +1,22 @@
 """Service Workforce global par campagne."""
 from __future__ import annotations
 
+from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date
-from calendar import monthrange
 from typing import Optional
 
 from sqlmodel import Session, select
 
+from app.core.config import get_settings
+from app.core.time_utils import utc_now
 from app.models.campaign import Campaign
 from app.models.campaign_workforce import CampaignWorkforcePlan
 from app.models.employee import Employee
 from app.models.enums import EmployeeStatus
 from app.schemas.campaign_workforce import CampaignWorkforcePlanInput
+
+settings = get_settings()
 
 
 @dataclass(frozen=True)
@@ -91,22 +95,27 @@ def roster_snapshot(
     period: str,
 ) -> WorkforceRosterSnapshot:
     year, month = (int(part) for part in period.split("-"))
-    last_day = date(year, month, monthrange(year, month)[1])
+    month_start = date(year, month, 1)
+    month_end = date(year, month, monthrange(year, month)[1])
     rows = list(
         session.exec(
             select(Employee)
             .where(Employee.campaign_id == campaign_id)
             .where(Employee.status == EmployeeStatus.ACTIVE)
-            .where(Employee.hire_date <= last_day)
+            .where(Employee.hire_date <= month_end)
             .where(
                 (Employee.termination_date.is_(None))
-                | (Employee.termination_date >= date(year, month, 1))
+                | (Employee.termination_date >= month_start)
             )
         ).all()
     )
+    weekly_hours = max(float(settings.weekly_hours), 1.0)
     return WorkforceRosterSnapshot(
         active_roster_hc=len(rows),
-        active_roster_fte=sum(max(0.0, employee.weekly_hours_contract) / 40.0 for employee in rows),
+        active_roster_fte=sum(
+            max(0.0, employee.weekly_hours_contract) / weekly_hours
+            for employee in rows
+        ),
     )
 
 
@@ -156,7 +165,7 @@ def upsert_plan(
     plan.transfers_out_hc = data.transfers_out_hc
     plan.required_hc = data.required_hc
     plan.notes = data.notes.strip() or None if data.notes else None
-    plan.updated_at = __import__("app.core.time_utils", fromlist=["utc_now"]).utc_now()
+    plan.updated_at = utc_now()
 
     session.add(plan)
     session.commit()
