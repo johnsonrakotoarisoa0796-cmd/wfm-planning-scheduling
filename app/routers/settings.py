@@ -51,7 +51,7 @@ def settings_page(
     session: Session = Depends(get_session),
 ):
     campaigns, markets, rows = _page_data(session)
-    weekly_rows = list(
+    weekly_rows_raw = list(
         session.exec(
             select(WeeklyWFMParameter).order_by(
                 WeeklyWFMParameter.iso_year.desc(),
@@ -61,6 +61,16 @@ def settings_page(
             )
         ).all()
     )
+    campaigns_by_id = {c.id: c for c in campaigns}
+    skills_by_id = {row["skill"].id: row["skill"] for row in rows}
+    weekly_rows = [
+        {
+            "row": row,
+            "campaign_name": campaigns_by_id.get(row.campaign_id).name if row.campaign_id in campaigns_by_id else "—",
+            "skill_name": skills_by_id.get(row.skill_id).name if row.skill_id in skills_by_id else "—",
+        }
+        for row in weekly_rows_raw
+    ]
     return templates.TemplateResponse(
         request,
         "settings/index.html",
