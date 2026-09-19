@@ -21,7 +21,7 @@ from sqlmodel import Session
 
 from app.models.forecast import LTFForecast
 from app.services import capacity_service, forecast_service, kpi_service, overtime_service, shrinkage_service
-from app.services.intraday_service import compute_daily_summary, list_intervals_for_day
+from app.services.intraday_service import compute_daily_summary, list_intervals_for_day\nfrom app.services.wfm_metrics_service import WFMScorecard, build_scorecard
 
 
 @dataclass(frozen=True)
