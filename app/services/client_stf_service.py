@@ -15,7 +15,10 @@ from sqlmodel import Session, select
 
 from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.intraday import IntervalForecast
-from app.services import kpi_service
+from app.models.skill import Skill
+from app.services import channel_service, kpi_service
+from app.services.erlang_service import apply_shrinkage, find_required_agents
+from app.services.weekly_parameter_service import get_weekly_parameters
 
 INTERVAL_HOURS = 0.5
 
@@ -25,7 +28,10 @@ class ClientSTFRow:
     date: date
     interval_start: time
     interval_end: time
-    required_hc: float
+    # Legacy position remains the fourth positional argument.
+    required_hc: float | None = None
+    # New contract: client supplies volume; WFM calculates required HC.
+    volume: float | None = None
 
 
 @dataclass(frozen=True)
