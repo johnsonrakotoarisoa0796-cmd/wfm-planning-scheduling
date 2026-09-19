@@ -7,6 +7,7 @@ ajoutee ici.
 """
 
 from app.models.campaign import Campaign
+from app.models.client_stf import ClientSTFInterval, ClientSTFPlan
 from app.models.capacity import CapacityPlan
 from app.models.config_parameter import ConfigParameter
 from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
@@ -22,6 +23,8 @@ from app.models.user import User
 
 __all__ = [
     "Campaign",
+    "ClientSTFInterval",
+    "ClientSTFPlan",
     "CapacityPlan",
     "ConfigParameter",
     "Employee",
