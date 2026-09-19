@@ -14,5 +14,8 @@ class Shift(SQLModel, table=True):
     start_time: time = Field(nullable=False)
     end_time: time = Field(nullable=False)
     break_minutes: int = Field(default=15, nullable=False)
+    break_count: int = Field(default=2, nullable=False)
+    break_paid: bool = Field(default=True, nullable=False)
     lunch_minutes: int = Field(default=60, nullable=False)
+    lunch_paid: bool = Field(default=False, nullable=False)
     is_active: bool = Field(default=True, nullable=False)
