@@ -13,7 +13,6 @@ from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.forecast import LTFForecast
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
-from app.models.user import User
 from app.services import client_stf_service, forecast_service, intraday_service, planner_service, workforce_service
 from app.services.campaign_workforce_service import WorkforceMetrics, calculate_metrics, roster_snapshot
 
@@ -165,7 +164,7 @@ def build_control_tower(
         employee for employee in session.exec(
             select(Employee).where(
                 Employee.campaign_id == campaign_id,
-                Employee.status == "active",
+                Employee.status == EmployeeStatus.ACTIVE,
             ).order_by(Employee.last_name, Employee.first_name)
         ).all()
         if employee.id in {
