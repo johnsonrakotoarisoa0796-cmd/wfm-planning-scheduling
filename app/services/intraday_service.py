@@ -228,6 +228,26 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
         interval.actual_volume = data.actual_volume
     if data.actual_aht_seconds is not None:
         interval.actual_aht_seconds = data.actual_aht_seconds
+    if data.actual_talk_time_seconds is not None:
+        interval.actual_talk_time_seconds = data.actual_talk_time_seconds
+    if data.actual_hold_time_seconds is not None:
+        interval.actual_hold_time_seconds = data.actual_hold_time_seconds
+    if data.actual_acw_seconds is not None:
+        interval.actual_acw_seconds = data.actual_acw_seconds
+
+    if any(
+        value is not None
+        for value in (
+            data.actual_talk_time_seconds,
+            data.actual_hold_time_seconds,
+            data.actual_acw_seconds,
+        )
+    ):
+        interval.actual_aht_seconds = kpi_service.handle_time_seconds(
+            data.actual_talk_time_seconds or 0.0,
+            data.actual_hold_time_seconds or 0.0,
+            data.actual_acw_seconds or 0.0,
+        )
     if data.actual_hc is not None:
         interval.actual_hc = data.actual_hc
 
