@@ -30,9 +30,12 @@ router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST)
 
 
-def _reference_data(session: Session) -> tuple[list[Campaign], list[Skill], list[Employee]]:
-    campaigns = list(session.exec(select(Campaign).where(Campaign.is_active == True)).all())  # noqa: E712
-    skills = list(session.exec(select(Skill).where(Skill.is_active == True)).all())
+def _reference_data(session: Session, campaign_id: Optional[int] = None) -> tuple[list[Campaign], list[Skill], list[Employee]]:
+    campaigns = list(session.exec(select(Campaign).where(Campaign.is_active == True).order_by(Campaign.name)).all())  # noqa: E712
+    skills_query = select(Skill).where(Skill.is_active == True)
+    if campaign_id is not None:
+        skills_query = skills_query.where(Skill.campaign_id == campaign_id)
+    skills = list(session.exec(skills_query.order_by(Skill.name)).all())
     employees = list(session.exec(select(Employee)).all())
     return campaigns, skills, employees
 
@@ -238,7 +241,7 @@ def planner_view(
     session: Session = Depends(get_session),
 ):
     target_date = target_date or date.today()
-    campaigns, skills, employees = _reference_data(session)
+    campaigns, skills, employees = _reference_data(session, campaign_id)
     intervals = []
     client_stf_active = False
     recommendations = []
