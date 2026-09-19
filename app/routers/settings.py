@@ -80,8 +80,7 @@ def settings_page(
 
 @router.post("/weekly-parameters", dependencies=[Depends(verify_csrf)])
 def save_weekly_parameters(
-    iso_year: int = Form(...),
-    iso_week: int = Form(...),
+    period: str = Form(...),
     campaign_id: int = Form(...),
     skill_id: int = Form(...),
     aht_seconds: float = Form(...),
@@ -95,6 +94,10 @@ def save_weekly_parameters(
     session: Session = Depends(get_session),
 ):
     try:
+        if "-W" not in period:
+            raise ValueError("La semaine doit être au format YYYY-Www.")
+        year_text, week_text = period.split("-W", 1)
+        iso_year, iso_week = int(year_text), int(week_text)
         campaign = session.get(Campaign, campaign_id)
         skill = session.get(Skill, skill_id)
         if campaign is None or skill is None or skill.campaign_id != campaign_id:
