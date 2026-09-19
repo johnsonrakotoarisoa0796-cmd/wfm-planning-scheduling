@@ -235,19 +235,21 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
     if data.actual_acw_seconds is not None:
         interval.actual_acw_seconds = data.actual_acw_seconds
 
-    if any(
-        value is not None
-        for value in (
+    handle_components = (
+        data.actual_talk_time_seconds,
+        data.actual_hold_time_seconds,
+        data.actual_acw_seconds,
+    )
+    if any(value is not None for value in handle_components):
+        if any(value is None for value in handle_components):
+            raise ValueError("Talk Time, Hold Time et ACW doivent être renseignés ensemble.")
+        interval.actual_aht_seconds = kpi_service.handle_time_seconds(
             data.actual_talk_time_seconds,
             data.actual_hold_time_seconds,
             data.actual_acw_seconds,
         )
-    ):
-        interval.actual_aht_seconds = kpi_service.handle_time_seconds(
-            data.actual_talk_time_seconds or 0.0,
-            data.actual_hold_time_seconds or 0.0,
-            data.actual_acw_seconds or 0.0,
-        )
+        if interval.actual_aht_seconds <= 0:
+            raise ValueError("Handle Time calculé doit être strictement positif.")
     if data.actual_hc is not None:
         interval.actual_hc = data.actual_hc
 
