@@ -223,7 +223,7 @@ def build_scorecard(intervals: list[IntervalForecast], *, occupancy_target_pct: 
     operations = OperationsScorecard(
         forecast_aht_seconds=forecast_aht,
         actual_aht_seconds=actual_aht,
-        aht_variance_seconds=(actual_aht - forecast_aht) if actual_aht is not None else None,
+        aht_target_seconds=aht_target_seconds,\n        aht_variance_seconds=(actual_aht - forecast_aht) if actual_aht is not None else None,\n        aht_variance_to_target_seconds=(actual_aht - aht_target_seconds) if actual_aht is not None and aht_target_seconds is not None else None,
         scheduled_service_level_pct=scheduled_sl,
         actual_service_level_pct=actual_sl,
         service_level_target_pct=target_sl,
