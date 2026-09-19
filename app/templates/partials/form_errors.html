@@ -1,0 +1,7 @@
+{% if errors %}
+<div class="error-banner" role="alert">
+    {% for error in errors %}
+        {{ error }}{% if not loop.last %}<br>{% endif %}
+    {% endfor %}
+</div>
+{% endif %}
