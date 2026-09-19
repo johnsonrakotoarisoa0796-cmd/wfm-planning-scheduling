@@ -9,6 +9,7 @@ from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
 from app.models.campaign_workforce import CampaignWorkforcePlan
+from app.models.employee import Employee
 from app.models.enums import Channel, UserRole
 from app.models.market import Market
 from app.models.skill import Skill
@@ -81,7 +82,7 @@ def settings_page(
     campaigns_by_id = {c.id: c for c in campaigns}
     skills_by_id = {row["skill"].id: row["skill"] for row in rows}
     users = list(session.exec(select(User).order_by(User.email)).all()) if current_user.role == UserRole.ADMIN else []
-    employees = list(session.exec(select(__import__("app.models.employee", fromlist=["Employee"]).Employee).order_by(__import__("app.models.employee", fromlist=["Employee"]).Employee.last_name, __import__("app.models.employee", fromlist=["Employee"]).Employee.first_name)).all()) if current_user.role == UserRole.ADMIN else []
+    employees = list(session.exec(select(Employee).order_by(Employee.last_name, Employee.first_name)).all()) if current_user.role == UserRole.ADMIN else []
     weekly_rows = [
         {
             "row": row,
@@ -274,7 +275,7 @@ def link_user_to_employee(
     if user is None:
         return RedirectResponse("/settings?error=Utilisateur+introuvable", status_code=303)
     employee_id_value = int(employee_id) if employee_id.strip() else None
-    if employee_id_value is not None and session.get(__import__("app.models.employee", fromlist=["Employee"]).Employee, employee_id_value) is None:
+    if employee_id_value is not None and session.get(Employee, employee_id_value) is None:
         return RedirectResponse("/settings?error=Agent+introuvable", status_code=303)
     user.employee_id = employee_id_value
     session.add(user)
