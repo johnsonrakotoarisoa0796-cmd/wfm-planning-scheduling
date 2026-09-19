@@ -23,7 +23,7 @@
     </div>
     <div class="field">
         <label for="campaign_id">Campagne</label>
-        <select id="campaign_id" name="campaign_id">
+        <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
             <option value="">Toutes</option>
             {% for c in campaigns %}
             <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -32,10 +32,10 @@
     </div>
     <div class="field">
         <label for="skill_id">Skill</label>
-        <select id="skill_id" name="skill_id">
+        <select id="skill_id" name="skill_id" data-filtered-skill-select>
             <option value="">Tous</option>
             {% for s in skills %}
-            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+            <option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
             {% endfor %}
         </select>
     </div>
