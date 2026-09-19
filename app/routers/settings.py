@@ -8,12 +8,14 @@ from app.core.database import get_session
 from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
+from app.models.campaign_workforce import CampaignWorkforcePlan
 from app.models.enums import Channel, UserRole
 from app.models.market import Market
 from app.models.skill import Skill
 from app.models.user import User
 from app.models.weekly_parameters import WeeklyWFMParameter
 from app.services.weekly_parameter_service import upsert_weekly_parameters
+from app.services.campaign_workforce_service import calculate_metrics
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST)
@@ -51,6 +53,21 @@ def settings_page(
     session: Session = Depends(get_session),
 ):
     campaigns, markets, rows = _page_data(session)
+    workforce_rows = list(
+        session.exec(
+            select(CampaignWorkforcePlan).order_by(
+                CampaignWorkforcePlan.campaign_id,
+                CampaignWorkforcePlan.period.desc(),
+            )
+        ).all()
+    )
+    workforce_by_campaign = {}
+    for plan in workforce_rows:
+        workforce_by_campaign.setdefault(
+            plan.campaign_id,
+            {"plan": plan, "metrics": calculate_metrics(plan)},
+        )
+
     weekly_rows_raw = list(
         session.exec(
             select(WeeklyWFMParameter).order_by(
@@ -83,6 +100,7 @@ def settings_page(
             "channel_labels": CHANNEL_LABELS,
             "can_edit": current_user.role in WRITE_ROLES,
             "weekly_rows": weekly_rows,
+            "workforce_by_campaign": workforce_by_campaign,
         },
     )
 
