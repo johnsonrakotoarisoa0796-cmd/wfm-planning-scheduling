@@ -360,7 +360,7 @@ un autre fuseau.
 
 ## STF client intervalisé
 
-Le module **STF Client** accepte un besoin de staffing déjà calculé par le client et déjà distribué par intervalle. Le fichier CSV attendu contient :
+Le module **STF Client** accepte un besoin de staffing déjà calculé par le client et déjà distribué par intervalle. Un fichier **CSV UTF-8 ou Excel (.xlsx)** est accepté ; les colonnes attendues sont :
 
 `date,interval_start,interval_end,required_hc`
 
