@@ -59,3 +59,5 @@ La plateforme est structurée pour recevoir forecasting multi-modèles, intégra
 ## 7. Règle de gouvernance
 
 Une recommandation du moteur n'est pas une décision. La publication reste une action WFM explicite.
+
+> Vérification technique : la branche principale est validée par la suite pytest du repository avant publication des évolutions.
