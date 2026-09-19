@@ -256,6 +256,13 @@ def planner_view(
                 select(EmployeeSkill).where(EmployeeSkill.skill_id == skill_id)
             ).all()
         }
+        target_absences = scheduling_service.list_absences(
+            session, start_date=target_date, end_date=target_date
+        )
+        absent_employee_ids = {
+            absence.employee_id
+            for absence in target_absences
+        }
         available_employee_count = sum(
             1
             for employee in employees
@@ -264,6 +271,7 @@ def planner_view(
                 and employee.campaign_id == campaign_id
                 and employee.id in eligible_skill_employee_ids
                 and employee.id not in assigned_employee_ids
+                and employee.id not in absent_employee_ids
             )
         )
         recommendations = planner_service.recommend_shift_mix(
