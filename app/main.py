@@ -234,6 +234,86 @@ def bootstrap_markets(*, db_engine=None) -> None:
             session.commit()
 
 
+def bootstrap_operational_configuration(*, db_engine=None) -> None:
+    """Crée la configuration WFM standard manquante sans écraser l'existant.
+
+    Idempotent : ajoute uniquement les campagnes/skills standards absents.
+    """
+    db_engine = db_engine or engine
+    standard_markets = ["FR", "UK", "DE", "IN", "ES", "JP", "NL"]
+    standard_channels = (
+        (Channel.VOICE, "Phone"),
+        (Channel.EMAIL, "Email"),
+        (Channel.CHAT, "Message Us"),
+        (Channel.BACKOFFICE, "Backoffice"),
+    )
+
+    with Session(db_engine) as session:
+        markets_by_code = {
+            market.code: market
+            for market in session.exec(
+                select(Market).where(
+                    Market.code.in_(standard_markets),
+                    Market.is_active == True,  # noqa: E712
+                )
+            ).all()
+        }
+        created_campaigns = 0
+        created_skills = 0
+
+        for market_code in standard_markets:
+            market = markets_by_code.get(market_code)
+            if market is None:
+                continue
+
+            campaign_code = f"SUP-{market_code}"
+            campaign = session.exec(
+                select(Campaign).where(Campaign.code == campaign_code)
+            ).first()
+            if campaign is None:
+                campaign = Campaign(
+                    name=f"Support Client {market_code}",
+                    code=campaign_code,
+                    description=f"Campagne WFM standard — marché {market_code}.",
+                    is_active=True,
+                )
+                session.add(campaign)
+                session.commit()
+                session.refresh(campaign)
+                created_campaigns += 1
+
+            for channel, skill_name in standard_channels:
+                exists = session.exec(
+                    select(Skill).where(
+                        Skill.campaign_id == campaign.id,
+                        Skill.channel == channel,
+                        Skill.is_active == True,  # noqa: E712
+                    )
+                ).first()
+                if exists is not None:
+                    continue
+
+                session.add(
+                    Skill(
+                        campaign_id=campaign.id,
+                        market_id=market.id,
+                        name=skill_name,
+                        channel=channel,
+                        is_active=True,
+                    )
+                )
+                created_skills += 1
+
+        if created_skills:
+            session.commit()
+
+    if created_campaigns or created_skills:
+        print(
+            f"[bootstrap] Configuration WFM ajoutée : "
+            f"{created_campaigns} campagnes, {created_skills} skills."
+        )
+
+
 def bootstrap_shrinkage_categories(*, db_engine=None) -> None:
     """Crée les catégories Shrinkage par défaut (§23) si aucune n'existe
     encore — Indoor (Break, Meeting, Personal Time, Outage, Project,
@@ -277,6 +357,7 @@ async def lifespan(app: FastAPI):
     bootstrap_reset_totp_if_configured()
     bootstrap_demo_data_if_configured()
     bootstrap_markets()
+    bootstrap_operational_configuration()
     bootstrap_shrinkage_categories()
     yield
 
