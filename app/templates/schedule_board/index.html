@@ -9,7 +9,7 @@
 <button type="submit">Afficher</button></form>
 {% if not rows %}<div class="data-table-wrapper"><div class="empty-state"><strong>Board vide</strong><br>Choisissez une campagne et un skill. Le board affiche les affectations, congés et jours OFF.</div></div>{% else %}
 <section class="data-table-wrapper">
-<table class="data-table schedule-board"><thead><tr><th>Agent</th>{% for offset in range(5) %}{% set day = week_start + timedelta(days=offset) %}<th>{{ day.strftime("%a %d/%m") }}</th>{% endfor %}</tr></thead>
+<table class="data-table schedule-board"><thead><tr><th>Agent</th>{% for offset in range(5) %}{% set day = week_days[offset] %}<th>{{ day.strftime("%a %d/%m") }}</th>{% endfor %}</tr></thead>
 <tbody>{% for row in rows %}<tr><td><strong>{{ row.employee.first_name }} {{ row.employee.last_name }}</strong><div class="field__hint">{{ row.employee.employee_code }}</div></td>{% for cell in row.days %}<td>
 {% if cell.absence %}<span class="status-pill status-pill--critical">Absence</span><small>{{ cell.absence.absence_type }}</small>
 {% elif cell.entry and cell.entry.is_day_off %}<span class="status-pill">OFF</span>
