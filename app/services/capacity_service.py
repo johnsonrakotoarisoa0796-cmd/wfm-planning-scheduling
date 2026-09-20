@@ -41,6 +41,9 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
         transfers_in=data.transfers_in,
         transfers_out=data.transfers_out,
         attrition_pct=data.attrition_pct,
+    )
+    projected_available_hc = kpi_service.projected_available_headcount(
+        projected_hc=projected_hc,
         absenteeism_pct=data.absenteeism_pct,
     )
 
@@ -62,6 +65,7 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
     plan.attrition_pct = data.attrition_pct
     plan.absenteeism_pct = data.absenteeism_pct
     plan.projected_hc = projected_hc
+    plan.projected_available_hc = projected_available_hc
     plan.notes = data.notes
     plan.created_by = created_by_user_id
 
