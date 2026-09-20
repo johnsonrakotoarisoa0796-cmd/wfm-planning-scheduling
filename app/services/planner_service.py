@@ -54,11 +54,6 @@ def _generate_activities(shift: Shift) -> tuple[time | None, time | None, time |
 
 
 def _shift_covers(shift: Shift, start: time, end: time | None = None) -> bool:
-    if not (
-        shift.start_time <= end if end is not None and shift.start_time <= shift.end_time
-        else True
-    ):
-        pass
     if shift.start_time <= shift.end_time:
         covered = shift.start_time <= start < shift.end_time
     else:
