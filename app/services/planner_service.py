@@ -13,7 +13,7 @@ from typing import Iterable
 
 from app.models.intraday import IntervalForecast
 from app.models.shift import Shift
-from app.services import intraday_service
+from app.services import intraday_service, scheduling_service
 
 
 @dataclass(frozen=True)
@@ -27,10 +27,51 @@ class ShiftRecommendation:
     surplus_hours_after: float
 
 
-def _shift_covers(shift: Shift, start: time) -> bool:
+def _generate_activities(shift: Shift) -> tuple[time | None, time | None, time | None, time | None, time | None, time | None]:
+    elapsed_minutes = int(round(
+        __import__("app.services.workforce_service", fromlist=["shift_elapsed_hours"]).shift_elapsed_hours(shift) * 60
+    ))
+    if elapsed_minutes <= 0:
+        return (None, None, None, None, None, None)
+    start_minutes = shift.start_time.hour * 60 + shift.start_time.minute
+
+    def at(offset: int) -> time:
+        minute = (start_minutes + offset) % (24 * 60)
+        return time(minute // 60, minute % 60)
+
+    def pair(offset: int, duration: int) -> tuple[time, time]:
+        return at(offset), at(offset + duration)
+
+    break_len = max(shift.break_minutes, 0)
+    lunch_len = max(shift.lunch_minutes, 0)
+    b1_offset = max(75, int(elapsed_minutes * 0.27))
+    lunch_offset = int(elapsed_minutes * 0.50)
+    b2_offset = int(elapsed_minutes * 0.76)
+    b1 = pair(b1_offset, break_len) if shift.break_count >= 1 and break_len else (None, None)
+    b2 = pair(b2_offset, break_len) if shift.break_count >= 2 and break_len else (None, None)
+    lunch = pair(lunch_offset, lunch_len) if lunch_len else (None, None)
+    return b1[0], b1[1], b2[0], b2[1], lunch[0], lunch[1]
+
+
+def _shift_covers(shift: Shift, start: time, end: time | None = None) -> bool:
+    if not (
+        shift.start_time <= end if end is not None and shift.start_time <= shift.end_time
+        else True
+    ):
+        pass
     if shift.start_time <= shift.end_time:
-        return shift.start_time <= start < shift.end_time
-    return start >= shift.start_time or start < shift.end_time
+        covered = shift.start_time <= start < shift.end_time
+    else:
+        covered = start >= shift.start_time or start < shift.end_time
+    if not covered:
+        return False
+    if end is None:
+        return True
+    b1s, b1e, b2s, b2e, ls, le = _generate_activities(shift)
+    return not any(
+        scheduling_service._overlaps(bs, be, start, end)
+        for bs, be in ((b1s, b1e), (b2s, b2e), (ls, le))
+    )
 
 
 def _score_candidate(required: list[float], current: list[float], cover: list[bool]) -> float:
@@ -67,7 +108,7 @@ def recommend_shift_mix(
     for _ in range(max_agents):
         candidates = []
         for shift in shifts:
-            cover = [_shift_covers(shift, start) for start in starts]
+            cover = [_shift_covers(shift, i.interval_start, i.interval_end) for i in intervals]
             score = _score_candidate(required, current, cover)
             candidates.append((score, shift, cover))
         score, shift, cover = max(candidates, key=lambda x: x[0])
