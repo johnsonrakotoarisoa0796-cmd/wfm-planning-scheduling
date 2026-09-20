@@ -129,10 +129,15 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         period_start = date.fromisocalendar(data.iso_year, data.iso_week, 1)
         period_end = date.fromisocalendar(data.iso_year, data.iso_week, 7)
         working_days = count_weekdays_in_range(period_start, period_end)
-        workload = kpi_service.workload_hours(data.forecast_volume, data.handling_time_seconds)
+        contact_handling_hours = kpi_service.workload_hours(
+            data.forecast_volume, data.handling_time_seconds
+        )
+        agent_workload_hours_value = channel_service.normalized_workload_hours(
+            data.forecast_volume, data.handling_time_seconds, skill.channel
+        )
         available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-        net_required_hc = channel_service.required_hc_aggregate_channel(
-            workload,
+        net_required_hc = kpi_service.required_hc_aggregate(
+            agent_workload_hours_value,
             available_hours_per_agent,
             data.occupancy_required_pct,
             skill.channel,
@@ -148,10 +153,15 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         _, last_day = calendar.monthrange(data.year, data.month)
         period_end = date(data.year, data.month, last_day)
         working_days = working_days_in_month(data.year, data.month)
-        workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
+        contact_handling_hours = kpi_service.workload_hours(
+            data.forecast_volume, data.forecast_aht_seconds
+        )
+        agent_workload_hours_value = channel_service.normalized_workload_hours(
+            data.forecast_volume, data.forecast_aht_seconds, skill.channel
+        )
         available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-        net_required_hc = channel_service.required_hc_aggregate_channel(
-            workload,
+        net_required_hc = kpi_service.required_hc_aggregate(
+            agent_workload_hours_value,
             available_hours_per_agent,
             data.occupancy_required_pct,
             skill.channel,
@@ -366,10 +376,15 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
 
     working_days = settings.working_days  # semaine ISO complète = 5 jours ouvrés
     skill = _validate_skill_scope(session, data.campaign_id, data.skill_id)
-    workload = kpi_service.workload_hours(data.volume, data.handling_time_seconds)
+    contact_handling_hours = kpi_service.workload_hours(
+        data.volume, data.handling_time_seconds
+    )
+    agent_workload_hours_value = channel_service.normalized_workload_hours(
+        data.volume, data.handling_time_seconds, skill.channel
+    )
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
-    net_required_hc = channel_service.required_hc_aggregate_channel(
-        workload,
+    net_required_hc = kpi_service.required_hc_aggregate(
+        agent_workload_hours_value,
         available_hours_per_agent,
         data.occupancy_pct,
         skill.channel,
