@@ -368,6 +368,13 @@ def manage_user(
                 user.role = new_role
     elif action == "reset_2fa":
         user.totp_secret = None
+    elif action == "reset_admin_security":
+        if user.role != UserRole.ADMIN:
+            error = "Le compte sélectionné n'est pas un administrateur."
+        else:
+            user.totp_secret = None
+            user.admin_keyword1_hash = None
+            user.admin_keyword2_hash = None
     else:
         error = "Action utilisateur inconnue."
 
