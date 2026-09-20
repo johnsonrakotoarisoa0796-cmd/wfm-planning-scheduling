@@ -66,7 +66,7 @@ def test_candidate_rejects_weekly_overtime_limit():
         shift=shift,
         target_date=date(2026, 9, 21),
         assigned_dates={date(2026, 9, 18), date(2026, 9, 21), date(2026, 9, 22), date(2026, 9, 23)},
-        scheduled_hours=32,
+        scheduled_hours=40,
     )
     assert any("OT" in error for error in errors)
 
@@ -94,3 +94,33 @@ def test_candidate_rest_accepts_compliant_gap():
         min_rest_hours=11,
     )
     assert errors == []
+
+
+def test_candidate_rejects_too_many_consecutive_days():
+    employee = _employee()
+    shift = Shift(
+        id=2,
+        name="Standard",
+        start_time=time(8, 0),
+        end_time=time(16, 0),
+        break_minutes=0,
+        break_count=0,
+        lunch_minutes=0,
+        lunch_paid=True,
+    )
+    errors = compliance_service.validate_schedule_candidate(
+        None,
+        policy=_policy(),
+        employee=employee,
+        shift=shift,
+        target_date=date(2026, 9, 21),
+        assigned_dates={
+            date(2026, 9, 18),
+            date(2026, 9, 19),
+            date(2026, 9, 20),
+            date(2026, 9, 22),
+            date(2026, 9, 23),
+        },
+        scheduled_hours=24,
+    )
+    assert any("consécutifs" in error for error in errors)
