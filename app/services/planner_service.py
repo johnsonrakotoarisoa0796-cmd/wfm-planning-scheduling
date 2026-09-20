@@ -86,8 +86,9 @@ def recommend_shift_mix(
             surplus_hours_after=0.0,
         )
 
-    shortage_after = sum(max(r - c, 0.0) * intraday_service.INTERVAL_MINUTES / 60 for r, c in zip(required, current))
-    surplus_after = sum(max(c - r, 0.0) * intraday_service.INTERVAL_MINUTES / 60 for r, c in zip(required, current))
+    interval_hours = [intraday_service.interval_duration_hours(i.interval_start, i.interval_end) for i in intervals]
+    shortage_after = sum(max(r - c, 0.0) * h for r, c, h in zip(required, current, interval_hours))
+    surplus_after = sum(max(c - r, 0.0) * h for r, c, h in zip(required, current, interval_hours))
     return [
         ShiftRecommendation(
             shift_id=item.shift_id,
