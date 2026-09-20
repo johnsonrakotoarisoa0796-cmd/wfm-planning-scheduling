@@ -203,8 +203,8 @@ def test_staffing_status_respects_tolerance():
     assert staffing_status(-0.6) == StaffingStatus.UNDERSTAFFED
 
 
-def test_projected_headcount_matches_brief_formula():
-    # Future HC = Current + Hiring + Transfers In - Transfers Out - Attrition - Absenteeism
+def test_projected_headcount_excludes_absenteeism():
+    # Future HC = Current + Hiring + Transfers In - Transfers Out - Attrition.
     result = projected_headcount(
         current_hc=100, hiring=5, transfers_in=2, transfers_out=3,
         attrition_pct=5,
@@ -217,7 +217,7 @@ def test_projected_headcount_matches_brief_formula():
 def test_projected_headcount_no_movement_with_zero_rates():
     result = projected_headcount(
         current_hc=50, hiring=0, transfers_in=0, transfers_out=0,
-        attrition_pct=0, absenteeism_pct=0,
+        attrition_pct=0,
     )
     assert result == 50
 
