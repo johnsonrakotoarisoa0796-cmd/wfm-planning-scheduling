@@ -30,6 +30,7 @@ from app.services.kpi_service import (
     production_hours,
     productive_hours,
     projected_headcount,
+    projected_available_headcount,
     service_level_pct,
     shrinkage_pct,
     staffing_gap,
@@ -206,10 +207,11 @@ def test_projected_headcount_matches_brief_formula():
     # Future HC = Current + Hiring + Transfers In - Transfers Out - Attrition - Absenteeism
     result = projected_headcount(
         current_hc=100, hiring=5, transfers_in=2, transfers_out=3,
-        attrition_pct=5, absenteeism_pct=3,
+        attrition_pct=5,
     )
-    # Pertes : 100*0.05 + 100*0.03 = 8
-    assert result == pytest.approx(100 + 5 + 2 - 3 - 8)
+    # L'absentéisme ne réduit pas le headcount, uniquement la disponibilité.
+    assert result == pytest.approx(100 + 5 + 2 - 3 - 5)
+    assert projected_available_headcount(projected_hc=result, absenteeism_pct=3) == pytest.approx(result * 0.97)
 
 
 def test_projected_headcount_no_movement_with_zero_rates():
