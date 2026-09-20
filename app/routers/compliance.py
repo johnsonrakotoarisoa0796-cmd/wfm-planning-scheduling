@@ -59,14 +59,11 @@ def _page(
         }
 
     try:
-        week_start = (
-            date.fromisocalendar(*[int(x) for x in (week.split("-W") if week and "-W" in week else [])])
-            if week and "-W" in week
-            else date.today() - timedelta(days=date.today().weekday())
-        )
         if week and "-W" in week:
             year_text, week_text = week.split("-W", 1)
             week_start = date.fromisocalendar(int(year_text), int(week_text), 1)
+        else:
+            week_start = date.today() - timedelta(days=date.today().weekday())
     except (ValueError, TypeError):
         week_start = date.today() - timedelta(days=date.today().weekday())
         week = f"{week_start.isocalendar().year}-W{week_start.isocalendar().week:02d}"
