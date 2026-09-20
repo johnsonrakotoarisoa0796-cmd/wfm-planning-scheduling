@@ -166,6 +166,7 @@ def build_intraday_forecast_rows(
     leave_rate_pct: float = 0.0,
     break_15m_pct_48: list[float] | None = None,
     lunch_break_pct_48: list[float] | None = None,
+    effective_shrinkage_pct: float | None = None,
 ) -> list[IntervalForecast]:
     """Construit les intervalles sans persister ; réutilisable par Daily et Weekly."""
     if check_existing:
@@ -227,9 +228,14 @@ def build_intraday_forecast_rows(
         base_gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
         break_15 = break_15m_pct_48[slot_index] if break_15m_pct_48 else 0.0
         lunch_break = lunch_break_pct_48[slot_index] if lunch_break_pct_48 else 0.0
+        base_shrinkage_pct = (
+            data.shrinkage_pct
+            if effective_shrinkage_pct is None
+            else effective_shrinkage_pct
+        )
         total_unavailability_pct = min(
             99.0,
-            data.shrinkage_pct + absence_rate_pct + leave_rate_pct + break_15 + lunch_break,
+            base_shrinkage_pct + break_15 + lunch_break,
         )
         gross_required_hc = apply_shrinkage(net_required_hc, total_unavailability_pct)
 
