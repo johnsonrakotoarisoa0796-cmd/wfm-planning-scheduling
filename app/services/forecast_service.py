@@ -173,7 +173,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
 
     total_shrinkage_hours = paid_hours_value * (total_shrinkage_pct / 100)
     productive_hours_value = kpi_service.productive_hours(paid_hours_value, total_shrinkage_hours)
-    waiting_hours = max(productive_hours_value - workload, 0.0)
+    waiting_hours = max(productive_hours_value - agent_workload_hours_value, 0.0)
     production_hours_value = kpi_service.production_hours(productive_hours_value, waiting_hours)
 
     version = ForecastVersion(
