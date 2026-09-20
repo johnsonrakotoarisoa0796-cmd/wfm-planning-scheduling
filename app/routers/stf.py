@@ -165,12 +165,8 @@ def disperse_stf(
     stf = session.get(STFForecast, stf_id)
     if stf is None:
         raise HTTPException(status_code=404, detail="Forecast STF introuvable.")
-    try:
-        weekly_intraday_service.disperse_stf(session, stf)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return RedirectResponse(
-        url=f"/daily?campaign_id={stf.campaign_id}&skill_id={stf.skill_id}",
+        url=f"/daily/from-stf/{stf.id}",
         status_code=303,
     )
 
