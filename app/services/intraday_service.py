@@ -41,6 +41,30 @@ SLOTS_PER_DAY = (24 * 60) // INTERVAL_MINUTES  # 48
 # ============================================================================
 # Profil de distribution intraday par défaut
 # ============================================================================
+# Profil métier par défaut : 10:00, 10:30, ..., 23:30, 00:00, ..., 02:00.
+DEFAULT_PROFILE_START_SLOTS = list(range(20, 48)) + list(range(0, 5))
+DEFAULT_INTRADAY_WINDOW_WEIGHTS = [
+    1, 1, 1, 2, 3, 3, 3, 3, 4, 4, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 3, 4, 4,
+]
+
+def default_intraday_window_profile_pct() -> list[float]:
+    return list(DEFAULT_INTRADAY_WINDOW_WEIGHTS)
+
+
+def intraday_window_profile_to_48(profile_pct: list[float]) -> list[float]:
+    if len(profile_pct) != len(DEFAULT_PROFILE_START_SLOTS):
+        raise ValueError(f"Le profil intraday doit contenir {len(DEFAULT_PROFILE_START_SLOTS)} tranches.")
+    total = sum(profile_pct)
+    if abs(total - 100.0) > 0.01:
+        raise ValueError(f"La somme du profil intraday doit être égale à 100%. Actuellement : {total:.2f}%.")
+    if any(weight < 0 or weight > 100 for weight in profile_pct):
+        raise ValueError("Chaque poids intraday doit être compris entre 0% et 100%.")
+    result = [0.0] * SLOTS_PER_DAY
+    for slot_index, weight in zip(DEFAULT_PROFILE_START_SLOTS, profile_pct):
+        result[slot_index] = weight
+    return result
+
 
 def _default_profile_raw_weights() -> list[float]:
     """Poids bruts (non normalisés) d'une courbe de volume typique de
@@ -124,6 +148,7 @@ def build_intraday_forecast_rows(
     data: GenerateIntradayInput,
     *,
     check_existing: bool = True,
+    profile_pct_48: list[float] | None = None,
 ) -> list[IntervalForecast]:
     """Construit les intervalles sans persister ; réutilisable par Daily et Weekly."""
     if check_existing:
@@ -140,7 +165,17 @@ def build_intraday_forecast_rows(
                 "— supprimez-les avant de régénérer."
             )
 
-    profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
+    if profile_pct_48 is None:
+        profile_pct = profile_for_operating_window(data.target_date, data.timezone_name)
+    else:
+        if len(profile_pct_48) != SLOTS_PER_DAY:
+            raise ValueError(f"Le profil doit contenir {SLOTS_PER_DAY} tranches.")
+        total = sum(profile_pct_48)
+        if abs(total - 100.0) > 0.01:
+            raise ValueError(f"La somme du profil intraday doit être égale à 100%. Actuellement : {total:.2f}%.")
+        if any(value < 0 or value > 100 for value in profile_pct_48):
+            raise ValueError("Chaque poids intraday doit être compris entre 0% et 100%.")
+        profile_pct = profile_pct_48
     skill = session.get(Skill, data.skill_id)
     if skill is None:
         raise ValueError("Skill introuvable.")
