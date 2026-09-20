@@ -1,55 +1,7 @@
 {% extends "app_base.html" %}
-{% block title %}Configuration — WFM
-{% if current_user.role.value == "admin" %}
-<section class="form-card form-card--wide" style="margin-top:20px">
-<div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
-<table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Agent lié</th><th>Action</th></tr></thead><tbody>
-{% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
-</tbody></table>
-</section>
-{% if current_user.role.value == "admin" %}
-<section id="users" class="form-card form-card--wide" style="margin-top:20px">
-<div class="panel-kicker">COMPTES UTILISATEURS</div>
-<h2>Gestion des utilisateurs</h2>
-<p class="field__hint">Les inscriptions publiques arrivent ici avec le statut « En attente ». L’administrateur contrôle l’activation, le rôle et la réinitialisation du 2FA.</p>
-<table class="data-table">
-<thead><tr><th>Email</th><th>Rôle</th><th>Statut</th><th>2FA</th><th>Créé le</th><th>Actions</th></tr></thead>
-<tbody>
-{% for user in users %}
-<tr>
-<td><strong>{{ user.email }}</strong>{% if user.id == current_user.id %}<div class="field__hint">Votre compte</div>{% endif %}</td>
-<td>
-<form method="post" action="/settings/users/{{ user.id }}" style="display:flex;gap:6px;align-items:center">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-<input type="hidden" name="action" value="role">
-<select name="role">
-{% for role in ["viewer", "team_lead", "wfm_analyst", "admin"] %}
-<option value="{{ role }}" {% if user.role.value == role %}selected{% endif %}>{{ role }}</option>
-{% endfor %}
-</select>
-<button class="btn-secondary btn-small" type="submit">Rôle</button>
-</form>
-</td>
-<td>{% if user.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill status-pill--warning">En attente / Inactif</span>{% endif %}</td>
-<td>{% if user.totp_secret %}<span class="status-pill status-pill--balanced">Configuré</span>{% else %}<span class="status-pill">À configurer</span>{% endif %}</td>
-<td>{{ user.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
-<td style="display:flex;gap:6px;flex-wrap:wrap">
-{% if user.is_active %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="deactivate"><button class="btn-secondary btn-small" type="submit">Désactiver</button></form>
-{% else %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="activate"><button class="btn-primary btn-small" type="submit">Activer</button></form>
-{% endif %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_2fa"><button class="btn-secondary btn-small" type="submit">Réinitialiser 2FA</button></form>
-</td>
-</tr>
-{% else %}<tr><td colspan="6">Aucun utilisateur.</td></tr>{% endfor %}
-</tbody>
-</table>
-</section>
-{% endif %}
-{% endif %}
-{% endblock %}
+{% block title %}Configuration — WFM{% endblock %}
 {% block content %}
+
 <div class="page-header"><div><h1>Configuration WFM</h1><p class="page-header__meta">Gérez les campagnes, leurs skills, canaux et marchés utilisés par les forecasts et le planning.</p></div>
 {% if can_edit %}<form method="post" action="/settings/demo"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary" type="submit">Charger le pack démo multi-marché</button></form>{% endif %}</div>
 {% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
@@ -129,4 +81,62 @@
 <section class="data-table-wrapper"><table class="data-table"><thead><tr><th>Campagne</th><th>Skill</th><th>Canal</th><th>Marché</th><th>Statut</th></tr></thead><tbody>
 {% for row in skill_rows %}<tr><td>{{ row.campaign.name if row.campaign else "—" }}</td><td><strong>{{ row.skill.name }}</strong></td><td>{{ row.channel_label }}</td><td>{{ (row.market.code ~ " · " ~ row.market.name) if row.market else "—" }}</td><td>{% if row.skill.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td></tr>{% else %}<tr><td colspan="5">Aucun skill. Créez-en un pour alimenter le Dashboard et le Planner.</td></tr>{% endfor %}
 </tbody></table></section>
+
+{% if current_user.role.value == "admin" %}
+<section class="form-card form-card--wide" style="margin-top:20px">
+<div class="panel-kicker">SÉCURITÉ ADMIN</div>
+<h2>Deux mots-clés secrets</h2>
+<p class="field__hint">Pour le compte admin, la connexion exige le mot de passe, le code TOTP du QR code et ces deux mots-clés. Les mots-clés sont stockés uniquement sous forme de hash.</p>
+<form method="post" action="/settings/admin-security">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="form-grid">
+<div class="field"><label for="admin_keyword1">Nouveau mot-clé 1</label><input id="admin_keyword1" type="password" name="keyword1" minlength="4" maxlength="64" autocomplete="off" required></div>
+<div class="field"><label for="admin_keyword2">Nouveau mot-clé 2</label><input id="admin_keyword2" type="password" name="keyword2" minlength="4" maxlength="64" autocomplete="off" required></div>
+</div>
+<div class="form-actions"><button class="btn-primary" type="submit">Enregistrer les deux mots-clés</button></div>
+</form>
+</section>
+
+<section class="form-card form-card--wide" style="margin-top:20px">
+<div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
+<table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Agent lié</th><th>Action</th></tr></thead><tbody>
+{% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
+</tbody></table>
+</section>
+
+<section id="users" class="form-card form-card--wide" style="margin-top:20px">
+<div class="panel-kicker">COMPTES UTILISATEURS</div>
+<h2>Gestion des utilisateurs</h2>
+<p class="field__hint">Les inscriptions publiques arrivent ici avec le statut « En attente ». L’administrateur contrôle l’activation, le rôle, le 2FA et la sécurité admin.</p>
+<table class="data-table">
+<thead><tr><th>Email</th><th>Rôle</th><th>Statut</th><th>Sécurité</th><th>Créé le</th><th>Actions</th></tr></thead>
+<tbody>
+{% for user in users %}
+<tr>
+<td><strong>{{ user.email }}</strong>{% if user.id == current_user.id %}<div class="field__hint">Votre compte</div>{% endif %}</td>
+<td><form method="post" action="/settings/users/{{ user.id }}" style="display:flex;gap:6px;align-items:center">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="role">
+<select name="role">{% for role in ["viewer", "team_lead", "wfm_analyst", "admin"] %}<option value="{{ role }}" {% if user.role.value == role %}selected{% endif %}>{{ role }}</option>{% endfor %}</select>
+<button class="btn-secondary btn-small" type="submit">Rôle</button></form></td>
+<td>{% if user.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill status-pill--warning">En attente / Inactif</span>{% endif %}</td>
+<td>
+{% if user.totp_secret %}<span class="status-pill status-pill--balanced">TOTP OK</span>{% else %}<span class="status-pill">TOTP à configurer</span>{% endif %}
+{% if user.role.value == "admin" %}{% if user.admin_keyword1_hash and user.admin_keyword2_hash %}<span class="status-pill status-pill--balanced">2 clés OK</span>{% else %}<span class="status-pill status-pill--critical">2 clés manquantes</span>{% endif %}{% endif %}
+</td>
+<td>{{ user.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+<td style="display:flex;gap:6px;flex-wrap:wrap">
+{% if user.is_active %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="deactivate"><button class="btn-secondary btn-small" type="submit">Désactiver</button></form>
+{% else %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="activate"><button class="btn-primary btn-small" type="submit">Activer</button></form>
+{% endif %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_2fa"><button class="btn-secondary btn-small" type="submit">Réinitialiser TOTP</button></form>
+{% if user.role.value == "admin" %}<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_admin_security"><button class="btn-secondary btn-small" type="submit">Réinitialiser 2 clés</button></form>{% endif %}
+</td>
+</tr>
+{% else %}<tr><td colspan="6">Aucun utilisateur.</td></tr>{% endfor %}
+</tbody>
+</table>
+</section>
+{% endif %}
 {% endblock %}
