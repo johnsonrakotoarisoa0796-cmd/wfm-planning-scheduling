@@ -18,8 +18,8 @@ settings = get_settings()
 
 
 def weekday_volume_weights() -> list[float]:
-    """Répartition V1 : 20% du volume hebdomadaire par jour ouvré."""
-    return [0.20] * 5
+    """Répartition de secours sur les 7 jours calendaires si aucun profil explicite n'est fourni."""
+    return [1.0 / 7.0] * 7
 
 
 def _timezone_for_skill(session: Session, skill_id: int) -> str:
@@ -63,7 +63,8 @@ def disperse_week(
     answer_time_target_seconds: float,
     shrinkage_pct: float,
 ) -> list[IntervalForecast]:
-    """Crée 5 journées x 48 intervalles = 240 intervalles par semaine.
+    """Crée 7 journées selon une répartition de secours.
+
 
     Le calcul HC reste centralisé dans le moteur Intraday/Erlang.
     """
@@ -72,7 +73,7 @@ def disperse_week(
     if weekly_volume < 0:
         raise ValueError("Le volume hebdomadaire doit être >= 0.")
 
-    expected_dates = [week_start_date + timedelta(days=i) for i in range(5)]
+    expected_dates = [week_start_date + timedelta(days=i) for i in range(7)]
     existing = session.exec(
         select(IntervalForecast).where(
             IntervalForecast.campaign_id == campaign_id,
