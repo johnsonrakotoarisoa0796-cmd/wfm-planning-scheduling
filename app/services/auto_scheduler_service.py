@@ -285,7 +285,6 @@ def generate_schedule(
                         assigned_dates=assigned_days[employee.id],
                         scheduled_hours=scheduled_hours[employee.id],
                     )
-                    candidate_entry = _build_entry(employee, day, campaign_id, skill_id, shift)
                     candidate_start = datetime.combine(day, shift.start_time)
                     candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
                     candidate_end = datetime.combine(candidate_end_date, shift.end_time)
@@ -299,8 +298,6 @@ def generate_schedule(
                     )
                     if compliance_errors:
                         continue
-                else:
-                    candidate_entry = None
                 gain, penalty = _shift_gain(shift, intervals, current_hc)
                 balance = 1.0 / (1 + len(assigned_days[employee.id]))
                 fairness = remaining / max(targets[employee.id], 1.0)
@@ -311,7 +308,7 @@ def generate_schedule(
             candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
             _, gain, employee, shift, paid = candidates[0]
             if shortage > 0.05 or gain > 0:
-                entry = candidate_entry or _build_entry(employee, day, campaign_id, skill_id, shift)
+                entry = _build_entry(employee, day, campaign_id, skill_id, shift)
                 generated.append(GeneratedEntry(employee, entry, shift))
                 assigned_days[employee.id].add(day)
                 scheduled_hours[employee.id] += paid
