@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 from app.core.config import get_settings
 from app.core.database import engine
 from app.core.middleware import CSRFCookieMiddleware
+from app.core.templating import templates
 from app.core.security import (
     NotAuthenticatedError,
     hash_password,
