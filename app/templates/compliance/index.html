@@ -34,7 +34,7 @@
   <div class="panel-kicker">2 · CONTRÔLE HEBDOMADAIRE</div>
   <h2>Tester un planning</h2>
   <form class="filter-bar" method="get" action="/compliance">
-    <div class="field"><label>Semaine</label><input type="week" name="week" value="{{ filters.week }}"></div>
+    <div class="field"><label>Semaine</label><select name="week"><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if filters.week == w.value %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
     <div class="field"><label>Campagne</label><select name="campaign_id" data-skill-filter="#check_skill" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
     <div class="field"><label>Skill</label><select id="check_skill" name="skill_id" required><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
     <button type="submit">Analyser la semaine</button>
