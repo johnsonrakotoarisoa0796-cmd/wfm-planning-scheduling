@@ -175,6 +175,18 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
     waiting_hours = max(productive_hours_value - agent_workload_hours_value, 0.0)
     production_hours_value = kpi_service.production_hours(productive_hours_value, waiting_hours)
 
+    # Invariant WFM : après dimensionnement à occupancy < 100%, la capacité
+    # productive doit couvrir la charge agent. Pour la voix (simultanéité=1),
+    # les heures payées doivent aussi couvrir les heures de traitement brutes.
+    if productive_hours_value + 1e-6 < agent_workload_hours_value:
+        raise ValueError(
+            "Incohérence de capacité : les heures productives sont inférieures à la charge agent requise."
+        )
+    if skill.channel.value == "voice" and paid_hours_value + 1e-6 < contact_handling_hours:
+        raise ValueError(
+            "Incohérence Phone : les Paid Hours sont inférieures aux heures de traitement des contacts."
+        )
+
     version = ForecastVersion(
         version_type=ForecastVersionType.LTF,
         period_start=period_start,
@@ -394,6 +406,15 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
     productive_hours_value = kpi_service.productive_hours(paid_hours_value, total_shrinkage_hours)
     waiting_hours = max(productive_hours_value - agent_workload_hours_value, 0.0)
     production_hours_value = kpi_service.production_hours(productive_hours_value, waiting_hours)
+
+    if productive_hours_value + 1e-6 < agent_workload_hours_value:
+        raise ValueError(
+            "Incohérence de capacité STF : les heures productives sont inférieures à la charge agent requise."
+        )
+    if skill.channel.value == "voice" and paid_hours_value + 1e-6 < contact_handling_hours:
+        raise ValueError(
+            "Incohérence Phone STF : les Paid Hours sont inférieures aux heures de traitement des contacts."
+        )
 
     week_end_date = date.fromisocalendar(data.iso_year, data.iso_week, 7)
 
