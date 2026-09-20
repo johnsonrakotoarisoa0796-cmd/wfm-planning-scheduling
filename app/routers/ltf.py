@@ -358,7 +358,7 @@ def recalculate_ltf(
     if ltf is None:
         raise HTTPException(status_code=404, detail="Forecast LTF introuvable.")
     try:
-        forecast_service.recalculate_ltf_forecast(
+        recalculated = forecast_service.recalculate_ltf_forecast(
             session,
             ltf,
             created_by_user_id=current_user.id,
@@ -366,7 +366,7 @@ def recalculate_ltf(
     except ValueError as exc:
         return RedirectResponse(f"/ltf?error={quote_plus(str(exc))}", status_code=303)
     return RedirectResponse(
-        url=f"/ltf/{ltf_id}?success=Calculs+LTF+rejoués+avec+le+moteur+WFM+actuel",
+        url=f"/ltf/{recalculated.id}?success=Calculs+LTF+rejoués+avec+le+moteur+WFM+actuel",
         status_code=303,
     )
 
