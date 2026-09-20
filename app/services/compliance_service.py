@@ -168,7 +168,12 @@ def _scheduled_rows(
 def _daily_hours(rows: list[ScheduleEntry], shifts: dict[int, Shift], employee_id: int, target_date: date) -> float:
     for row in rows:
         if row.employee_id == employee_id and row.date == target_date and row.shift_id in shifts:
-            return workforce_service.shift_hours(shifts[row.shift_id]).paid_hours
+            return workforce_service.shift_hours(
+                shifts[row.shift_id],
+                contract_daily_hours=workforce_service.daily_contract_hours(
+                    session.get(Employee, employee_id)
+                ),
+            ).paid_hours
     return 0.0
 
 
@@ -270,7 +275,10 @@ def validate_manual_entry(
         for item in session.exec(select(Shift).where(Shift.id.in_(shift_ids))).all()
     } if shift_ids else {}
     scheduled_hours = sum(
-        workforce_service.shift_hours(existing_shifts[row.shift_id]).paid_hours
+        workforce_service.shift_hours(
+            existing_shifts[row.shift_id],
+            contract_daily_hours=workforce_service.daily_contract_hours(employee),
+        ).paid_hours
         for row in rows if row.shift_id in existing_shifts
     )
     assigned_dates = {row.date for row in rows}
