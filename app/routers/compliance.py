@@ -139,7 +139,7 @@ def save_policy(
 ):
     values = {
         "campaign_id": campaign_id,
-        "skill_id": int(skill_id) if skill_id.strip() else None,
+        "skill_id": None,
         "name": name,
         "max_consecutive_work_days": max_consecutive_work_days,
         "max_daily_hours": max_daily_hours,
@@ -150,6 +150,7 @@ def save_policy(
         "notes": notes,
     }
     try:
+        values["skill_id"] = int(skill_id) if skill_id.strip() else None
         payload = CompliancePolicyInput(**values)
         compliance_service.upsert_policy(
             session, payload, created_by_user_id=current_user.id
