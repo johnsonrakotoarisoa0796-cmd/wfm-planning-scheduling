@@ -10,7 +10,7 @@ from app.models.forecast import LTFForecast, STFForecast
 from app.models.market import Market
 from app.models.skill import Skill
 from app.models.intraday import IntervalForecast
-from app.schemas.intraday import GenerateIntradayInput
+from app.schemas.intraday import GenerateIntradayInput, WeeklyDispersionInput
 from app.services.intraday_service import build_intraday_forecast_rows
 from app.services.weekly_parameter_service import get_weekly_parameters
 
@@ -134,3 +134,59 @@ def disperse_ltf(
         answer_time_target_seconds=ltf.asa_target_seconds,
         shrinkage_pct=ltf.total_shrinkage_pct,
     )
+
+
+def disperse_stf_with_weights(
+    session: Session,
+    stf: STFForecast,
+    dispersion: WeeklyDispersionInput,
+) -> list[IntervalForecast]:
+    """Disperse le volume STF sur lundi -> dimanche selon des poids explicites."""
+    dispersion.validate_total()
+    iso = stf.week_start_date.isocalendar()
+    parameters = get_weekly_parameters(
+        session,
+        iso_year=iso.year,
+        iso_week=iso.week,
+        campaign_id=stf.campaign_id,
+        skill_id=stf.skill_id,
+    )
+
+    expected_dates = [stf.week_start_date + timedelta(days=i) for i in range(7)]
+    existing = session.exec(
+        select(IntervalForecast).where(
+            IntervalForecast.campaign_id == stf.campaign_id,
+            IntervalForecast.skill_id == stf.skill_id,
+            IntervalForecast.date >= expected_dates[0],
+            IntervalForecast.date <= expected_dates[-1],
+        )
+    ).first()
+    if existing is not None:
+        raise ValueError(
+            "Des intervalles existent déjà sur cette semaine/campagne/skill. "
+            "Supprimez ou remplacez le Daily/Intraday existant avant une nouvelle dispersion."
+        )
+
+    timezone_name = _timezone_for_skill(session, stf.skill_id)
+    rows: list[IntervalForecast] = []
+    for day, weight in zip(expected_dates, dispersion.weights):
+        daily_volume = stf.volume * (weight / 100.0)
+        data = GenerateIntradayInput(
+            target_date=day,
+            campaign_id=stf.campaign_id,
+            skill_id=stf.skill_id,
+            timezone_name=timezone_name,
+            daily_volume=daily_volume,
+            daily_aht_seconds=stf.aht_seconds,
+            service_level_target_pct=stf.service_level_target_pct,
+            answer_time_target_seconds=parameters.answer_time_target_seconds,
+            occupancy_target_pct=stf.occupancy_pct,
+            shrinkage_pct=stf.shrinkage_pct,
+        )
+        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False))
+
+    session.add_all(rows)
+    session.commit()
+    for row in rows:
+        session.refresh(row)
+    return rows
