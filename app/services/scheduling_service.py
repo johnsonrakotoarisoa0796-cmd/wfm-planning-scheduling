@@ -102,6 +102,12 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
 
     session.add(entry)
     session.commit()
+    refresh_interval_scheduled_hc(
+        session,
+        target_date=data.entry_date,
+        campaign_id=data.campaign_id,
+        skill_id=data.skill_id,
+    )
     session.refresh(entry)
     return entry
 
@@ -116,6 +122,60 @@ def list_schedule_entries(
         query = query.where(ScheduleEntry.skill_id == skill_id)
     return list(session.exec(query).all())
 
+
+def refresh_interval_scheduled_hc(
+    session: Session,
+    *,
+    target_date: date,
+    campaign_id: int,
+    skill_id: int,
+    commit: bool = True,
+) -> list:
+    """Synchronise Scheduled HC des intervalles depuis le planning réel.
+
+    ScheduleEntry est la source de vérité du planning. Les pauses et déjeuner
+    retirent l'agent de la couverture de l'intervalle lorsqu'ils chevauchent
+    cette tranche.
+    """
+    entries = [
+        e for e in list_schedule_entries(
+            session,
+            target_date=target_date,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+        )
+        if not e.is_day_off and e.shift_id is not None
+    ]
+    shifts = {
+        shift.id: shift
+        for shift in session.exec(
+            select(Shift).where(Shift.id.in_({e.shift_id for e in entries}))
+        ).all()
+    } if entries else {}
+
+    intervals = intraday_service.list_intervals_for_day(
+        session,
+        target_date=target_date,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    for interval in intervals:
+        covered = 0
+        for entry in entries:
+            shift = shifts.get(entry.shift_id)
+            if shift is None:
+                continue
+            if not _shift_covers_interval(shift, interval.interval_start, interval.interval_end):
+                continue
+            if _entry_on_break_during_interval(entry, interval.interval_start, interval.interval_end):
+                continue
+            covered += 1
+        interval.scheduled_hc = float(covered)
+        session.add(interval)
+
+    if commit:
+        session.commit()
+    return intervals
 
 # ============================================================================
 # Impact des pauses sur le staffing (§34)
