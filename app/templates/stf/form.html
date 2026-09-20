@@ -19,7 +19,7 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Semaine ISO</label>
-                    <input type="week" id="period" name="period" value="{{ values.period or '' }}" required>
+                    <select id="period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
