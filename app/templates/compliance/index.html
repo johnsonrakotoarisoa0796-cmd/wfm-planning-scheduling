@@ -1,0 +1,61 @@
+{% extends "app_base.html" %}
+{% block title %}Compliance & Coverage — WFM{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><span class="panel-kicker">WORKFORCE COMPLIANCE</span><h1>Compliance &amp; Weekly Coverage</h1><p class="page-header__meta">Paramétrez les règles sociales et contrôlez automatiquement la conformité du planning.</p></div>
+</div>
+
+{% if errors %}<div class="error-banner">{% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+
+<section class="form-card form-card--wide">
+  <div class="panel-kicker">1 · POLITIQUE DE CONFORMITÉ</div>
+  <h2>Règles de travail</h2>
+  {% if can_edit %}
+  <form method="post" action="/compliance/policy">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-grid">
+      <div class="field"><label>Campagne</label><select name="campaign_id" data-skill-filter="#compliance_skill" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Skill (optionnel)</label><select id="compliance_skill" name="skill_id"><option value="">Politique campagne par défaut</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Nom de la politique</label><input name="name" value="{{ values.name or 'Standard WFM' }}"></div>
+      <div class="field"><label>Max jours consécutifs travaillés</label><input type="number" name="max_consecutive_work_days" min="1" max="14" step="1" value="{{ values.max_consecutive_work_days or 5 }}" required></div>
+      <div class="field"><label>Max heures travaillées / jour</label><input type="number" name="max_daily_hours" min="1" max="24" step="0.25" value="{{ values.max_daily_hours or 10 }}" required></div>
+      <div class="field"><label>Max heures travaillées / semaine</label><input type="number" name="max_weekly_hours" min="1" max="168" step="0.25" value="{{ values.max_weekly_hours or 48 }}" required></div>
+      <div class="field"><label>Max overtime / semaine</label><input type="number" name="max_weekly_overtime_hours" min="0" max="168" step="0.25" value="{{ values.max_weekly_overtime_hours if values.max_weekly_overtime_hours is not none else 8 }}" required></div>
+      <div class="field"><label>Repos minimum entre deux shifts (h)</label><input type="number" name="min_rest_hours" min="0" max="168" step="0.25" value="{{ values.min_rest_hours or 11 }}" required></div>
+      <div class="field"><label>Weekly Coverage cible (%)</label><input type="number" name="weekly_coverage_target_pct" min="0" max="100" step="0.1" value="{{ values.weekly_coverage_target_pct or 95 }}" required></div>
+    </div>
+    <div class="field"><label>Notes / convention</label><textarea name="notes" rows="3" placeholder="Ex : convention collective, règle locale, pause obligatoire...">{{ values.notes or '' }}</textarea></div>
+    <div class="form-actions"><button class="btn-primary" type="submit">Enregistrer la politique</button></div>
+  </form>
+  {% else %}<p class="field__hint">Lecture seule pour votre rôle.</p>{% endif %}
+</section>
+
+<section class="form-card form-card--wide" style="margin-top:18px">
+  <div class="panel-kicker">2 · CONTRÔLE HEBDOMADAIRE</div>
+  <h2>Tester un planning</h2>
+  <form class="filter-bar" method="get" action="/compliance">
+    <div class="field"><label>Semaine</label><input type="week" name="week" value="{{ filters.week }}"></div>
+    <div class="field"><label>Campagne</label><select name="campaign_id" data-skill-filter="#check_skill" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Skill</label><select id="check_skill" name="skill_id" required><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+    <button type="submit">Analyser la semaine</button>
+  </form>
+  {% if report %}
+  <div class="control-grid" style="margin-top:18px">
+    <div class="control-card"><span>Weekly Coverage</span><strong>{{ "%.1f"|format(report.weekly_coverage.coverage_pct) }}%</strong><small>Cible {{ "%.1f"|format(report.weekly_coverage.target_pct) }}% · Écart {{ "%+.1f"|format(report.weekly_coverage.gap_to_target_pct) }} pts</small></div>
+    <div class="control-card"><span>Required HC-hours</span><strong>{{ "%.1f"|format(report.weekly_coverage.required_hc_hours) }}</strong><small>Besoin total semaine</small></div>
+    <div class="control-card"><span>Shortage</span><strong>{{ "%.1f"|format(report.weekly_coverage.shortage_hc_hours) }} h</strong><small>HC-hours non couvertes</small></div>
+    <div class="control-card"><span>Surplus</span><strong>{{ "%.1f"|format(report.weekly_coverage.surplus_hc_hours) }} h</strong><small>HC-hours au-dessus du besoin</small></div>
+    <div class="control-card"><span>Conformité</span><strong>{{ "CONFORME" if report.compliant else "VIOLATIONS" }}</strong><small>{{ report.violations|length }} signal(s)</small></div>
+  </div>
+  <table class="data-table" style="margin-top:18px"><thead><tr><th>Agent</th><th>Règle</th><th>Détail</th><th>Gravité</th></tr></thead><tbody>
+  {% for item in report.violations %}<tr><td>{{ item.employee_name or "Système" }}</td><td>{{ item.rule }}</td><td>{{ item.detail }}</td><td><span class="status-pill status-pill--{{ item.severity }}">{{ item.severity }}</span></td></tr>{% else %}<tr><td colspan="4">Aucune violation. Le planning respecte la politique active et la cible de couverture.</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</section>
+
+<section class="data-table-wrapper data-table-wrapper--spaced">
+<div class="section-title-row"><div><div class="panel-kicker">3 · POLITIQUES ACTIVES</div><h2>Règles configurées</h2></div></div>
+<table class="data-table"><thead><tr><th>Campagne</th><th>Skill</th><th>Jours consécutifs</th><th>Jour</th><th>Semaine</th><th>OT / semaine</th><th>Repos</th><th>Coverage</th></tr></thead>
+<tbody>{% for p in policies %}<tr><td>{{ p.campaign_id }}</td><td>{{ p.skill_id or "Défaut campagne" }}</td><td class="numeric">{{ p.max_consecutive_work_days }}</td><td class="numeric">{{ "%.1f"|format(p.max_daily_hours) }} h</td><td class="numeric">{{ "%.1f"|format(p.max_weekly_hours) }} h</td><td class="numeric">{{ "%.1f"|format(p.max_weekly_overtime_hours) }} h</td><td class="numeric">{{ "%.1f"|format(p.min_rest_hours) }} h</td><td class="numeric">{{ "%.1f"|format(p.weekly_coverage_target_pct) }}%</td></tr>{% else %}<tr><td colspan="8">Aucune politique configurée.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}
