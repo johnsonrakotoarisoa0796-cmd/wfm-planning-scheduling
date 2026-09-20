@@ -356,7 +356,7 @@ def _coverage(
             )
             required = max(row.required_hc, 0.0)
             covered = min(required, float(scheduled))
-            hours = intraday_service.INTERVAL_MINUTES / 60.0
+            hours = intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
             required_h += required * hours
             covered_h += covered * hours
             shortage_h += max(required - scheduled, 0.0) * hours
