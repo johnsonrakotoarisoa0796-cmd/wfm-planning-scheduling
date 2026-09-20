@@ -16,6 +16,7 @@ from app.core.templating import templates
 from app.models.intraday import ActualPerformanceRaw, IntervalForecast
 from app.models.enums import UserRole
 from app.models.user import User
+from app.models.skill import Skill
 from app.services import channel_service, intraday_service
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -127,8 +128,14 @@ async def import_actuals(
                 )
                 if interval.actual_hc and interval.actual_aht_seconds:
                     capacity_hours = interval.actual_hc * intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
+                    skill = session.get(Skill, skill_id)
+                    if skill is None:
+                        raise ValueError("Skill introuvable.")
                     workload_hours = channel_service.normalized_workload_hours(
-                        offered, interval.actual_aht_seconds, interval.channel
+                        offered,
+                        interval.actual_aht_seconds,
+                        interval.channel,
+                        concurrency_factor=skill.concurrency_factor,
                     )
                     interval.occupancy_pct = workload_hours / capacity_hours * 100.0 if capacity_hours else 0.0
                     interval.staffing_gap = interval.actual_hc - interval.required_hc
