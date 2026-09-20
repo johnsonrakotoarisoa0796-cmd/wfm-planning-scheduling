@@ -165,3 +165,15 @@ Avant génération, les hypothèses suivantes sont modifiables :
 - Taux de lunch par tranche.
 
 Le moteur ajoute ces indisponibilités au shrinkage STF pour calculer le HC requis de chaque intervalle. Les taux de pause sont spécifiques à chaque tranche et sont stockés avec l'intervalle pour permettre l'audit des hypothèses utilisées lors de la génération.
+
+### Définition Handling Time / AHT
+
+Dans l'application, **Handling Time = AHT (Average Handle Time)** : durée moyenne de traitement d'un contact par un agent, exprimée en secondes par contact.
+
+Pour les actuals, le Handle Time total est composé de **Talk Time + Hold Time + ACW**, puis :
+
+**AHT = Total Handle Time / nombre de contacts traités.**
+
+Pour la planification :
+
+**Workload (heures) = Volume × AHT / 3600.**
