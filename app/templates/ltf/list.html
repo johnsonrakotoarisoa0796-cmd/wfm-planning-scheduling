@@ -6,7 +6,9 @@
         <h1>LTF Weekly</h1>
         <p class="page-header__meta">Plan de référence hebdomadaire — jamais écrasé, chaque révision crée une nouvelle version.</p>
     </div>
-    {% if can_edit %}
+    {% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
+{% if request.query_params.get("success") %}<div class="success-banner">{{ request.query_params.get("success") }}</div>{% endif %}
+{% if can_edit %}
     <a href="/ltf/new" class="btn-secondary">+ Nouveau forecast</a>
     {% endif %}
 </div>
@@ -56,7 +58,7 @@
                 <th class="numeric">SL cible</th>
                 <th class="numeric">HC requis</th>
                 <th class="numeric">Paid Hours</th>
-                <th class="numeric">Shrinkage</th>
+                <th class="numeric">Shrinkage</th><th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -71,7 +73,7 @@
                 <td class="numeric">{{ "%.1f"|format(row.forecast.service_level_target_pct) }}%</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.headcount_required) }}</td>
                 <td class="numeric">{{ "{:,.0f}".format(row.forecast.paid_hours).replace(",", " ") }}</td>
-                <td class="numeric">{{ "%.1f"|format(row.forecast.total_shrinkage_pct) }}%</td>
+                <td class="numeric">{{ "%.1f"|format(row.forecast.total_shrinkage_pct) }}%</td><td class="actions"><a class="btn-secondary btn-small" href="/ltf/{{ row.forecast.id }}">Voir</a> {% if can_edit %}<a class="btn-secondary btn-small" href="/ltf/{{ row.forecast.id }}/edit">Rectifier</a><form method="post" action="/ltf/{{ row.forecast.id }}/delete" style="display:inline" onsubmit="return confirm('Supprimer ce LTF ? Une version précédente sera restaurée si elle existe.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Supprimer</button></form>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
