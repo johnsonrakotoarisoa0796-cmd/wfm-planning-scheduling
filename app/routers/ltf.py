@@ -23,7 +23,7 @@ from app.models.forecast import ForecastVersion, LTFForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.ltf import LTFCreateInput
-from app.services import forecast_service, weekly_intraday_service
+from app.services import channel_service, forecast_service, weekly_intraday_service
 
 router = APIRouter(prefix="/ltf", tags=["ltf"])
 
@@ -399,6 +399,9 @@ def view_ltf(
             "current_user": current_user,
             "ltf": ltf,
             "month_label": MONTH_LABELS_FR[ltf.month],
+            "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
+            "contact_handling_hours": ltf.forecast_volume * ltf.forecast_aht_seconds / 3600.0,
+            "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel),
             "campaign": campaign,
             "skill": skill,
             "history": history,
