@@ -23,7 +23,7 @@
 <div class="field"><label>Code</label><input name="code" placeholder="FR" maxlength="10" required></div>
 <div class="field"><label>Nom</label><input name="name" placeholder="France" required></div>
 <div class="field"><label>Langue</label><input name="language_code" placeholder="fr" maxlength="10" required></div>
-<div class="field"><label>Fuseau IANA</label><input name="timezone_name" placeholder="Europe/Paris" required></div>
+<div class="field"><label>Fuseau IANA</label><select name="timezone_name" required>{% for tz in timezone_options %}<option value="{{ tz }}">{{ tz }}</option>{% endfor %}</select></div>
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le marché</button></div>
 </form>
