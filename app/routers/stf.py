@@ -21,7 +21,7 @@ from app.models.forecast import ForecastVersion, STFForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.stf import STFCreateInput
-from app.services import forecast_service, weekly_intraday_service
+from app.services import channel_service, forecast_service, weekly_intraday_service
 
 router = APIRouter(prefix="/stf", tags=["stf"])
 
@@ -323,6 +323,9 @@ def view_stf(
             "current_user": current_user,
             "stf": stf,
             "campaign": campaign,
+            "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
+            "contact_handling_hours": stf.volume * stf.aht_seconds / 3600.0,
+            "agent_workload_hours": channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel),
             "skill": skill,
             "parent_ltf": parent_ltf,
             "comparison": comparison,
