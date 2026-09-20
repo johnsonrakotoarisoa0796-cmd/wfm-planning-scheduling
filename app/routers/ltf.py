@@ -60,7 +60,11 @@ def list_ltf(
     rows = [
         {
             "forecast": f,
-            "month_label": MONTH_LABELS_FR[f.month],
+            "month_label": (
+                MONTH_LABELS_FR[f.month]
+                if f.month is not None
+                else f"Semaine {f.iso_year}-W{f.iso_week:02d}"
+            ),
             "campaign_name": campaigns_by_id[f.campaign_id].name if f.campaign_id in campaigns_by_id else "?",
             "skill_name": skills_by_id[f.skill_id].name if f.skill_id in skills_by_id else "?",
             "contact_handling_hours": f.forecast_volume * f.forecast_aht_seconds / 3600.0,
@@ -432,11 +436,20 @@ def view_ltf(
             "active_nav": "ltf",
             "current_user": current_user,
             "ltf": ltf,
-            "month_label": MONTH_LABELS_FR[ltf.month],
-            "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
+            "month_label": (
+                MONTH_LABELS_FR[ltf.month]
+                if ltf.month is not None
+                else f"Semaine {ltf.iso_year}-W{ltf.iso_week:02d}"
+            ),
+            "concurrency_factor": skill.concurrency_factor,
             "contact_handling_hours": ltf.forecast_volume * ltf.forecast_aht_seconds / 3600.0,
             "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
-            "calculation_incoherent": ltf.paid_hours + 1e-6 < channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel),
+            "calculation_incoherent": ltf.paid_hours + 1e-6 < channel_service.normalized_workload_hours(
+                ltf.forecast_volume,
+                ltf.forecast_aht_seconds,
+                skill.channel,
+                concurrency_factor=skill.concurrency_factor,
+            ),
             "campaign": campaign,
             "skill": skill,
             "history": history,
