@@ -5,6 +5,7 @@ import pytest
 from app.models.enums import Channel
 from app.models.intraday import IntervalForecast
 from app.models.market import Market
+from app.services.kpi_service import agent_workload_hours
 from app.services.channel_service import (
     channel_label,
     concurrency_for_channel,
@@ -22,6 +23,10 @@ def test_channel_concurrency_rules():
     assert channel_label(Channel.VOICE) == "Phone"
     assert channel_label(Channel.CHAT) == "Message Us"
 
+
+def test_agent_workload_is_distinct_from_contact_handling_hours():
+    assert agent_workload_hours(120, 900, 1) == pytest.approx(30.0)
+    assert agent_workload_hours(120, 900, 3) == pytest.approx(10.0)
 
 def test_async_workload_is_divided_by_concurrency():
     phone = normalized_workload_hours(120, 900, Channel.VOICE)
