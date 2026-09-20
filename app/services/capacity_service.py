@@ -48,21 +48,25 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
     else:
         month_start = date(year, month, 1)
         month_end = date(year, month, monthrange(year, month)[1])
-        weekly_ltfs = list(
+        weekly_candidates = list(
             session.exec(
                 select(LTFForecast)
                 .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
                 .where(
                     LTFForecast.campaign_id == data.campaign_id,
                     LTFForecast.skill_id == data.skill_id,
-                    LTFForecast.iso_year.is_not(None),
-                    LTFForecast.iso_week.is_not(None),
+                    LTFForecast.week_start_date.is_not(None),
                     LTFForecast.week_start_date <= month_end,
-                    (LTFForecast.week_start_date + timedelta(days=6)) >= month_start,
                     ForecastVersion.is_current == True,  # noqa: E712
                 )
             ).all()
         )
+        weekly_ltfs = [
+            row
+            for row in weekly_candidates
+            if row.week_start_date is not None
+            and row.week_start_date + timedelta(days=6) >= month_start
+        ]
         if weekly_ltfs:
             required_hc = max(row.headcount_required for row in weekly_ltfs)
             required_source = f"Peak weekly LTF ({len(weekly_ltfs)} semaine(s))"
