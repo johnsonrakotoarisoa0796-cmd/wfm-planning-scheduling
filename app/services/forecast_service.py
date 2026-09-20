@@ -302,23 +302,38 @@ def get_current_ltf_forecast(
 
 
 def get_ltf_version_history(
-    session: Session, *, campaign_id: int, skill_id: int, year: int, month: int
+    session: Session,
+    *,
+    campaign_id: int,
+    skill_id: int,
+    year: int | None = None,
+    month: int | None = None,
+    iso_year: int | None = None,
+    iso_week: int | None = None,
 ) -> list[LTFForecast]:
-    """Historique complet (toutes versions, courante ou non) d'un couple
-    campagne/skill/mois donné, du plus ancien au plus récent — utile pour
-    comparer l'évolution d'un forecast (§9)."""
+    """Historique LTF sur une période mensuelle ou hebdomadaire."""
     query = (
         select(LTFForecast)
         .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
         .where(
             LTFForecast.campaign_id == campaign_id,
             LTFForecast.skill_id == skill_id,
+        )
+    )
+    if iso_year is not None and iso_week is not None:
+        query = query.where(
+            LTFForecast.iso_year == iso_year,
+            LTFForecast.iso_week == iso_week,
+        )
+    elif year is not None and month is not None:
+        query = query.where(
             LTFForecast.year == year,
             LTFForecast.month == month,
+            LTFForecast.iso_year.is_(None),
         )
-        .order_by(ForecastVersion.created_at)
-    )
-    return list(session.exec(query).all())
+    else:
+        raise ValueError("Période LTF historique incomplète.")
+    return list(session.exec(query.order_by(ForecastVersion.created_at)).all())
 
 
 # ============================================================================
