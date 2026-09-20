@@ -133,7 +133,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
             data.forecast_volume, data.handling_time_seconds
         )
         agent_workload_hours_value = channel_service.normalized_workload_hours(
-            data.forecast_volume, data.handling_time_seconds, skill.channel
+            data.forecast_volume, data.handling_time_seconds, skill.channel, concurrency_factor=skill.concurrency_factor
         )
         available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
         net_required_hc = kpi_service.required_hc_aggregate(
@@ -156,7 +156,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
             data.forecast_volume, data.forecast_aht_seconds
         )
         agent_workload_hours_value = channel_service.normalized_workload_hours(
-            data.forecast_volume, data.forecast_aht_seconds, skill.channel
+            data.forecast_volume, data.forecast_aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor
         )
         available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
         net_required_hc = kpi_service.required_hc_aggregate(
@@ -391,7 +391,7 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
         data.volume, data.handling_time_seconds
     )
     agent_workload_hours_value = channel_service.normalized_workload_hours(
-        data.volume, data.handling_time_seconds, skill.channel
+        data.volume, data.handling_time_seconds, skill.channel, concurrency_factor=skill.concurrency_factor
     )
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
     net_required_hc = kpi_service.required_hc_aggregate(
