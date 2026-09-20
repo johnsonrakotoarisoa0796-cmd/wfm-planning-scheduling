@@ -55,6 +55,12 @@ def list_stf(
             "forecast": f,
             "campaign_name": campaigns_by_id[f.campaign_id].name if f.campaign_id in campaigns_by_id else "?",
             "skill_name": skills_by_id[f.skill_id].name if f.skill_id in skills_by_id else "?",
+            "contact_handling_hours": f.volume * f.aht_seconds / 3600.0,
+            "agent_workload_hours": (
+                f.volume * f.aht_seconds / 3600.0
+                / channel_service.concurrency_for_channel(skills_by_id[f.skill_id].channel)
+                if f.skill_id in skills_by_id else 0.0
+            ),
         }
         for f in forecasts
     ]
