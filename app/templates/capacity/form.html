@@ -77,7 +77,7 @@
                     <input type="number" id="absenteeism_pct" name="absenteeism_pct" min="0" max="100" step="0.1" value="{{ values.absenteeism_pct or '0' }}">
                 </div>
             </div>
-            <p class="field__hint">Future HC = Current HC + Recrutements + Transferts entrants − Transferts sortants − Attrition − Absentéisme (les deux derniers en % du Current HC).</p>
+            <p class="field__hint">Projected HC = Current HC + Recrutements + Transferts entrants − Transferts sortants − Attrition. L’absentéisme ne supprime pas des postes : il réduit le Projected Available HC.</p>
         </fieldset>
 
         <fieldset>
