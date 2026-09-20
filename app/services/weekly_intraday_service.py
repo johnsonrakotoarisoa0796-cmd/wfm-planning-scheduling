@@ -194,6 +194,10 @@ def disperse_stf_with_weights(
 
     timezone_name = _timezone_for_skill(session, stf.skill_id)
     profile_48 = intraday_window_profile_to_48(dispersion.intraday_profile_pct)
+    effective_shrinkage_pct = max(
+        stf.shrinkage_pct,
+        dispersion.absence_rate_pct + dispersion.leave_rate_pct,
+    )
     rows: list[IntervalForecast] = []
     for day, weight in zip(expected_dates, dispersion.weights):
         daily_volume = stf.volume * (weight / 100.0)
@@ -219,6 +223,7 @@ def disperse_stf_with_weights(
                 leave_rate_pct=dispersion.leave_rate_pct,
                 break_15m_pct_48=intraday_window_rate_profile_to_48(dispersion.break_15m_pct),
                 lunch_break_pct_48=intraday_window_rate_profile_to_48(dispersion.lunch_break_pct),
+                effective_shrinkage_pct=effective_shrinkage_pct,
             )
         )
 
