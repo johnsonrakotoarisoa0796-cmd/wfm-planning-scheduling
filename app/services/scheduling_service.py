@@ -97,6 +97,7 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
                 shift=shift,
             )
             if errors:
+                session.rollback()
                 raise ValueError("Compliance: " + " ".join(errors))
 
     session.add(entry)
