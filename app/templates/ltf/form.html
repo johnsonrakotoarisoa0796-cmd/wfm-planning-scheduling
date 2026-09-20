@@ -58,7 +58,7 @@
                     <label for="aht_required_seconds">AHT cible / Handling Time cible par contact (secondes)</label>
                     <input type="number" id="aht_required_seconds" name="aht_required_seconds" min="1" step="1" value="{{ values.aht_required_seconds or '' }}" required>
                     <div class="field__hint">AHT cible par contact, utilisée comme référence de planification.</div>
-                </div><div class="field"><label>Heures de traitement calculées</label><input id="treatment_hours_preview" value="0.0 h" readonly><div class="field__hint">Volume × Handling Time / 3 600.</div></div>
+                </div><div class="field"><label>Heures de traitement calculées</label><input id="treatment_hours_preview" value="0.0 h" readonly><div class="field__hint">Heures de traitement des contacts = Volume × AHT / 3 600. Pour Email/Message Us, la simultanéité peut rendre la charge agent inférieure à ces heures.</div></div>
             </div>
         </fieldset>
 
