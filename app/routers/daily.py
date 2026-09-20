@@ -133,6 +133,7 @@ def create_day(
         payload = GenerateIntradayInput(**submitted_values)
         intraday_service.generate_intraday_forecast(session, payload)
     except (ValidationError, ValueError) as exc:
+        session.rollback()
         errors = [str(e["msg"]) for e in exc.errors()] if isinstance(exc, ValidationError) else [str(exc)]
         campaigns, skills = _reference_data(session)
         return templates.TemplateResponse(
@@ -171,6 +172,8 @@ def disperse_from_stf_form(
     skill = session.get(Skill, stf.skill_id)
     weights = [13.0, 14.0, 16.0, 17.0, 14.0, 13.0, 13.0]
     intraday_profile_pct = intraday_service.default_intraday_window_profile_pct()
+    break_15m_pct = weekly_intraday_service.default_break_15m_profile_pct()
+    lunch_break_pct = weekly_intraday_service.default_lunch_break_profile_pct()
     intraday_slots = [
         "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
         "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
@@ -201,6 +204,21 @@ def disperse_from_stf_form(
             "daily_volumes": [stf.volume * w / 100.0 for w in weights],
             "intraday_profile_pct": intraday_profile_pct,
             "intraday_slots": intraday_slots,
+            "break_15m_pct": break_15m_pct,
+            "lunch_break_pct": lunch_break_pct,
+            "handling_time_seconds": stf.aht_seconds,
+            "absence_rate_pct": 5.0,
+            "leave_rate_pct": 8.0,
+            "absence_hours_per_agent": 8.0 * 0.05,
+            "leave_hours_per_agent": 8.0 * 0.08,
+            "existing_intervals_count": session.exec(
+                select(IntervalForecast).where(
+                    IntervalForecast.campaign_id == stf.campaign_id,
+                    IntervalForecast.skill_id == stf.skill_id,
+                    IntervalForecast.date >= stf.week_start_date,
+                    IntervalForecast.date <= stf.week_start_date + timedelta(days=6),
+                )
+            ).all().__len__(),
             "errors": [],
         },
     )
@@ -218,6 +236,12 @@ def disperse_from_stf_action(
     saturday_pct: float = Form(...),
     sunday_pct: float = Form(...),
     intraday_profile_pct: list[float] = Form(...),
+    absence_rate_pct: float = Form(5.0),
+    leave_rate_pct: float = Form(8.0),
+    break_15m_pct: list[float] = Form(...),
+    lunch_break_pct: list[float] = Form(...),
+    handling_time_seconds: float = Form(...),
+    replace_existing: bool = Form(False),
     current_user: User = Depends(require_role(*GENERATE_ROLES)),
     session: Session = Depends(get_session),
 ):
@@ -243,12 +267,19 @@ def disperse_from_stf_action(
         "saturday_pct": saturday_pct,
         "sunday_pct": sunday_pct,
         "intraday_profile_pct": intraday_profile_pct,
+        "absence_rate_pct": absence_rate_pct,
+        "leave_rate_pct": leave_rate_pct,
+        "break_15m_pct": break_15m_pct,
+        "lunch_break_pct": lunch_break_pct,
+        "handling_time_seconds": handling_time_seconds,
     }
 
     try:
-        payload = WeeklyDispersionInput(**values)
+        payload = WeeklyDispersionInput(
+            **values
+        )
         payload.validate_total()
-        weekly_intraday_service.disperse_stf_with_weights(session, stf, payload)
+        weekly_intraday_service.disperse_stf_with_weights(session, stf, payload, replace_existing=replace_existing)
     except (ValidationError, ValueError) as exc:
         errors = [str(e["msg"]) for e in exc.errors()] if isinstance(exc, ValidationError) else [str(exc)]
         weights = [monday_pct, tuesday_pct, wednesday_pct, thursday_pct, friday_pct, saturday_pct, sunday_pct]
@@ -276,6 +307,21 @@ def disperse_from_stf_action(
                 "daily_volumes": [stf.volume * w / 100.0 for w in weights],
                 "intraday_profile_pct": intraday_profile_pct,
                 "intraday_slots": intraday_slots,
+                "break_15m_pct": break_15m_pct,
+                "lunch_break_pct": lunch_break_pct,
+                "handling_time_seconds": handling_time_seconds,
+                "absence_rate_pct": absence_rate_pct,
+                "leave_rate_pct": leave_rate_pct,
+                "absence_hours_per_agent": 8.0 * absence_rate_pct / 100.0,
+                "leave_hours_per_agent": 8.0 * leave_rate_pct / 100.0,
+                "existing_intervals_count": session.exec(
+                    select(IntervalForecast).where(
+                        IntervalForecast.campaign_id == stf.campaign_id,
+                        IntervalForecast.skill_id == stf.skill_id,
+                        IntervalForecast.date >= stf.week_start_date,
+                        IntervalForecast.date <= stf.week_start_date + timedelta(days=6),
+                    )
+                ).all().__len__(),
                 "errors": errors,
             },
             status_code=400,
