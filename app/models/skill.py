@@ -15,4 +15,5 @@ class Skill(SQLModel, table=True):
     market_id: Optional[int] = Field(default=None, foreign_key="markets.id", index=True)
     name: str = Field(nullable=False)
     channel: Channel = Field(default=Channel.VOICE, nullable=False)
+    concurrency_factor: float = Field(default=1.0, nullable=False)
     is_active: bool = Field(default=True, nullable=False)
