@@ -32,8 +32,11 @@
                 </div>
                 <div class="field">
                     <label for="timezone_name">Fuseau horaire (IANA)</label>
-                    <input type="text" id="timezone_name" name="timezone_name" value="{{ values.timezone_name or '' }}" placeholder="America/New_York">
-                    <div class="field__hint">Vide = fuseau du marché du skill. Vous pouvez surcharger avec un fuseau IANA. La fenêtre s’adapte automatiquement au DST : 07:00–01:00 en été, 08:00–02:00 en hiver.</div>
+                    <select id="timezone_name" name="timezone_name">
+                        <option value="">Automatique — fuseau du marché</option>
+                        {% for tz in timezone_options %}<option value="{{ tz }}" {% if values.timezone_name == tz %}selected{% endif %}>{{ tz }}</option>{% endfor %}
+                    </select>
+                    <div class="field__hint">Vide = fuseau du marché du skill. Choisissez un fuseau IANA seulement pour le surcharger.</div>
                 </div>
                 <div class="field">
                     <label for="skill_id">Skill</label>
