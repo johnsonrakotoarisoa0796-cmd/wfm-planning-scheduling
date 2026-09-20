@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Sécurité administrateur — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <section class="auth-brand" aria-labelledby="auth-title">
+        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+        <div class="auth-brand__pitch">
+            <h1 id="auth-title">Créez votre sécurité administrateur.</h1>
+            <p>Configurez le TOTP avec le QR code puis choisissez deux mots-clés secrets. Ces trois éléments seront demandés avec votre mot de passe lors de chaque connexion admin.</p>
+            {% include "partials/interval_strip.html" %}
+        </div>
+        <div></div>
+    </section>
+    <section class="auth-form-pane">
+        <div>
+            <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
+            <div class="auth-form">
+                <h2>Configuration sécurité admin</h2>
+                <p class="subtitle">{{ email }}</p>
+                {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+                <div style="display:flex;justify-content:center;margin:18px 0 14px">
+                    <img src="data:image/png;base64,{{ qr_data }}" alt="QR code TOTP administrateur" width="220" height="220" style="border-radius:12px;background:#fff;padding:10px">
+                </div>
+                <div class="field">
+                    <label>Clé TOTP manuelle</label>
+                    <input value="{{ manual_secret }}" readonly style="font-family:var(--font-mono);letter-spacing:.08em">
+                    <small class="field__hint">Alternative au scan QR si nécessaire.</small>
+                </div>
+                <form method="post" action="/login/admin-security">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="field">
+                        <label for="code">Code généré par l’authenticator</label>
+                        <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+                    </div>
+                    <div class="field">
+                        <label for="new_keyword1">Mot-clé 1</label>
+                        <input type="password" id="new_keyword1" name="new_keyword1" minlength="4" maxlength="64" autocomplete="off" required>
+                    </div>
+                    <div class="field">
+                        <label for="new_keyword2">Mot-clé 2</label>
+                        <input type="password" id="new_keyword2" name="new_keyword2" minlength="4" maxlength="64" autocomplete="off" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Créer ma sécurité admin</button>
+                </form>
+                <p class="auth-form__footer">Les mots-clés sont enregistrés sous forme de hash et ne peuvent pas être relus par l’administrateur.</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
