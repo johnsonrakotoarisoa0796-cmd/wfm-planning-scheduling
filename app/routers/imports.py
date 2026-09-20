@@ -126,7 +126,7 @@ async def import_actuals(
                     abandoned / offered * 100.0 if offered > 0 else 0.0
                 )
                 if interval.actual_hc and interval.actual_aht_seconds:
-                    capacity_hours = interval.actual_hc * (intraday_service.INTERVAL_SECONDS / 3600.0)
+                    capacity_hours = interval.actual_hc * intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
                     workload_hours = channel_service.normalized_workload_hours(
                         offered, interval.actual_aht_seconds, interval.channel
                     )
