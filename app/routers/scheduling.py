@@ -116,7 +116,7 @@ def list_schedule(
     session: Session = Depends(get_session),
 ):
     target_date = target_date or date.today()
-    campaigns, skills, employees = _reference_data(session)
+    campaigns, skills, employees = _reference_data(session, campaign_id)
     entries = scheduling_service.list_schedule_entries(
         session, target_date=target_date, campaign_id=campaign_id, skill_id=skill_id
     )
@@ -210,7 +210,7 @@ def create_entry(
         scheduling_service.upsert_schedule_entry(session, payload)
     except (ValidationError, ValueError) as exc:
         errors = [str(e["msg"]) for e in exc.errors()] if isinstance(exc, ValidationError) else [str(exc)]
-        campaigns, skills, employees = _reference_data(session)
+        campaigns, skills, employees = _reference_data(session, campaign_id)
         shifts = scheduling_service.list_shifts(session, active_only=True)
         return templates.TemplateResponse(
             request,
@@ -579,7 +579,7 @@ def break_impact_report(
     current_user: User = Depends(require_login),
     session: Session = Depends(get_session),
 ):
-    campaigns, skills, _ = _reference_data(session)
+    campaigns, skills, _ = _reference_data(session, campaign_id)
     report = None
     if target_date is not None and campaign_id is not None and skill_id is not None:
         report = scheduling_service.compute_break_impact(
