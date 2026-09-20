@@ -23,8 +23,8 @@ from app.models.market import Market
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
-from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput
-from app.services import channel_service, client_stf_service, intraday_service
+from app.schemas.intraday import GenerateIntradayInput, IntervalUpdateInput, WeeklyDispersionInput
+from app.services import channel_service, client_stf_service, intraday_service, weekly_intraday_service
 
 router = APIRouter(prefix="/daily", tags=["daily"])
 
@@ -151,6 +151,121 @@ def create_day(
 
     return RedirectResponse(url=f"/daily/view?target_date={target_date}&campaign_id={campaign_id}&skill_id={skill_id}", status_code=303)
 
+
+
+@router.get("/from-stf/{stf_id}")
+def disperse_from_stf_form(
+    stf_id: int,
+    request: Request,
+    current_user: User = Depends(require_role(*GENERATE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    from datetime import timedelta
+    from app.models.forecast import STFForecast
+
+    stf = session.get(STFForecast, stf_id)
+    if stf is None:
+        raise HTTPException(status_code=404, detail="Forecast STF introuvable.")
+
+    campaign = session.get(Campaign, stf.campaign_id)
+    skill = session.get(Skill, stf.skill_id)
+    weights = [13.0, 14.0, 16.0, 17.0, 14.0, 13.0, 13.0]
+    days = [
+        ("Lundi", stf.week_start_date + timedelta(days=0), weights[0]),
+        ("Mardi", stf.week_start_date + timedelta(days=1), weights[1]),
+        ("Mercredi", stf.week_start_date + timedelta(days=2), weights[2]),
+        ("Jeudi", stf.week_start_date + timedelta(days=3), weights[3]),
+        ("Vendredi", stf.week_start_date + timedelta(days=4), weights[4]),
+        ("Samedi", stf.week_start_date + timedelta(days=5), weights[5]),
+        ("Dimanche", stf.week_start_date + timedelta(days=6), weights[6]),
+    ]
+    return templates.TemplateResponse(
+        request,
+        "daily/from_stf.html",
+        {
+            "active_nav": "daily",
+            "current_user": current_user,
+            "stf": stf,
+            "campaign": campaign,
+            "skill": skill,
+            "days": days,
+            "weights": weights,
+            "total_weight": sum(weights),
+            "daily_volumes": [stf.volume * w / 100.0 for w in weights],
+            "errors": [],
+        },
+    )
+
+
+@router.post("/from-stf/{stf_id}", dependencies=[Depends(verify_csrf)])
+def disperse_from_stf_action(
+    stf_id: int,
+    request: Request,
+    monday_pct: float = Form(...),
+    tuesday_pct: float = Form(...),
+    wednesday_pct: float = Form(...),
+    thursday_pct: float = Form(...),
+    friday_pct: float = Form(...),
+    saturday_pct: float = Form(...),
+    sunday_pct: float = Form(...),
+    current_user: User = Depends(require_role(*GENERATE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    from datetime import timedelta
+    from app.models.forecast import STFForecast
+
+    stf = session.get(STFForecast, stf_id)
+    if stf is None:
+        raise HTTPException(status_code=404, detail="Forecast STF introuvable.")
+
+    values = {
+        "monday_pct": monday_pct,
+        "tuesday_pct": tuesday_pct,
+        "wednesday_pct": wednesday_pct,
+        "thursday_pct": thursday_pct,
+        "friday_pct": friday_pct,
+        "saturday_pct": saturday_pct,
+        "sunday_pct": sunday_pct,
+    }
+
+    try:
+        payload = WeeklyDispersionInput(**values)
+        payload.validate_total()
+        weekly_intraday_service.disperse_stf_with_weights(session, stf, payload)
+    except (ValidationError, ValueError) as exc:
+        errors = [str(e["msg"]) for e in exc.errors()] if isinstance(exc, ValidationError) else [str(exc)]
+        weights = [monday_pct, tuesday_pct, wednesday_pct, thursday_pct, friday_pct, saturday_pct, sunday_pct]
+        days = [
+            ("Lundi", stf.week_start_date + timedelta(days=0), monday_pct),
+            ("Mardi", stf.week_start_date + timedelta(days=1), tuesday_pct),
+            ("Mercredi", stf.week_start_date + timedelta(days=2), wednesday_pct),
+            ("Jeudi", stf.week_start_date + timedelta(days=3), thursday_pct),
+            ("Vendredi", stf.week_start_date + timedelta(days=4), friday_pct),
+            ("Samedi", stf.week_start_date + timedelta(days=5), saturday_pct),
+            ("Dimanche", stf.week_start_date + timedelta(days=6), sunday_pct),
+        ]
+        return templates.TemplateResponse(
+            request,
+            "daily/from_stf.html",
+            {
+                "active_nav": "daily",
+                "current_user": current_user,
+                "stf": stf,
+                "campaign": session.get(Campaign, stf.campaign_id),
+                "skill": session.get(Skill, stf.skill_id),
+                "days": days,
+                "weights": weights,
+                "total_weight": sum(weights),
+                "daily_volumes": [stf.volume * w / 100.0 for w in weights],
+                "errors": errors,
+            },
+            status_code=400,
+        )
+
+    return RedirectResponse(
+        url=f"/daily?campaign_id={stf.campaign_id}&skill_id={stf.skill_id}&generated=1",
+        status_code=303,
+    )
 
 @router.get("/view")
 def view_day(
