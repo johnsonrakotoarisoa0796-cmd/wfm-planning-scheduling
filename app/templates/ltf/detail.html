@@ -41,11 +41,11 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Headcount Required (gross)</td><td class="numeric">{{ "%.1f"|format(ltf.headcount_required) }}</td></tr>
-                <tr><td>Paid Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.paid_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Paid staffing hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.paid_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Productive Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.productive_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Production Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.production_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Idle / Buffer Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.waiting_hours).replace(",", " ") }} h</td></tr>
-                <tr><td>Available Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.available_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Available productive hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.available_hours).replace(",", " ") }} h</td></tr>
             </tbody>
         </table>
     </div>
