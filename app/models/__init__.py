@@ -8,6 +8,7 @@ ajoutee ici.
 
 from app.models.agent_request import AgentRequest
 from app.models.campaign import Campaign
+from app.models.compliance import CompliancePolicy
 from app.models.market import Market
 from app.models.weekly_parameters import WeeklyWFMParameter
 from app.models.recruitment import RecruitmentPlan, RecruitmentRampWeek
@@ -28,6 +29,7 @@ from app.models.user import User
 
 __all__ = [
     "AgentRequest",
+    "CompliancePolicy",
     "Campaign",
     "Market",
     "ClientSTFInterval",
