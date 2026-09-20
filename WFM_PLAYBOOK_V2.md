@@ -61,3 +61,28 @@ La plateforme est structurée pour recevoir forecasting multi-modèles, intégra
 Une recommandation du moteur n'est pas une décision. La publication reste une action WFM explicite.
 
 > Vérification technique : la branche principale est validée par la suite pytest du repository avant publication des évolutions.
+
+
+## 9. Compliance & Weekly Coverage
+
+Le module **Compliance** permet de définir une politique par campagne, avec éventuellement une règle spécifique par skill :
+
+- maximum de jours consécutifs travaillés ;
+- maximum d'heures travaillées par jour ;
+- maximum d'heures travaillées par semaine ;
+- maximum d'overtime par semaine ;
+- repos minimum entre deux shifts ;
+- objectif de Weekly Coverage (%).
+
+La politique est utilisée par la génération automatique du planning : un shift candidat qui vioule une règle de conformité est écarté. La saisie manuelle d'un planning applique également les règles actives.
+
+Le contrôle hebdomadaire calcule :
+
+```
+Weekly Coverage =
+  HC-hours couvertes / HC-hours requises × 100
+```
+
+Il affiche également shortage HC-hours, surplus HC-hours, écart à la cible et les violations détaillées par agent.
+
+Le module **Generate Schedule** affiche le contrôle Compliance et Weekly Coverage après génération.
