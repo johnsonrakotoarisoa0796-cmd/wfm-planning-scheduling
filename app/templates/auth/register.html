@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Créer un compte — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <section class="auth-brand" aria-labelledby="auth-title">
+        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+        <div class="auth-brand__pitch">
+            <h1 id="auth-title">Demandez votre accès à la plateforme WFM.</h1>
+            <p>Créez votre compte. Un administrateur doit l’activer avant la première connexion, puis vous configurerez vous-même votre authenticator.</p>
+            {% include "partials/interval_strip.html" %}
+        </div>
+        <div></div>
+    </section>
+    <section class="auth-form-pane">
+        <div>
+            <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
+            <form class="auth-form" method="post" action="/register">
+                <h2>Créer un compte</h2>
+                <p class="subtitle">Votre compte sera créé avec le rôle Viewer par défaut.</p>
+                {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+                {% if success %}<div class="success-banner">{{ success }}</div>{% endif %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="field">
+                    <label for="email">Adresse email</label>
+                    <input type="email" id="email" name="email" value="{{ email or '' }}" autocomplete="email" required autofocus>
+                </div>
+                <div class="field">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" required>
+                </div>
+                <div class="field">
+                    <label for="password_confirm">Confirmer le mot de passe</label>
+                    <input type="password" id="password_confirm" name="password_confirm" minlength="8" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn-primary">Demander un accès</button>
+                <p class="auth-form__footer">Déjà un compte ? <a href="/login">Se connecter</a></p>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}
