@@ -10,7 +10,6 @@ import os
 from contextlib import asynccontextmanager
 from datetime import date
 
-import qrcode
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,11 +20,9 @@ from app.core.database import engine
 from app.core.middleware import CSRFCookieMiddleware
 from app.core.security import (
     NotAuthenticatedError,
-    generate_totp_secret,
     hash_password,
     require_login,
     require_role,
-    totp_provisioning_uri,
 )
 from app.models.campaign import Campaign
 from app.models.market import Market
@@ -63,27 +60,19 @@ def bootstrap_admin_if_configured(*, db_engine=None) -> None:
         if existing is not None:
             return
 
-        totp_secret = generate_totp_secret()
         user = User(
             email=email,
             hashed_password=hash_password(password),
             role=UserRole.ADMIN,
             is_active=True,
-            totp_secret=totp_secret,
+            totp_secret=None,
         )
         session.add(user)
         session.commit()
 
-    uri = totp_provisioning_uri(totp_secret, email)
     print("=" * 70)
     print(f"[bootstrap] Compte admin créé : {email}")
-    print("[bootstrap] Configuration TOTP (à faire immédiatement) :")
-    print(f"[bootstrap] Clé manuelle : {totp_secret}")
-    print(f"[bootstrap] URI complète : {uri}")
-    qr = qrcode.QRCode(border=1)
-    qr.add_data(uri)
-    qr.make()
-    qr.print_ascii()
+    print("[bootstrap] Le 2FA sera configuré par l'utilisateur lors de sa première connexion.")
     print("=" * 70)
 
 
@@ -115,23 +104,14 @@ def bootstrap_reset_totp_if_configured(*, db_engine=None) -> None:
             print(f"[bootstrap] RESET_TOTP_EMAIL={email} : aucun utilisateur trouvé, rien à faire.")
             return
 
-        totp_secret = generate_totp_secret()
-        user.totp_secret = totp_secret
+        user.totp_secret = None
         session.add(user)
         session.commit()
 
-    uri = totp_provisioning_uri(totp_secret, email)
     print("=" * 70)
-    print(f"[bootstrap] Secret TOTP régénéré pour : {email}")
-    print("[bootstrap] Reconfigurez immédiatement votre authenticator :")
-    print(f"[bootstrap] Clé manuelle : {totp_secret}")
-    print(f"[bootstrap] URI complète : {uri}")
-    qr = qrcode.QRCode(border=1)
-    qr.add_data(uri)
-    qr.make()
-    qr.print_ascii()
-    print("[bootstrap] Retirez RESET_TOTP_EMAIL des variables d'environnement Render")
-    print("[bootstrap] maintenant : sinon ce secret sera régénéré au prochain redémarrage.")
+    print(f"[bootstrap] 2FA réinitialisé pour : {email}")
+    print("[bootstrap] Le nouvel enrôlement sera effectué par l'utilisateur lors de sa prochaine connexion.")
+    print("[bootstrap] Retirez RESET_TOTP_EMAIL des variables d'environnement Render.")
     print("=" * 70)
 
 
