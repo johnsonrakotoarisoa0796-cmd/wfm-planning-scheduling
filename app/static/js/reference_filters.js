@@ -14,7 +14,7 @@
         return;
       }
 
-      const visible = Boolean(campaignId) && option.dataset.campaignId === campaignId;
+      const visible = !campaignId || option.dataset.campaignId === campaignId;
       const labelKey = option.textContent.trim().toLocaleLowerCase();
       const duplicate = visible && seenLabels.has(labelKey);
 
@@ -26,8 +26,8 @@
       }
     });
 
-    target.disabled = !campaignId;
-    target.setAttribute("aria-disabled", String(!campaignId));
+    target.disabled = false;
+    target.setAttribute("aria-disabled", "false");
 
     if (current && [...target.options].some((o) => o.value === current && !o.disabled)) {
       target.value = current;
