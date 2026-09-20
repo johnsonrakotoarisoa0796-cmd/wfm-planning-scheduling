@@ -187,3 +187,6 @@ Le moteur distingue désormais :
 - **Idle / Buffer Hours** = capacité productive non consommée par la charge agent.
 
 Ainsi, pour Email/Chat, il est normal que les heures de traitement des contacts soient supérieures aux Paid Hours : les contacts peuvent être traités simultanément. Pour Phone, la simultanéité vaut 1 et la charge de contact doit rester inférieure ou égale aux heures productives planifiées lorsque l'occupancy cible est strictement inférieure à 100%.
+
+
+<!-- final CI audit marker -->
