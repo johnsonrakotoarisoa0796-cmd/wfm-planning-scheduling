@@ -5,7 +5,7 @@
     <div>
         <span class="panel-kicker">STF → DAILY / INTRADAY</span>
         <h1>Distribuer le volume hebdomadaire</h1>
-        <p class="page-header__meta">Le volume STF est réparti automatiquement sur lundi → dimanche selon les poids que vous définissez.</p>
+        <p class="page-header__meta">Le volume STF est réparti sur les 7 jours puis sur les intervalles intraday selon les profils que vous définissez.</p>
     </div>
     <a href="/stf/{{ stf.id }}" class="btn-secondary">← Retour au STF</a>
 </div>
@@ -14,22 +14,22 @@
 <div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
 {% endif %}
 
-<section class="wfm-control">
-    <div class="wfm-control__head">
-        <div>
-            <span class="panel-kicker">{{ campaign.name if campaign else "—" }} · {{ skill.name if skill else "—" }}</span>
-            <h2>STF {{ stf.iso_year }}-W{{ "%02d"|format(stf.iso_week) }}</h2>
-            <p>Volume STF de référence : <strong>{{ "{:,.0f}".format(stf.volume).replace(",", " ") }} contacts</strong></p>
-        </div>
-        <div class="control-card">
-            <span>Total des poids</span>
-            <strong id="weight-total">{{ "%.1f"|format(total_weight) }}%</strong>
-            <small id="weight-status">{{ "✓ 100% — prêt à générer" if total_weight|float == 100 else "La somme doit être égale à 100%" }}</small>
-        </div>
-    </div>
+<form method="post" action="/daily/from-stf/{{ stf.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <form method="post" action="/daily/from-stf/{{ stf.id }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <section class="wfm-control">
+        <div class="wfm-control__head">
+            <div>
+                <span class="panel-kicker">{{ campaign.name if campaign else "—" }} · {{ skill.name if skill else "—" }}</span>
+                <h2>STF {{ stf.iso_year }}-W{{ "%02d"|format(stf.iso_week) }}</h2>
+                <p>Volume STF de référence : <strong>{{ "{:,.0f}".format(stf.volume).replace(",", " ") }} contacts</strong></p>
+            </div>
+            <div class="control-card">
+                <span>Total des poids jours</span>
+                <strong id="weight-total">{{ "%.1f"|format(total_weight) }}%</strong>
+                <small id="weight-status">{{ "✓ 100% — prêt à générer" if total_weight|float == 100 else "La somme doit être égale à 100%" }}</small>
+            </div>
+        </div>
 
         <div class="data-table-wrapper">
             <table class="data-table">
@@ -48,7 +48,7 @@
                         <td><strong>{{ days[i][0] }}</strong></td>
                         <td>{{ days[i][1].strftime("%d/%m/%Y") }}</td>
                         <td class="numeric">
-                            <input class="weight-input" type="number" name="{{ fields[i] }}" min="0" max="100" step="0.1" value="{{ weights[i] }}" data-volume="{{ stf.volume }}" required>
+                            <input class="weight-input" type="number" name="{{ fields[i] }}" min="0" max="100" step="0.1" value="{{ weights[i] }}" required>
                         </td>
                         <td class="numeric daily-volume-preview">{{ "{:,.1f}".format(daily_volumes[i]).replace(",", " ") }}</td>
                     </tr>
@@ -56,64 +56,82 @@
                 </tbody>
             </table>
         </div>
+    </section>
 
-        <div class="form-actions" style="margin-top:16px">
-            <button class="btn-primary" id="generate-week-btn" type="submit">⚡ Générer les 7 journées / 336 intervalles</button>
-            <a href="/stf/{{ stf.id }}" class="btn-secondary">Annuler</a>
+    <section class="form-card form-card--wide" style="margin-top:18px">
+        <div class="panel-kicker">DISTRIBUTION INTRADAY</div>
+        <h2>Profil par défaut des contacts dans la journée</h2>
+        <p class="field__hint">
+            Après le calcul du volume journalier, le système le répartit sur ces <strong>33 intervalles de 30 minutes</strong>.
+            Le profil par défaut couvre <strong>10:00 → 02:30</strong>. Vous pouvez modifier chaque poids.
+            La somme du profil doit rester à <strong>100%</strong>.
+        </p>
+
+        <div class="data-table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Heure</th>
+                        <th class="numeric">Poids %</th>
+                        <th class="numeric">Contacts pour 10 000</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for i in range(intraday_slots|length) %}
+                    <tr>
+                        <td><strong>{{ intraday_slots[i] }}</strong></td>
+                        <td class="numeric">
+                            <input
+                                class="intraday-weight-input"
+                                type="number"
+                                name="intraday_profile_pct"
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                value="{{ intraday_profile_pct[i] }}"
+                                required
+                            >
+                        </td>
+                        <td class="numeric intraday-preview">—</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </form>
-</section>
 
-<section class="form-card form-card--wide" style="margin-top:18px">
-    <div class="panel-kicker">DISTRIBUTION INTRADAY</div>
-    <h2>Profil par défaut des contacts dans la journée</h2>
-    <p class="field__hint">
-        Le volume de chaque journée calculée ci-dessus est ensuite réparti sur ces 33 intervalles.
-        Le profil par défaut est celui fourni : <strong>10:00 → 02:00</strong>. Vous pouvez modifier chaque poids.
-        La somme doit rester à <strong>100%</strong>.
-    </p>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <thead>
-                <tr><th>Heure</th><th class="numeric">Poids %</th><th class="numeric">Exemple contacts pour 10 000</th></tr>
-            </thead>
-            <tbody>
-            {% for i in range(intraday_slots|length) %}
-                <tr>
-                    <td><strong>{{ intraday_slots[i] }}</strong></td>
-                    <td class="numeric">
-                        <input
-                            class="intraday-weight-input"
-                            type="number"
-                            name="intraday_profile_pct"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value="{{ intraday_profile_pct[i] }}"
-                            required
-                        >
-                    </td>
-                    <td class="numeric intraday-preview">—</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <div class="control-grid" style="margin-top:16px">
-        <div class="control-card"><span>Total profil intraday</span><strong id="intraday-total">{{ "%.1f"|format(intraday_profile_pct|sum) }}%</strong><small id="intraday-status">Vérification...</small></div>
-        <div class="control-card"><span>Nombre d'intervalles</span><strong>33</strong><small>30 minutes chacun</small></div>
-        <div class="control-card"><span>Plage</span><strong>10:00 → 02:30</strong><small>dernier intervalle : 02:00–02:30</small></div>
-    </div>
-</section>
+        <div class="control-grid" style="margin-top:16px">
+            <div class="control-card">
+                <span>Total profil intraday</span>
+                <strong id="intraday-total">{{ "%.1f"|format(intraday_profile_pct|sum) }}%</strong>
+                <small id="intraday-status">Vérification...</small>
+            </div>
+            <div class="control-card">
+                <span>Intervalles</span>
+                <strong>33</strong>
+                <small>30 minutes chacun</small>
+            </div>
+            <div class="control-card">
+                <span>Plage</span>
+                <strong>10:00 → 02:30</strong>
+                <small>dernier intervalle : 02:00–02:30</small>
+            </div>
+        </div>
+    </section>
 
-<section class="form-card form-card--wide" style="margin-top:18px">
-    <div class="panel-kicker">EXEMPLE DE CALCUL</div>
-    <p class="field__hint">
-        Avec un STF de <strong>{{ "{:,.0f}".format(stf.volume).replace(",", " ") }}</strong> et des poids
-        13% / 14% / 16% / 17% / 14% / 13% / 13%, le système calcule chaque journée automatiquement.
-        Exemple : lundi = STF × 13%.
-    </p>
-</section>
+    <section class="form-card form-card--wide" style="margin-top:18px">
+        <div class="panel-kicker">CALCUL</div>
+        <p class="field__hint">
+            Pour chaque journée : <strong>Volume STF × poids du jour</strong>.
+            Puis, pour chaque intervalle : <strong>Volume journalier × poids intraday</strong>.
+            Les intervalles alimentent ensuite le calcul du HC requis.
+        </p>
+    </section>
+
+    <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" id="generate-week-btn" type="submit">⚡ Générer les 7 journées / 336 intervalles</button>
+        <a href="/stf/{{ stf.id }}" class="btn-secondary">Annuler</a>
+    </div>
+</form>
 
 <script>
 (() => {
