@@ -67,6 +67,7 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
             ScheduleEntry.date == data.entry_date,
         )
     ).first()
+    previous_scope = (existing.campaign_id, existing.skill_id) if existing is not None else None
 
     entry = existing or ScheduleEntry(employee_id=data.employee_id, date=data.entry_date)
     entry.campaign_id = data.campaign_id
@@ -102,12 +103,16 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
 
     session.add(entry)
     session.commit()
-    refresh_interval_scheduled_hc(
-        session,
-        target_date=data.entry_date,
-        campaign_id=data.campaign_id,
-        skill_id=data.skill_id,
-    )
+    scopes = {(data.campaign_id, data.skill_id)}
+    if previous_scope is not None:
+        scopes.add(previous_scope)
+    for scope_campaign_id, scope_skill_id in scopes:
+        refresh_interval_scheduled_hc(
+            session,
+            target_date=data.entry_date,
+            campaign_id=scope_campaign_id,
+            skill_id=scope_skill_id,
+        )
     session.refresh(entry)
     return entry
 
