@@ -3,15 +3,15 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Nouveau réajustement STF</h1>
-        <p class="page-header__meta">Réajuste le LTF actif du mois correspondant — la création échoue si aucun LTF n'existe pour cette semaine.</p>
+        <h1>{{ "Rectifier le réajustement STF" if editing else "Nouveau réajustement STF" }}</h1>
+        <p class="page-header__meta">{% if editing %}La rectification crée une nouvelle version et conserve l’ancienne dans l’historique.{% else %}Réajuste le LTF actif du mois correspondant — la création échoue si aucun LTF n'existe pour cette semaine.{% endif %}</p>
     </div>
 </div>
 
 <div class="form-card">
     {% include "partials/form_errors.html" %}
 
-    <form method="post" action="/stf/new">
+    <form method="post" action="{{ form_action or '/stf/new' }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <fieldset>
@@ -19,11 +19,11 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Semaine ISO</label>
-                    <select id="period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value or (not values.period and current_week == w.value) %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
+                    {% if editing %}<input type="hidden" name="period" value="{{ values.period }}">{% endif %}<select id="period" name="period" required {% if editing %}disabled{% endif %}><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value or (not values.period and current_week == w.value) %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
-                    <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
+                    {% if editing %}<input type="hidden" name="campaign_id" value="{{ values.campaign_id }}">{% endif %}<select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required {% if editing %}disabled{% endif %}>
                         <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
                         {% for c in campaigns %}
                         <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
@@ -32,7 +32,7 @@
                 </div>
                 <div class="field">
                     <label for="skill_id">Skill</label>
-                    <select id="skill_id" name="skill_id" data-filtered-skill-select required>
+                    {% if editing %}<input type="hidden" name="skill_id" value="{{ values.skill_id }}">{% endif %}<select id="skill_id" name="skill_id" data-filtered-skill-select required {% if editing %}disabled{% endif %}>
                         <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
                         {% for s in skills %}
                         <option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
@@ -82,7 +82,7 @@
         </fieldset>
 
         <div class="form-actions">
-            <button type="submit" class="btn-primary">Créer le réajustement</button>
+            <button type="submit" class="btn-primary">{{ "Enregistrer la rectification" if editing else "Créer le réajustement" }}</button>
             <a href="/stf" class="btn-secondary">Annuler</a>
         </div>
     </form>
