@@ -1,19 +1,4 @@
-{% extends "app_base.html" %}
-{% block title %}Nouveau réajustement STF — WFM Planning & Scheduling<script>
-(() => {
-  const volume = document.getElementById("volume");
-  const aht = document.getElementById("handling_time_seconds");
-  const out = document.getElementById("treatment_hours_preview");
-  const refresh = () => {
-    const v = Number(volume?.value || 0);
-    const h = Number(aht?.value || 0);
-    out.value = ((v * h) / 3600).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " h";
-  };
-  volume?.addEventListener("input", refresh);
-  aht?.addEventListener("input", refresh);
-  refresh();
-})();
-</script>{% endblock %}
+{% block title %}Nouveau réajustement STF — WFM Planning & Scheduling{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -101,4 +86,25 @@
         </div>
     </form>
 </div>
+
+<script>
+(() => {
+  const volume = document.getElementById("volume");
+  const aht = document.getElementById("handling_time_seconds");
+  const out = document.getElementById("treatment_hours_preview");
+  const refresh = () => {
+    const v = Number(volume?.value || 0);
+    const h = Number(aht?.value || 0);
+    if (out) {
+      out.value = ((v * h) / 3600).toLocaleString("fr-FR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }) + " h";
+    }
+  };
+  volume?.addEventListener("input", refresh);
+  aht?.addEventListener("input", refresh);
+  refresh();
+})();
+</script>
 {% endblock %}
