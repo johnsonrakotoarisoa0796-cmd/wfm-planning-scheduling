@@ -65,6 +65,48 @@
 </section>
 
 <section class="form-card form-card--wide" style="margin-top:18px">
+    <div class="panel-kicker">DISTRIBUTION INTRADAY</div>
+    <h2>Profil par défaut des contacts dans la journée</h2>
+    <p class="field__hint">
+        Le volume de chaque journée calculée ci-dessus est ensuite réparti sur ces 33 intervalles.
+        Le profil par défaut est celui fourni : <strong>10:00 → 02:00</strong>. Vous pouvez modifier chaque poids.
+        La somme doit rester à <strong>100%</strong>.
+    </p>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Heure</th><th class="numeric">Poids %</th><th class="numeric">Exemple contacts pour 10 000</th></tr>
+            </thead>
+            <tbody>
+            {% for i in range(intraday_slots|length) %}
+                <tr>
+                    <td><strong>{{ intraday_slots[i] }}</strong></td>
+                    <td class="numeric">
+                        <input
+                            class="intraday-weight-input"
+                            type="number"
+                            name="intraday_profile_pct"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value="{{ intraday_profile_pct[i] }}"
+                            required
+                        >
+                    </td>
+                    <td class="numeric intraday-preview">—</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="control-grid" style="margin-top:16px">
+        <div class="control-card"><span>Total profil intraday</span><strong id="intraday-total">{{ "%.1f"|format(intraday_profile_pct|sum) }}%</strong><small id="intraday-status">Vérification...</small></div>
+        <div class="control-card"><span>Nombre d'intervalles</span><strong>33</strong><small>30 minutes chacun</small></div>
+        <div class="control-card"><span>Plage</span><strong>10:00 → 02:30</strong><small>dernier intervalle : 02:00–02:30</small></div>
+    </div>
+</section>
+
+<section class="form-card form-card--wide" style="margin-top:18px">
     <div class="panel-kicker">EXEMPLE DE CALCUL</div>
     <p class="field__hint">
         Avec un STF de <strong>{{ "{:,.0f}".format(stf.volume).replace(",", " ") }}</strong> et des poids
@@ -76,10 +118,14 @@
 <script>
 (() => {
     const inputs = [...document.querySelectorAll(".weight-input")];
+    const intradayInputs = [...document.querySelectorAll(".intraday-weight-input")];
     const totalEl = document.getElementById("weight-total");
     const statusEl = document.getElementById("weight-status");
+    const intradayTotalEl = document.getElementById("intraday-total");
+    const intradayStatusEl = document.getElementById("intraday-status");
     const button = document.getElementById("generate-week-btn");
     const volume = Number({{ stf.volume }});
+
     const refresh = () => {
         let total = 0;
         inputs.forEach((input) => {
@@ -91,12 +137,31 @@
                 preview.textContent = (volume * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
             }
         });
+
+        let intradayTotal = 0;
+        intradayInputs.forEach((input) => {
+            const weight = Number(input.value || 0);
+            intradayTotal += weight;
+            const row = input.closest("tr");
+            const preview = row?.querySelector(".intraday-preview");
+            if (preview) {
+                preview.textContent = (10000 * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
+            }
+        });
+
         totalEl.textContent = total.toFixed(1) + "%";
-        const valid = Math.abs(total - 100) <= 0.01;
-        statusEl.textContent = valid ? "✓ 100% — prêt à générer" : "La somme doit être égale à 100%";
-        button.disabled = !valid;
+        const daysValid = Math.abs(total - 100) <= 0.01;
+        statusEl.textContent = daysValid ? "✓ 100% — prêt" : "Les poids jours doivent totaliser 100%";
+
+        intradayTotalEl.textContent = intradayTotal.toFixed(1) + "%";
+        const intradayValid = Math.abs(intradayTotal - 100) <= 0.01;
+        intradayStatusEl.textContent = intradayValid ? "✓ 100% — prêt" : "Le profil intraday doit totaliser 100%";
+
+        button.disabled = !(daysValid && intradayValid);
     };
+
     inputs.forEach((input) => input.addEventListener("input", refresh));
+    intradayInputs.forEach((input) => input.addEventListener("input", refresh));
     refresh();
 })();
 </script>
