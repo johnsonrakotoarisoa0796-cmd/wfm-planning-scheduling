@@ -86,3 +86,28 @@ Weekly Coverage =
 Il affiche également shortage HC-hours, surplus HC-hours, écart à la cible et les violations détaillées par agent.
 
 Le module **Generate Schedule** affiche le contrôle Compliance et Weekly Coverage après génération.
+
+
+### Dispersion STF → Daily / Intraday par pondération
+
+Depuis le détail d'un STF, **Disperser vers Daily** ouvre le calcul de dispersion hebdomadaire. Le WFM saisit les poids de contacts du lundi au dimanche.
+
+Exemple :
+- Lundi 13%
+- Mardi 14%
+- Mercredi 16%
+- Jeudi 17%
+- Vendredi 14%
+- Samedi 13%
+- Dimanche 13%
+
+La somme doit être exactement **100%**. Pour un STF de 53 200 contacts :
+- lundi = 53 200 × 13% = 6 916
+- mardi = 53 200 × 14% = 7 448
+- mercredi = 53 200 × 16% = 8 512
+- jeudi = 53 200 × 17% = 9 044
+- vendredi = 53 200 × 14% = 7 448
+- samedi = 53 200 × 13% = 6 916
+- dimanche = 53 200 × 13% = 6 916
+
+Le système génère ensuite **7 journées × 48 intervalles de 30 minutes = 336 intervalles**, puis calcule le HC requis par intervalle avec les hypothèses STF (AHT, SL, occupancy, shrinkage et fuseau du marché).
