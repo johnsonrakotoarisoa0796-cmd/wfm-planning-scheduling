@@ -444,7 +444,7 @@ def view_ltf(
             "concurrency_factor": skill.concurrency_factor,
             "contact_handling_hours": ltf.forecast_volume * ltf.forecast_aht_seconds / 3600.0,
             "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
-            "calculation_incoherent": ltf.paid_hours + 1e-6 < channel_service.normalized_workload_hours(
+            "calculation_incoherent": ltf.productive_hours + 1e-6 < channel_service.normalized_workload_hours(
                 ltf.forecast_volume,
                 ltf.forecast_aht_seconds,
                 skill.channel,
