@@ -4,8 +4,8 @@
 <div class="page-header"><div><h1>Planner de staffing</h1><p class="page-header__meta">Simulation automatique du mix de shifts qui réduit le sous-staffing intraday sans modifier votre planning.{% if client_stf_active %} <strong>STF client actif&nbsp;: les besoins affichés viennent du client.</strong>{% endif %}</p></div></div>
 <form class="filter-bar" method="get" action="/scheduling/planner">
 <div class="field"><label for="target_date">JOUR</label><input type="date" id="target_date" name="target_date" value="{{ filters.target_date }}"></div>
-<div class="field"><label for="campaign_id">CAMPAGNE</label><select id="campaign_id" name="campaign_id"><option value="">Choisir</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-<div class="field"><label for="skill_id">SKILL</label><select id="skill_id" name="skill_id"><option value="">Choisir</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="campaign_id">CAMPAGNE</label><select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id"><option value="">Choisir</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="skill_id">SKILL</label><select id="skill_id" name="skill_id"><option value="">Choisir</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
 <button type="submit">Optimiser le staffing</button>
 </form>
 {% if not filters.campaign_id or not filters.skill_id %}
