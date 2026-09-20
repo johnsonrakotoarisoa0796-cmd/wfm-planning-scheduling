@@ -19,7 +19,7 @@ from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
 from app.models.employee import Employee, EmployeeAbsence
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
-from app.services import client_stf_service, intraday_service, kpi_service, workforce_service
+from app.services import client_stf_service, compliance_service, intraday_service, kpi_service, workforce_service
 
 
 # ============================================================================
@@ -79,6 +79,25 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
     entry.break2_end = None if data.is_day_off else data.break2_end
     entry.lunch_start = None if data.is_day_off else data.lunch_start
     entry.lunch_end = None if data.is_day_off else data.lunch_end
+
+    employee = session.get(Employee, data.employee_id)
+    shift = session.get(Shift, data.shift_id) if data.shift_id is not None else None
+    if employee is None:
+        raise ValueError("Employé introuvable.")
+    if not data.is_day_off and shift is not None:
+        policy = compliance_service.get_policy(
+            session, campaign_id=data.campaign_id, skill_id=data.skill_id
+        )
+        if policy is not None:
+            errors = compliance_service.validate_manual_entry(
+                session,
+                policy=policy,
+                employee=employee,
+                entry=entry,
+                shift=shift,
+            )
+            if errors:
+                raise ValueError("Compliance: " + " ".join(errors))
 
     session.add(entry)
     session.commit()
