@@ -26,6 +26,7 @@ from app.core.security import (
     verify_totp_code,
 )
 from app.core.templating import templates
+from app.models.enums import UserRole
 from app.models.user import User
 
 router = APIRouter(tags=["auth"])
