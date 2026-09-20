@@ -6,7 +6,7 @@
         <h1>Semaine {{ stf.iso_week }} — {{ stf.iso_year }}</h1>
         <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }} · débute le {{ stf.week_start_date }}</p>
     </div>
-    <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>{% if current_user.role.value in ["admin", "wfm_analyst"] %}<form method="post" action="/stf/{{ stf.id }}/disperse" class="form-actions-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-primary btn-small" type="submit">Disperser vers Daily</button></form>{% endif %}
+    <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>{% if current_user.role.value in ["admin", "wfm_analyst"] %}<a class="btn-primary btn-small" href="/daily/from-stf/{{ stf.id }}">Disperser vers Daily</a>{% endif %}
 </div>
 
 {% if comparison %}
