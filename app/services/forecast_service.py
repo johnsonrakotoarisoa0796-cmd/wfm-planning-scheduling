@@ -129,7 +129,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         period_start = date.fromisocalendar(data.iso_year, data.iso_week, 1)
         period_end = date.fromisocalendar(data.iso_year, data.iso_week, 7)
         working_days = count_weekdays_in_range(period_start, period_end)
-        workload = kpi_service.workload_hours(data.forecast_volume, data.forecast_aht_seconds)
+        workload = kpi_service.workload_hours(data.forecast_volume, data.handling_time_seconds)
         available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
         net_required_hc = channel_service.required_hc_aggregate_channel(
             workload,
@@ -191,7 +191,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
         forecast_volume=data.forecast_volume,
-        forecast_aht_seconds=data.forecast_aht_seconds,
+        forecast_aht_seconds=data.handling_time_seconds,
         aht_required_seconds=data.aht_required_seconds,
         occupancy_required_pct=data.occupancy_required_pct,
         service_level_target_pct=data.service_level_target_pct,
@@ -366,7 +366,7 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
 
     working_days = settings.working_days  # semaine ISO complète = 5 jours ouvrés
     skill = _validate_skill_scope(session, data.campaign_id, data.skill_id)
-    workload = kpi_service.workload_hours(data.volume, data.aht_seconds)
+    workload = kpi_service.workload_hours(data.volume, data.handling_time_seconds)
     available_hours_per_agent = kpi_service.paid_hours(1, settings.daily_hours, working_days)
     net_required_hc = channel_service.required_hc_aggregate_channel(
         workload,
@@ -408,7 +408,7 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
         volume=data.volume,
-        aht_seconds=data.aht_seconds,
+        aht_seconds=data.handling_time_seconds,
         occupancy_pct=data.occupancy_pct,
         shrinkage_pct=data.shrinkage_pct,
         service_level_target_pct=data.service_level_target_pct,
