@@ -15,7 +15,7 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Forecast Volume</td><td class="numeric">{{ "{:,.0f}".format(ltf.forecast_volume).replace(",", " ") }} contacts</td></tr>
-                <tr><td>Handling Time (AHT) par contact</td><td class="numeric">{{ "%.0f"|format(ltf.forecast_aht_seconds) }} s</td></tr><tr><td>Heures de traitement</td><td class="numeric"><strong>{{ "%.1f"|format((ltf.forecast_volume * ltf.forecast_aht_seconds) / 3600) }} h</strong></td></tr>
+                <tr><td>Handling Time (AHT) par contact</td><td class="numeric">{{ "%.0f"|format(ltf.forecast_aht_seconds) }} s</td></tr><tr><td>Heures de traitement des contacts</td><td class="numeric"><strong>{{ "%.1f"|format(contact_handling_hours) }} h</strong></td></tr><tr><td>Charge agent après simultanéité</td><td class="numeric"><strong>{{ "%.1f"|format(agent_workload_hours) }} h</strong></td></tr>
                 <tr><td>AHT cible par contact</td><td class="numeric">{{ "%.0f"|format(ltf.aht_required_seconds) }} s</td></tr>
             </tbody>
         </table>
@@ -44,7 +44,7 @@
                 <tr><td>Paid Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.paid_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Productive Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.productive_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Production Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.production_hours).replace(",", " ") }} h</td></tr>
-                <tr><td>Waiting Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.waiting_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Idle / Buffer Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.waiting_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Available Hours</td><td class="numeric">{{ "{:,.0f}".format(ltf.available_hours).replace(",", " ") }} h</td></tr>
             </tbody>
         </table>
@@ -74,7 +74,7 @@
             </tbody>
         </table>
     </div>
-    <p class="field__hint">Calculés précisément par les modules Capacity Planning et Overtime (à venir) une fois l'effectif réel connu.</p>
+    <p class="field__hint">Les heures de traitement des contacts = Volume × AHT. Pour Email/Chat, la simultanéité réduit la charge agent. Les Paid Hours représentent les heures contractuelles nécessaires au staffing, pas les heures de contact brutes.</p>
 </fieldset>
 
 {% if stf_weeks %}
