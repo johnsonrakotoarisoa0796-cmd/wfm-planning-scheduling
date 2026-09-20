@@ -353,7 +353,7 @@ def view_stf(
             "campaign": campaign,
             "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
             "contact_handling_hours": stf.volume * stf.aht_seconds / 3600.0,
-            "agent_workload_hours": channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel),
+            "agent_workload_hours": channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
             "calculation_incoherent": stf.paid_hours + 1e-6 < channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel),
             "skill": skill,
             "parent_ltf": parent_ltf,
