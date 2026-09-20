@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from app.models.forecast import LTFForecast
 from app.models.skill import Skill
-from app.services.channel_service import channel_label, concurrency_for_channel
+from app.services.channel_service import channel_label
 from app.services import capacity_service, client_stf_service, forecast_service, kpi_service, overtime_service, shrinkage_service
 from app.services.intraday_service import compute_daily_summary, list_intervals_for_day
 from app.services.wfm_metrics_service import WFMScorecard, build_scorecard
@@ -117,7 +117,7 @@ def build_dashboard(
         )
     skill = session.get(Skill, skill_id)
     selected_channel_label = channel_label(skill.channel) if skill else "Phone"
-    selected_concurrency = concurrency_for_channel(skill.channel) if skill else 1.0
+    selected_concurrency = skill.concurrency_factor if skill else 1.0
     market_code = None
     if skill is not None and skill.market_id is not None:
         from app.models.market import Market
