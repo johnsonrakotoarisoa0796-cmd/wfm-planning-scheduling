@@ -442,7 +442,11 @@ def generate_schedule(
     coverage: list[CoverageSummary] = []
     for day in days:
         intervals = intervals_by_day[day]
-        required_h = sum(max(row.required_hc, 0.0) * settings.interval_minutes / 60 for row in intervals)
+        required_h = sum(
+            max(row.required_hc, 0.0)
+            * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
+            for row in intervals
+        )
         scheduled_h = sum(
             settings.interval_minutes / 60
             for item in generated
