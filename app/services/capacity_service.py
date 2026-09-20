@@ -11,11 +11,14 @@ qui reste la source de vérité du forecast.
 
 from __future__ import annotations
 
+from calendar import monthrange
+from datetime import date, timedelta
 from typing import Optional
 
 from sqlmodel import Session, select
 
 from app.models.capacity import CapacityPlan
+from app.models.forecast import ForecastVersion, LTFForecast
 from app.schemas.capacity import CapacityPlanInput
 from app.services import kpi_service
 from app.services.forecast_service import get_current_ltf_forecast
@@ -29,10 +32,45 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
     logique de dépendance que le STF vis-à-vis du LTF).
     """
     year, month = (int(part) for part in data.period.split("-"))
-    ltf = get_current_ltf_forecast(session, year=year, month=month, campaign_id=data.campaign_id, skill_id=data.skill_id)
-    if ltf is None:
+    ltf = get_current_ltf_forecast(
+        session,
+        year=year,
+        month=month,
+        campaign_id=data.campaign_id,
+        skill_id=data.skill_id,
+    )
+
+    required_hc = None
+    required_source = None
+    if ltf is not None:
+        required_hc = ltf.headcount_required
+        required_source = f"LTF mensuel #{ltf.id}"
+    else:
+        month_start = date(year, month, 1)
+        month_end = date(year, month, monthrange(year, month)[1])
+        weekly_ltfs = list(
+            session.exec(
+                select(LTFForecast)
+                .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
+                .where(
+                    LTFForecast.campaign_id == data.campaign_id,
+                    LTFForecast.skill_id == data.skill_id,
+                    LTFForecast.iso_year.is_not(None),
+                    LTFForecast.iso_week.is_not(None),
+                    LTFForecast.week_start_date <= month_end,
+                    (LTFForecast.week_start_date + timedelta(days=6)) >= month_start,
+                    ForecastVersion.is_current == True,  # noqa: E712
+                )
+            ).all()
+        )
+        if weekly_ltfs:
+            required_hc = max(row.headcount_required for row in weekly_ltfs)
+            required_source = f"Peak weekly LTF ({len(weekly_ltfs)} semaine(s))"
+
+    if required_hc is None:
         raise ValueError(
-            f"Aucun LTF actif pour {data.period} sur cette campagne/skill — créez d'abord un LTF pour ce mois."
+            f"Aucun LTF actif couvrant {data.period} sur cette campagne/skill — "
+            "créez un LTF mensuel ou des LTF hebdomadaires pour cette période."
         )
 
     projected_hc = kpi_service.projected_headcount(
@@ -58,7 +96,7 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
     plan = existing or CapacityPlan(period=data.period, campaign_id=data.campaign_id, skill_id=data.skill_id)
 
     plan.current_hc = data.current_hc
-    plan.required_hc = ltf.headcount_required
+    plan.required_hc = required_hc
     plan.hiring = data.hiring
     plan.transfers_in = data.transfers_in
     plan.transfers_out = data.transfers_out
