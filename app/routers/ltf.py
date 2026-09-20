@@ -415,7 +415,13 @@ def view_ltf(
     campaign = session.get(Campaign, ltf.campaign_id)
     skill = session.get(Skill, ltf.skill_id)
     history = forecast_service.get_ltf_version_history(
-        session, campaign_id=ltf.campaign_id, skill_id=ltf.skill_id, year=ltf.year, month=ltf.month
+        session,
+        campaign_id=ltf.campaign_id,
+        skill_id=ltf.skill_id,
+        year=ltf.year,
+        month=ltf.month,
+        iso_year=ltf.iso_year,
+        iso_week=ltf.iso_week,
     )
     stf_weeks = forecast_service.get_stf_forecasts_for_ltf_version(session, ltf.forecast_version_id)
 
