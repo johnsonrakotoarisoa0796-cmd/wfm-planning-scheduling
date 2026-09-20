@@ -320,6 +320,7 @@ def view_stf(
 
     campaign = session.get(Campaign, stf.campaign_id)
     skill = session.get(Skill, stf.skill_id)
+    version = session.get(ForecastVersion, stf.forecast_version_id)
 
     week_start = stf.week_start_date
     parent_ltf = forecast_service.get_current_weekly_ltf_forecast(
@@ -351,10 +352,11 @@ def view_stf(
             "current_user": current_user,
             "stf": stf,
             "campaign": campaign,
-            "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
+            "concurrency_factor": skill.concurrency_factor,
             "contact_handling_hours": stf.volume * stf.aht_seconds / 3600.0,
             "agent_workload_hours": channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
-            "calculation_incoherent": stf.productive_hours + 1e-6 < channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel),
+            "calculation_engine_version": version.calculation_engine_version if version else "legacy-v1",
+            "calculation_incoherent": (version is not None and version.calculation_engine_version != "2.1") or stf.productive_hours + 1e-6 < channel_service.normalized_workload_hours(stf.volume, stf.aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
             "skill": skill,
             "parent_ltf": parent_ltf,
             "comparison": comparison,
