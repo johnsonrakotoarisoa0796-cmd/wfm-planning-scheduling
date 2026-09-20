@@ -137,6 +137,23 @@ def default_intraday_profile_pct() -> list[float]:
     return [w / total * 100 for w in raw]
 
 
+def interval_duration_hours(interval_start: time, interval_end: time) -> float:
+    """Durée réelle d'un intervalle, y compris les intervalles qui passent minuit."""
+    start_seconds = (
+        interval_start.hour * 3600
+        + interval_start.minute * 60
+        + interval_start.second
+    )
+    end_seconds = (
+        interval_end.hour * 3600
+        + interval_end.minute * 60
+        + interval_end.second
+    )
+    if end_seconds <= start_seconds:
+        end_seconds += 24 * 3600
+    return max(0.0, (end_seconds - start_seconds) / 3600.0)
+
+
 def slot_bounds(slot_index: int) -> tuple[time, time]:
     """Bornes horaires d'un slot de 30 min (0 -> 00:00-00:30, ..., 47 ->
     23:30-24:00). Le dernier slot se termine à 23:59:59 : le type `time`
