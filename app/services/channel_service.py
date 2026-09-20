@@ -39,11 +39,15 @@ def normalized_workload_hours(
     volume_contacts: float,
     aht_seconds: float,
     channel: Channel,
+    concurrency_factor: float | None = None,
 ) -> float:
     """Charge agent ajustée de la simultanéité du canal."""
     if volume_contacts < 0 or aht_seconds < 0:
         raise ValueError("volume_contacts et aht_seconds doivent être positifs ou nuls.")
-    return (volume_contacts * aht_seconds / 3600.0) / concurrency_for_channel(channel)
+    concurrency = concurrency_for_channel(channel) if concurrency_factor is None else concurrency_factor
+    if concurrency <= 0:
+        raise ValueError("La simultanéité du canal doit être strictement positive.")
+    return (volume_contacts * aht_seconds / 3600.0) / concurrency
 
 
 def required_hc_for_async(
@@ -52,13 +56,16 @@ def required_hc_for_async(
     interval_seconds: int,
     occupancy_target_pct: float,
     channel: Channel,
+    concurrency_factor: float | None = None,
 ) -> float:
     """Agents requis pour Email/Message Us via charge + simultanéité."""
     if interval_seconds <= 0:
         raise ValueError("interval_seconds doit être strictement positif.")
     if occupancy_target_pct <= 0 or occupancy_target_pct > 100:
         raise ValueError("occupancy_target_pct doit être dans ]0,100].")
-    workload_hours = normalized_workload_hours(volume_contacts, aht_seconds, channel)
+    workload_hours = normalized_workload_hours(
+        volume_contacts, aht_seconds, channel, concurrency_factor=concurrency_factor
+    )
     interval_hours = interval_seconds / 3600.0
     return workload_hours / (interval_hours * (occupancy_target_pct / 100.0))
 
@@ -72,6 +79,7 @@ def required_hc_aggregate_channel(
     available_hours_per_agent: float,
     occupancy_target_pct: float,
     channel: Channel,
+    concurrency_factor: float | None = None,
 ) -> float:
     """HC moyen requis en LTF/STF après prise en compte de la simultanéité."""
     if workload_hours < 0:
@@ -80,7 +88,10 @@ def required_hc_aggregate_channel(
         raise ValueError("available_hours_per_agent doit être > 0.")
     if occupancy_target_pct <= 0 or occupancy_target_pct > 100:
         raise ValueError("occupancy_target_pct doit être dans ]0,100].")
-    adjusted_workload = workload_hours / concurrency_for_channel(channel)
+    concurrency = concurrency_for_channel(channel) if concurrency_factor is None else concurrency_factor
+    if concurrency <= 0:
+        raise ValueError("La simultanéité du canal doit être strictement positive.")
+    adjusted_workload = workload_hours / concurrency
     return adjusted_workload / (
         available_hours_per_agent * (occupancy_target_pct / 100.0)
     )
