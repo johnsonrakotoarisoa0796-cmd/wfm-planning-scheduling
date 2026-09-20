@@ -170,6 +170,7 @@ def disperse_from_stf_form(
     campaign = session.get(Campaign, stf.campaign_id)
     skill = session.get(Skill, stf.skill_id)
     weights = [13.0, 14.0, 16.0, 17.0, 14.0, 13.0, 13.0]
+    intraday_profile_pct = intraday_service.default_intraday_window_profile_pct()
     days = [
         ("Lundi", stf.week_start_date + timedelta(days=0), weights[0]),
         ("Mardi", stf.week_start_date + timedelta(days=1), weights[1]),
@@ -192,6 +193,7 @@ def disperse_from_stf_form(
             "weights": weights,
             "total_weight": sum(weights),
             "daily_volumes": [stf.volume * w / 100.0 for w in weights],
+            "intraday_profile_pct": intraday_profile_pct,
             "errors": [],
         },
     )
@@ -208,6 +210,7 @@ def disperse_from_stf_action(
     friday_pct: float = Form(...),
     saturday_pct: float = Form(...),
     sunday_pct: float = Form(...),
+    intraday_profile_pct: list[float] = Form(...),
     current_user: User = Depends(require_role(*GENERATE_ROLES)),
     session: Session = Depends(get_session),
 ):
@@ -226,6 +229,7 @@ def disperse_from_stf_action(
         "friday_pct": friday_pct,
         "saturday_pct": saturday_pct,
         "sunday_pct": sunday_pct,
+        "intraday_profile_pct": intraday_profile_pct,
     }
 
     try:
@@ -257,6 +261,7 @@ def disperse_from_stf_action(
                 "weights": weights,
                 "total_weight": sum(weights),
                 "daily_volumes": [stf.volume * w / 100.0 for w in weights],
+                "intraday_profile_pct": intraday_profile_pct,
                 "errors": errors,
             },
             status_code=400,
