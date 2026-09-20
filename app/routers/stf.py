@@ -58,7 +58,7 @@ def list_stf(
             "contact_handling_hours": f.volume * f.aht_seconds / 3600.0,
             "agent_workload_hours": (
                 f.volume * f.aht_seconds / 3600.0
-                / channel_service.concurrency_for_channel(skills_by_id[f.skill_id].channel)
+                / skills_by_id[f.skill_id].concurrency_factor
                 if f.skill_id in skills_by_id else 0.0
             ),
         }
