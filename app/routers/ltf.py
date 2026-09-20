@@ -5,6 +5,7 @@ admin/wfm_analyst (un team_lead ou viewer consulte mais ne modifie pas le
 plan de référence).
 """
 
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -125,12 +126,24 @@ def create_ltf(
     iso_year = iso_week = None
     raw_period = period.strip()
     try:
-        if "-W" in raw_period:
-            raw_year, raw_week = raw_period.split("-W", 1)
+        normalized_period = raw_period.upper()
+        if normalized_period.startswith("W") and normalized_period[1:].isdigit():
+            iso_year = date.today().isocalendar().year
+            iso_week = int(normalized_period[1:])
+            year = month = None
+        elif normalized_period.isdigit() and 1 <= int(normalized_period) <= 53:
+            # Certains navigateurs (notamment selon leur implémentation de
+            # <input type="week">) peuvent renvoyer uniquement le numéro de
+            # semaine. Dans ce cas, on utilise l'année ISO courante.
+            iso_year = date.today().isocalendar().year
+            iso_week = int(normalized_period)
+            year = month = None
+        elif "-W" in normalized_period:
+            raw_year, raw_week = normalized_period.split("-W", 1)
             iso_year, iso_week = int(raw_year), int(raw_week)
             year = month = None
-        elif raw_period:
-            raw_year, raw_month = raw_period.split("-", 1)
+        elif normalized_period:
+            raw_year, raw_month = normalized_period.split("-", 1)
             year, month = int(raw_year), int(raw_month)
         elif year is None or month is None:
             raise ValueError("La période LTF est obligatoire au format YYYY-Www.")
