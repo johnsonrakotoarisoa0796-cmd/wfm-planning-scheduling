@@ -19,8 +19,8 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Semaine ISO</label>
-                    <select id="period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
-                    <div class="field__hint">Format recommandé : YYYY-Www (ex. 2026-W41). Le numéro de semaine seul (41) est aussi accepté et utilise l’année ISO courante.</div>
+                    <select id="period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value or (not values.period and current_week == w.value) %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
+                    <div class="field__hint">Choisissez directement la semaine dans la liste. Les dates du lundi au dimanche sont affichées pour éviter toute erreur.</div>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
