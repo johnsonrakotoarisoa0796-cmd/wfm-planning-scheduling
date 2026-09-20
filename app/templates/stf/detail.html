@@ -65,7 +65,7 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Headcount Required (gross)</td><td class="numeric">{{ "%.1f"|format(stf.headcount_required) }}</td></tr>
-                <tr><td>Paid Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.paid_hours).replace(",", " ") }} h</td></tr>
+                <tr><td>Paid staffing hours</td><td class="numeric">{{ "{:,.0f}".format(stf.paid_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Productive Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.productive_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Production Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.production_hours).replace(",", " ") }} h</td></tr>
                 <tr><td>Idle / Buffer Hours</td><td class="numeric">{{ "{:,.0f}".format(stf.waiting_hours).replace(",", " ") }} h</td></tr>
