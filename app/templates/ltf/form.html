@@ -19,7 +19,7 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Semaine ISO</label>
-                    <input type="text" id="period" name="period" value="{{ values.period or '' }}" placeholder="2026-W41" pattern="[0-9]{4}-W[0-9]{1,2}|W[0-9]{1,2}|[0-9]{1,2}" autocomplete="off" required>
+                    <select id="period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if values.period == w.value %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select>
                     <div class="field__hint">Format recommandé : YYYY-Www (ex. 2026-W41). Le numéro de semaine seul (41) est aussi accepté et utilise l’année ISO courante.</div>
                 </div>
                 <div class="field">
