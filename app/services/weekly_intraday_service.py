@@ -81,7 +81,7 @@ def disperse_week(
             occupancy_target_pct=occupancy_pct,
             shrinkage_pct=shrinkage_pct,
         )
-        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False, profile_pct_48=profile_48))
+        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False))
 
     session.add_all(rows)
     session.commit()
@@ -184,7 +184,7 @@ def disperse_stf_with_weights(
             occupancy_target_pct=stf.occupancy_pct,
             shrinkage_pct=stf.shrinkage_pct,
         )
-        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False))
+        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False, profile_pct_48=profile_48))
 
     session.add_all(rows)
     session.commit()
