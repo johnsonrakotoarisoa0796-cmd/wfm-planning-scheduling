@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlmodel import Session, select
 
@@ -11,7 +11,7 @@ from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import EmployeeStatus
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
-from app.services import client_stf_service, intraday_service, scheduling_service, workforce_service
+from app.services import client_stf_service, compliance_service, intraday_service, scheduling_service, workforce_service
 
 settings = get_settings()
 
@@ -247,6 +247,12 @@ def generate_schedule(
     assigned_days: dict[int, set[date]] = {e.id: set() for e in employees}
     generated: list[GeneratedEntry] = []
     warnings: list[str] = []
+    compliance_policy = compliance_service.get_policy(
+        session, campaign_id=campaign_id, skill_id=skill_id
+    )
+    assigned_intervals: dict[int, list[tuple[datetime, datetime]]] = {
+        employee.id: [] for employee in employees
+    }
 
     # Teleopti-style priority: cover the forecast deficit first, while
     # rotating agents so contract hours are distributed across the week.
@@ -269,6 +275,32 @@ def generate_schedule(
                     continue
                 shift = _choose_shift(shifts, intervals, current_hc, remaining)
                 paid = workforce_service.shift_hours(shift).paid_hours
+                if compliance_policy is not None:
+                    compliance_errors = compliance_service.validate_schedule_candidate(
+                        session,
+                        policy=compliance_policy,
+                        employee=employee,
+                        shift=shift,
+                        target_date=day,
+                        assigned_dates=assigned_days[employee.id],
+                        scheduled_hours=scheduled_hours[employee.id],
+                    )
+                    candidate_entry = _build_entry(employee, day, campaign_id, skill_id, shift)
+                    candidate_start = datetime.combine(day, shift.start_time)
+                    candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
+                    candidate_end = datetime.combine(candidate_end_date, shift.end_time)
+                    compliance_errors.extend(
+                        compliance_service.validate_candidate_rest(
+                            existing_intervals=assigned_intervals[employee.id],
+                            candidate_start=candidate_start,
+                            candidate_end=candidate_end,
+                            min_rest_hours=compliance_policy.min_rest_hours,
+                        )
+                    )
+                    if compliance_errors:
+                        continue
+                else:
+                    candidate_entry = None
                 gain, penalty = _shift_gain(shift, intervals, current_hc)
                 balance = 1.0 / (1 + len(assigned_days[employee.id]))
                 fairness = remaining / max(targets[employee.id], 1.0)
@@ -279,10 +311,15 @@ def generate_schedule(
             candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
             _, gain, employee, shift, paid = candidates[0]
             if shortage > 0.05 or gain > 0:
-                entry = _build_entry(employee, day, campaign_id, skill_id, shift)
+                entry = candidate_entry or _build_entry(employee, day, campaign_id, skill_id, shift)
                 generated.append(GeneratedEntry(employee, entry, shift))
                 assigned_days[employee.id].add(day)
                 scheduled_hours[employee.id] += paid
+                if compliance_policy is not None:
+                    candidate_start = datetime.combine(day, shift.start_time)
+                    candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
+                    candidate_end = datetime.combine(candidate_end_date, shift.end_time)
+                    assigned_intervals[employee.id].append((candidate_start, candidate_end))
                 _apply_coverage(entry, shift, intervals, current_hc)
             else:
                 break
@@ -321,10 +358,38 @@ def generate_schedule(
             paid = workforce_service.shift_hours(shift).paid_hours
             if paid > remaining + 1.0 and remaining < 4.0:
                 continue
+            if compliance_policy is not None:
+                compliance_errors = compliance_service.validate_schedule_candidate(
+                    session,
+                    policy=compliance_policy,
+                    employee=employee,
+                    shift=shift,
+                    target_date=day,
+                    assigned_dates=assigned_days[employee.id],
+                    scheduled_hours=scheduled_hours[employee.id],
+                )
+                candidate_start = datetime.combine(day, shift.start_time)
+                candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
+                candidate_end = datetime.combine(candidate_end_date, shift.end_time)
+                compliance_errors.extend(
+                    compliance_service.validate_candidate_rest(
+                        existing_intervals=assigned_intervals[employee.id],
+                        candidate_start=candidate_start,
+                        candidate_end=candidate_end,
+                        min_rest_hours=compliance_policy.min_rest_hours,
+                    )
+                )
+                if compliance_errors:
+                    continue
             entry = _build_entry(employee, day, campaign_id, skill_id, shift)
             generated.append(GeneratedEntry(employee, entry, shift))
             assigned_days[employee.id].add(day)
             scheduled_hours[employee.id] += paid
+            if compliance_policy is not None:
+                candidate_start = datetime.combine(day, shift.start_time)
+                candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
+                candidate_end = datetime.combine(candidate_end_date, shift.end_time)
+                assigned_intervals[employee.id].append((candidate_start, candidate_end))
             remaining -= paid
         if targets[employee.id] - scheduled_hours[employee.id] > 0.75:
             warnings.append(
@@ -391,6 +456,19 @@ def generate_schedule(
                 coverage_pct=(covered_h / required_h * 100.0) if required_h else 100.0,
             )
         )
+
+    if compliance_policy is not None:
+        total_required = sum(item.required_hc_hours for item in coverage)
+        total_shortage = sum(item.shortage_hc_hours for item in coverage)
+        weekly_coverage_pct = (
+            max(0.0, (total_required - total_shortage) / total_required * 100.0)
+            if total_required else 100.0
+        )
+        if weekly_coverage_pct < compliance_policy.weekly_coverage_target_pct:
+            warnings.append(
+                f"Weekly Coverage {weekly_coverage_pct:.1f}% < cible "
+                f"{compliance_policy.weekly_coverage_target_pct:.1f}%."
+            )
 
     return ScheduleGenerationResult(
         week_start_date=week_start_date,
