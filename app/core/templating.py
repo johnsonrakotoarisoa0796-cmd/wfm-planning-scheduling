@@ -17,9 +17,57 @@ des tests.
 """
 
 import os
+from datetime import date, timedelta
+from zoneinfo import available_timezones
 
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
+
+
+def _week_options() -> list[dict]:
+    """Semaines ISO autour de la semaine courante pour les sélecteurs WFM."""
+    today = date.today()
+    current_monday = today - timedelta(days=today.weekday())
+    options = []
+    for offset in range(-52, 157):
+        monday = current_monday + timedelta(weeks=offset)
+        iso = monday.isocalendar()
+        sunday = monday + timedelta(days=6)
+        options.append(
+            {
+                "value": f"{iso.year}-W{iso.week:02d}",
+                "label": f"W{iso.week:02d} · {monday.strftime('%d/%m/%Y')} → {sunday.strftime('%d/%m/%Y')}",
+            }
+        )
+    return options
+
+
+def _timezone_options() -> list[str]:
+    preferred = [
+        "UTC",
+        "Africa/Antananarivo",
+        "Africa/Nairobi",
+        "Europe/Paris",
+        "Europe/London",
+        "Europe/Berlin",
+        "Europe/Madrid",
+        "Europe/Amsterdam",
+        "America/New_York",
+        "America/Chicago",
+        "America/Los_Angeles",
+        "Asia/Kolkata",
+        "Asia/Tokyo",
+        "Asia/Singapore",
+        "Australia/Sydney",
+    ]
+    available = available_timezones()
+    ordered = [tz for tz in preferred if tz in available]
+    ordered.extend(sorted(available - set(ordered)))
+    return ordered
+
+
+_WEEK_OPTIONS = _week_options()
+_TIMEZONE_OPTIONS = _timezone_options()
 
 
 def _global_context(request: Request) -> dict:
@@ -30,6 +78,8 @@ def _global_context(request: Request) -> dict:
         # Render expose le SHA du commit déployé : il sert à invalider
         # automatiquement le cache navigateur des assets statiques après chaque release.
         "asset_version": os.environ.get("RENDER_GIT_COMMIT", "dev"),
+        "week_options": _WEEK_OPTIONS,
+        "timezone_options": _TIMEZONE_OPTIONS,
     }
 
 
