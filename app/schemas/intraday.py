@@ -37,3 +37,34 @@ class IntervalUpdateInput(BaseModel):
     actual_acw_seconds: Optional[float] = Field(default=None, ge=0)
     actual_hc: Optional[float] = Field(default=None, ge=0)
     abandoned_contacts: Optional[float] = Field(default=None, ge=0)
+
+
+class WeeklyDispersionInput(BaseModel):
+    """Pondérations lundi -> dimanche pour disperser un STF hebdomadaire."""
+    monday_pct: float = Field(ge=0, le=100)
+    tuesday_pct: float = Field(ge=0, le=100)
+    wednesday_pct: float = Field(ge=0, le=100)
+    thursday_pct: float = Field(ge=0, le=100)
+    friday_pct: float = Field(ge=0, le=100)
+    saturday_pct: float = Field(ge=0, le=100)
+    sunday_pct: float = Field(ge=0, le=100)
+
+    @property
+    def weights(self) -> list[float]:
+        return [
+            self.monday_pct,
+            self.tuesday_pct,
+            self.wednesday_pct,
+            self.thursday_pct,
+            self.friday_pct,
+            self.saturday_pct,
+            self.sunday_pct,
+        ]
+
+    @property
+    def total_pct(self) -> float:
+        return sum(self.weights)
+
+    def validate_total(self) -> None:
+        if abs(self.total_pct - 100.0) > 0.01:
+            raise ValueError(f"La somme des poids doit être égale à 100%. Actuellement : {self.total_pct:.2f}%.")
