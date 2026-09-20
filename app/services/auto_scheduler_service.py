@@ -138,21 +138,33 @@ def _interval_rows(session: Session, *, target_date: date, campaign_id: int, ski
     )
 
 
+def _shift_productive_in_interval(shift: Shift, interval, entry_date: date) -> bool:
+    if not scheduling_service._shift_covers_interval(
+        shift, interval.interval_start, interval.interval_end
+    ):
+        return False
+    b1s, b1e, b2s, b2e, ls, le = _generate_activities(shift)
+    return not any(
+        scheduling_service._overlaps(start, end, interval.interval_start, interval.interval_end)
+        for start, end in ((b1s, b1e), (b2s, b2e), (ls, le))
+    )
+
+
 def _shift_gain(shift: Shift, intervals, current_hc: dict[time, float]) -> tuple[float, float]:
     gain = 0.0
     surplus_penalty = 0.0
     for row in intervals:
-        if scheduling_service._shift_covers_interval(shift, row.interval_start, row.interval_end):
+        if _shift_productive_in_interval(shift, row, row.date):
             shortage = max(row.required_hc - current_hc.get(row.interval_start, 0.0), 0.0)
             gain += min(shortage, 1.0)
             surplus_penalty += max(current_hc.get(row.interval_start, 0.0) - row.required_hc, 0.0) * 0.15
     return gain, surplus_penalty
 
 
-def _choose_shift(shifts: list[Shift], intervals, current_hc: dict[time, float], remaining_hours: float) -> Shift:
+def _choose_shift(shifts: list[Shift], intervals, current_hc: dict[time, float], remaining_hours: float, employee: Employee) -> Shift:
     ranked = []
     for shift in shifts:
-        paid = workforce_service.shift_hours(shift).paid_hours
+        paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
         if paid <= 0:
             continue
         gain, penalty = _shift_gain(shift, intervals, current_hc)
@@ -184,7 +196,7 @@ def _build_entry(employee: Employee, target_date: date, campaign_id: int, skill_
 
 def _apply_coverage(entry: ScheduleEntry, shift: Shift, intervals, current_hc: dict[time, float]) -> None:
     for row in intervals:
-        if scheduling_service._shift_covers_interval(shift, row.interval_start, row.interval_end):
+        if _shift_productive_in_interval(shift, row, entry.date):
             current_hc[row.interval_start] = current_hc.get(row.interval_start, 0.0) + 1.0
 
 
@@ -274,8 +286,8 @@ def generate_schedule(
                 remaining = targets[employee.id] - scheduled_hours[employee.id]
                 if remaining <= 0.1:
                     continue
-                shift = _choose_shift(shifts, intervals, current_hc, remaining)
-                paid = workforce_service.shift_hours(shift).paid_hours
+                shift = _choose_shift(shifts, intervals, current_hc, remaining, employee)
+                paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
                 if compliance_policy is not None:
                     compliance_errors = compliance_service.validate_schedule_candidate(
                         session,
@@ -352,8 +364,8 @@ def generate_schedule(
                 )
                 for row in intervals
             }
-            shift = _choose_shift(shifts, intervals, current_hc, remaining)
-            paid = workforce_service.shift_hours(shift).paid_hours
+            shift = _choose_shift(shifts, intervals, current_hc, remaining, employee)
+            paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
             if paid > remaining + 1.0 and remaining < 4.0:
                 continue
             if compliance_policy is not None:
@@ -430,7 +442,7 @@ def generate_schedule(
             if item.entry.date == day
             for row in intervals
             if not item.entry.is_day_off
-            and scheduling_service._shift_covers_interval(item.shift, row.interval_start, row.interval_end)
+            and _shift_productive_in_interval(item.shift, row, day)
         )
         covered_h = sum(
             min(
