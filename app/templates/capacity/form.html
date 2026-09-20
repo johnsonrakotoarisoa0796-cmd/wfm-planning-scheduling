@@ -19,7 +19,7 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Mois</label>
-                    <input type="month" id="period" name="period" value="{{ values.period or '' }}" required>
+                    <select id="period" name="period" required><option value="">Choisir un mois...</option>{% for m in month_options %}<option value="{{ m.value }}" {% if values.period == m.value %}selected{% endif %}>{{ m.label }}</option>{% endfor %}</select>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
