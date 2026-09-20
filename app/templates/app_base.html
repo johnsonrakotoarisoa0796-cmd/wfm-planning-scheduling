@@ -38,7 +38,7 @@
             <a class="sidebar__link{% if active_nav == 'agent' %} sidebar__link--active{% endif %}" href="/agent"><span class="nav-icon" aria-hidden="true">♙</span><span>Agent Hub</span></a>
             <a class="sidebar__link{% if active_nav == 'imports' %} sidebar__link--active{% endif %}" href="/imports"><span class="nav-icon" aria-hidden="true">⇩</span><span>Imports Actuals</span></a>
             <a class="sidebar__link{% if active_nav == 'guide' %} sidebar__link--active{% endif %}" href="/guide"><span class="nav-icon" aria-hidden="true">?</span><span>Mode d’emploi</span></a>
-            <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span><span>Configuration</span></a>
+            <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">⚙</span><span>Configuration</span></a>{% if current_user and current_user.role.value == "admin" %}<a class="sidebar__link" href="/settings#users"><span class="nav-icon" aria-hidden="true">♙</span><span>Utilisateurs</span></a>{% endif %}
         </nav>
 
         <div class="sidebar__footer">
