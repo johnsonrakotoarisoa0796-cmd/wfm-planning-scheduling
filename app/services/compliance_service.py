@@ -219,6 +219,79 @@ def validate_schedule_candidate(
     return errors
 
 
+def validate_candidate_rest(
+    *,
+    existing_intervals: list[tuple[datetime, datetime]],
+    candidate_start: datetime,
+    candidate_end: datetime,
+    min_rest_hours: float,
+) -> list[str]:
+    errors: list[str] = []
+    for existing_start, existing_end in existing_intervals:
+        if candidate_start < existing_end and existing_start < candidate_end:
+            errors.append("Les shifts se chevauchent.")
+            continue
+        if candidate_start >= existing_end:
+            rest = (candidate_start - existing_end).total_seconds() / 3600.0
+        else:
+            rest = (existing_start - candidate_end).total_seconds() / 3600.0
+        if rest < min_rest_hours - 1e-6:
+            errors.append(f"Repos de {rest:.1f}h < minimum {min_rest_hours:.1f}h.")
+    return errors
+
+
+def validate_manual_entry(
+    session: Session,
+    *,
+    policy: CompliancePolicy,
+    employee: Employee,
+    entry: ScheduleEntry,
+    shift: Shift,
+) -> list[str]:
+    week_start = entry.date - timedelta(days=entry.date.weekday())
+    query = select(ScheduleEntry).where(
+        ScheduleEntry.employee_id == employee.id,
+        ScheduleEntry.date >= week_start,
+        ScheduleEntry.date <= week_start + timedelta(days=6),
+        ScheduleEntry.is_day_off == False,  # noqa: E712
+    )
+    if entry.id is not None:
+        query = query.where(ScheduleEntry.id != entry.id)
+    rows = list(session.exec(query).all())
+    shift_ids = {row.shift_id for row in rows if row.shift_id is not None}
+    existing_shifts = {
+        item.id: item
+        for item in session.exec(select(Shift).where(Shift.id.in_(shift_ids))).all()
+    } if shift_ids else {}
+    scheduled_hours = sum(
+        workforce_service.shift_hours(existing_shifts[row.shift_id]).paid_hours
+        for row in rows if row.shift_id in existing_shifts
+    )
+    assigned_dates = {row.date for row in rows}
+    errors = validate_schedule_candidate(
+        session,
+        policy=policy,
+        employee=employee,
+        shift=shift,
+        target_date=entry.date,
+        assigned_dates=assigned_dates,
+        scheduled_hours=scheduled_hours,
+    )
+    candidate_start, candidate_end = _shift_datetimes(entry, shift)
+    existing_intervals = [
+        _shift_datetimes(row, existing_shifts[row.shift_id])
+        for row in rows if row.shift_id in existing_shifts
+    ]
+    errors.extend(
+        validate_candidate_rest(
+            existing_intervals=existing_intervals,
+            candidate_start=candidate_start,
+            candidate_end=candidate_end,
+            min_rest_hours=policy.min_rest_hours,
+        )
+    )
+    return errors
+
 def validate_rest_between(
     *,
     previous_end: Optional[datetime],
