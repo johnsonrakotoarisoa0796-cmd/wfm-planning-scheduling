@@ -178,6 +178,7 @@ def create_skill(
     campaign_id: int = Form(...),
     name: str = Form(...),
     channel: Channel = Form(...),
+    concurrency_factor: float = Form(1.0),
     market_id: str = Form(""),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
@@ -188,6 +189,8 @@ def create_skill(
         return RedirectResponse("/settings?error=Campagne+introuvable", status_code=303)
     if not name:
         return RedirectResponse("/settings?error=Nom+du+skill+obligatoire", status_code=303)
+    if concurrency_factor <= 0:
+        return RedirectResponse("/settings?error=La+simultanéité+doit+être+strictement+positive", status_code=303)
     market_id_value = int(market_id) if market_id.strip() else None
     if market_id_value is not None and session.get(Market, market_id_value) is None:
         return RedirectResponse("/settings?error=Marché+introuvable", status_code=303)
@@ -202,6 +205,7 @@ def create_skill(
             market_id=market_id_value,
             name=name,
             channel=channel,
+            concurrency_factor=concurrency_factor,
             is_active=True,
         )
     )
@@ -256,6 +260,7 @@ def seed_demo_configuration(
                     market_id=market.id,
                     name=default_name,
                     channel=channel,
+                    concurrency_factor={Channel.VOICE: 1.0, Channel.EMAIL: 3.0, Channel.CHAT: 2.0, Channel.BACKOFFICE: 1.0}.get(channel, 1.0),
                     is_active=True,
                 )
             )
