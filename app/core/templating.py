@@ -71,6 +71,7 @@ _TIMEZONE_OPTIONS = _timezone_options()
 
 
 def _global_context(request: Request) -> dict:
+    current_week = date.today().strftime("%G-W%V")
     return {
         # Posé par CSRFCookieMiddleware (app/core/middleware.py), garantit
         # la même valeur que le cookie envoyé au navigateur.
@@ -80,6 +81,7 @@ def _global_context(request: Request) -> dict:
         "asset_version": os.environ.get("RENDER_GIT_COMMIT", "dev"),
         "week_options": _WEEK_OPTIONS,
         "timezone_options": _TIMEZONE_OPTIONS,
+        "current_week": current_week,
     }
 
 
