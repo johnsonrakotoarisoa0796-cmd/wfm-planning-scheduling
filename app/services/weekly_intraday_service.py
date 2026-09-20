@@ -32,6 +32,24 @@ def _timezone_for_skill(session: Session, skill_id: int) -> str:
     return market.timezone_name if market is not None else settings.default_timezone
 
 
+
+
+def default_break_15m_profile_pct() -> list[float]:
+    """Profil proposé de pause 15 min par intervalle actif."""
+    # 33 slots : 10:00 -> 02:00.
+    values = [0.0] * 33
+    for idx in (3, 4, 5, 13, 14, 15, 16, 24, 25):
+        values[idx] = 5.0
+    return values
+
+
+def default_lunch_break_profile_pct() -> list[float]:
+    """Profil proposé de pause déjeuner par intervalle actif."""
+    values = [0.0] * 33
+    for idx in (4, 5, 6, 7, 8, 9):
+        values[idx] = 10.0
+    return values
+
 def disperse_week(
     session: Session,
     *,
@@ -140,6 +158,8 @@ def disperse_stf_with_weights(
     session: Session,
     stf: STFForecast,
     dispersion: WeeklyDispersionInput,
+    *,
+    replace_existing: bool = False,
 ) -> list[IntervalForecast]:
     """Disperse le volume STF sur lundi -> dimanche selon des poids explicites."""
     dispersion.validate_total()
@@ -153,19 +173,23 @@ def disperse_stf_with_weights(
     )
 
     expected_dates = [stf.week_start_date + timedelta(days=i) for i in range(7)]
-    existing = session.exec(
+    existing_rows = list(session.exec(
         select(IntervalForecast).where(
             IntervalForecast.campaign_id == stf.campaign_id,
             IntervalForecast.skill_id == stf.skill_id,
             IntervalForecast.date >= expected_dates[0],
             IntervalForecast.date <= expected_dates[-1],
         )
-    ).first()
-    if existing is not None:
+    ).all())
+    if existing_rows and not replace_existing:
         raise ValueError(
             "Des intervalles existent déjà sur cette semaine/campagne/skill. "
-            "Supprimez ou remplacez le Daily/Intraday existant avant une nouvelle dispersion."
+            "Cochez « Remplacer les intervalles existants » pour confirmer leur remplacement."
         )
+    if existing_rows and replace_existing:
+        for old_row in existing_rows:
+            session.delete(old_row)
+        session.flush()
 
     timezone_name = _timezone_for_skill(session, stf.skill_id)
     profile_48 = intraday_window_profile_to_48(dispersion.intraday_profile_pct)
@@ -184,7 +208,18 @@ def disperse_stf_with_weights(
             occupancy_target_pct=stf.occupancy_pct,
             shrinkage_pct=stf.shrinkage_pct,
         )
-        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False))
+        rows.extend(
+            build_intraday_forecast_rows(
+                session,
+                data,
+                check_existing=False,
+                profile_pct_48=profile_48,
+                absence_rate_pct=dispersion.absence_rate_pct,
+                leave_rate_pct=dispersion.leave_rate_pct,
+                break_15m_pct_48=intraday_window_profile_to_48(dispersion.break_15m_pct),
+                lunch_break_pct_48=intraday_window_profile_to_48(dispersion.lunch_break_pct),
+            )
+        )
 
     session.add_all(rows)
     session.commit()
