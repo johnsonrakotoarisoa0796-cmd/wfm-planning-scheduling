@@ -153,3 +153,15 @@ Après la pondération STF → 7 jours, le volume de chaque journée est répart
 | 02:00 | 4% |
 
 La somme est exactement 100%. Ce profil est modifiable avant la génération. Pour chaque journée calculée, le moteur applique le volume journalier multiplié par le poids intraday afin d'obtenir le volume de chaque intervalle, puis calcule le HC requis.
+### Remplacement et hypothèses Daily / Intraday
+
+Lorsqu'une dispersion STF a déjà produit des intervalles pour la semaine/campagne/skill, l'écran affiche le nombre d'intervalles existants. Pour régénérer, le WFM coche **Remplacer les intervalles existants**, puis confirme l'opération. Les anciens intervalles de cette combinaison sont supprimés puis régénérés ; le STF lui-même n'est pas supprimé.
+
+Avant génération, les hypothèses suivantes sont modifiables :
+- Handling Time / AHT utilisé par le calcul HC intraday.
+- Taux d'absentéisme proposé et taux de congés proposé.
+- Heures d'absentéisme et de congés proposées sont calculées sur une base de 8 h/agent/jour.
+- Taux de break 15 minutes par tranche.
+- Taux de lunch par tranche.
+
+Le moteur ajoute ces indisponibilités au shrinkage STF pour calculer le HC requis de chaque intervalle. Les taux de pause sont spécifiques à chaque tranche et sont stockés avec l'intervalle pour permettre l'audit des hypothèses utilisées lors de la génération.
