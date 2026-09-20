@@ -23,7 +23,7 @@
                         <span class="status-pill status-pill--{{ current_status }}">{{ current_status }}</span>
                     </td>
                 </tr>
-                <tr><td>Projected HC (Future)</td><td class="numeric">{{ "%.1f"|format(plan.projected_hc) }}</td></tr>
+                <tr><td>Projected HC (Future)</td><td class="numeric">{{ "%.1f"|format(plan.projected_hc) }}</td></tr><tr><td>Projected Available HC</td><td class="numeric"><strong>{{ "%.1f"|format(plan.projected_available_hc) }}</strong></td></tr>
                 <tr>
                     <td>Gap projeté</td>
                     <td class="numeric">
