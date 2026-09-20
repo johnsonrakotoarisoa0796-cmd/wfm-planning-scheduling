@@ -431,6 +431,13 @@ def generate_schedule(
 
     session.add_all([row.entry for row in generated])
     session.commit()
+    for day in days:
+        scheduling_service.refresh_interval_scheduled_hc(
+            session,
+            target_date=day,
+            campaign_id=campaign_id,
+            skill_id=skill_id,
+        )
 
     coverage: list[CoverageSummary] = []
     for day in days:
