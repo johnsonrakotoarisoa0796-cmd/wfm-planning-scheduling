@@ -62,6 +62,13 @@ class IntervalForecast(SQLModel, table=True):
     abandon_rate_pct: Optional[float] = Field(default=None)
     staffing_gap: Optional[float] = Field(default=None)
     overtime_required_hours: Optional[float] = Field(default=None)
+    handling_time_seconds: float = Field(default=0)
+    absence_rate_pct: float = Field(default=0)
+    leave_rate_pct: float = Field(default=0)
+    absence_hours: float = Field(default=0)
+    leave_hours: float = Field(default=0)
+    break_15m_pct: float = Field(default=0)
+    lunch_break_pct: float = Field(default=0)
 
 
 class ActualPerformanceRaw(SQLModel, table=True):
