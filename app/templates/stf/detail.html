@@ -11,7 +11,7 @@
 
 {% if comparison %}
 <fieldset>
-    <legend>LTF vs STF vs Variance</legend>
+    <legend>LTF vs STF vs Variance — Volume &amp; Handling Time</legend>
     <div class="data-table-wrapper">
         <table class="data-table">
             <thead>
@@ -46,6 +46,18 @@
     Aucun LTF actif trouvé pour ce mois — ce STF a été créé alors qu'un LTF existait, mais il a peut-être depuis été retiré. Comparaison indisponible.
 </div>
 {% endif %}
+
+<fieldset>
+    <legend>Volume &amp; Handling Time</legend>
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <tbody>
+                <tr><td>Volume STF</td><td class="numeric">{{ "{:,.0f}".format(stf.volume).replace(",", " ") }} contacts</td></tr>
+                <tr><td>Handling Time / AHT</td><td class="numeric">{{ "%.0f"|format(stf.aht_seconds) }} s</td></tr>
+            </tbody>
+        </table>
+    </div>
+</fieldset>
 
 <fieldset>
     <legend>Staffing &amp; heures (calculés)</legend>
