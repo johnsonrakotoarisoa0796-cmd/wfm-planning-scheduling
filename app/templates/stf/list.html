@@ -6,7 +6,9 @@
         <h1>STF Weekly</h1>
         <p class="page-header__meta">Réajustement hebdomadaire du LTF — chaque semaine crée sa propre version, jamais un écrasement.</p>
     </div>
-    {% if can_edit %}
+    {% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
+{% if request.query_params.get("success") %}<div class="success-banner">{{ request.query_params.get("success") }}</div>{% endif %}
+{% if can_edit %}
     <a href="/stf/new" class="btn-secondary">+ Nouveau réajustement</a>
     {% endif %}
 </div>
@@ -54,7 +56,7 @@
                 <th class="numeric">AHT (s)</th>
                 <th class="numeric">Occupancy</th>
                 <th class="numeric">Shrinkage</th>
-                <th class="numeric">HC requis</th>
+                <th class="numeric">HC requis</th><th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -67,7 +69,7 @@
                 <td class="numeric">{{ "%.0f"|format(row.forecast.aht_seconds) }}</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.occupancy_pct) }}%</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.shrinkage_pct) }}%</td>
-                <td class="numeric">{{ "%.1f"|format(row.forecast.headcount_required) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.forecast.headcount_required) }}</td><td class="actions"><a class="btn-secondary btn-small" href="/stf/{{ row.forecast.id }}">Voir</a> {% if can_edit %}<a class="btn-secondary btn-small" href="/stf/{{ row.forecast.id }}/edit">Rectifier</a><form method="post" action="/stf/{{ row.forecast.id }}/delete" style="display:inline" onsubmit="return confirm('Supprimer ce STF ? Une version précédente sera restaurée si elle existe.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Supprimer</button></form>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
