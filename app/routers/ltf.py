@@ -348,6 +348,28 @@ def edit_ltf(
     return RedirectResponse(url="/ltf?success=Forecast+LTF+rectifié+%3A+ancienne+version+conservée", status_code=303)
 
 
+@router.post("/{ltf_id}/recalculate", dependencies=[Depends(verify_csrf)])
+def recalculate_ltf(
+    ltf_id: int,
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    ltf = session.get(LTFForecast, ltf_id)
+    if ltf is None:
+        raise HTTPException(status_code=404, detail="Forecast LTF introuvable.")
+    try:
+        forecast_service.recalculate_ltf_forecast(
+            session,
+            ltf,
+            created_by_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        return RedirectResponse(f"/ltf?error={quote_plus(str(exc))}", status_code=303)
+    return RedirectResponse(
+        url=f"/ltf/{ltf_id}?success=Calculs+LTF+rejoués+avec+le+moteur+WFM+actuel",
+        status_code=303,
+    )
+
 @router.post("/{ltf_id}/delete", dependencies=[Depends(verify_csrf)])
 def delete_ltf(
     ltf_id: int,
