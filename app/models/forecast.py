@@ -34,6 +34,7 @@ class ForecastVersion(SQLModel, table=True):
     # Une seule version "courante" par (campagne, skill, période) : c'est
     # elle qui alimente le dashboard et les rapports "Current Forecast".
     is_current: bool = Field(default=True, index=True, nullable=False)
+    calculation_engine_version: str = Field(default="2.1", nullable=False)
 
 
 class LTFForecast(SQLModel, table=True):
