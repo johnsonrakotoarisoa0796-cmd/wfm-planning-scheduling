@@ -171,6 +171,12 @@ def disperse_from_stf_form(
     skill = session.get(Skill, stf.skill_id)
     weights = [13.0, 14.0, 16.0, 17.0, 14.0, 13.0, 13.0]
     intraday_profile_pct = intraday_service.default_intraday_window_profile_pct()
+    intraday_slots = [
+        "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+        "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30",
+        "22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00", "01:30", "02:00",
+    ]
     days = [
         ("Lundi", stf.week_start_date + timedelta(days=0), weights[0]),
         ("Mardi", stf.week_start_date + timedelta(days=1), weights[1]),
@@ -194,6 +200,7 @@ def disperse_from_stf_form(
             "total_weight": sum(weights),
             "daily_volumes": [stf.volume * w / 100.0 for w in weights],
             "intraday_profile_pct": intraday_profile_pct,
+            "intraday_slots": intraday_slots,
             "errors": [],
         },
     )
@@ -262,6 +269,7 @@ def disperse_from_stf_action(
                 "total_weight": sum(weights),
                 "daily_volumes": [stf.volume * w / 100.0 for w in weights],
                 "intraday_profile_pct": intraday_profile_pct,
+                "intraday_slots": intraday_slots,
                 "errors": errors,
             },
             status_code=400,
