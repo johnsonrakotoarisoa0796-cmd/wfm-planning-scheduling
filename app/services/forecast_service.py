@@ -521,7 +521,7 @@ def compare_ltf_stf(ltf: LTFForecast, stf: STFForecast) -> list[LTFvsSTFRow]:
 
     return [
         _row("Volume", ltf.forecast_volume, stf.volume, "contacts"),
-        _row("AHT", ltf.forecast_aht_seconds, stf.aht_seconds, "s"),
+        _row("Handling Time (AHT)", ltf.forecast_aht_seconds, stf.aht_seconds, "s"),
         _row("Occupancy", ltf.occupancy_required_pct, stf.occupancy_pct, "%"),
         _row("Shrinkage", ltf.total_shrinkage_pct, stf.shrinkage_pct, "%"),
         _row("Service Level Target", ltf.service_level_target_pct, stf.service_level_target_pct, "%"),
