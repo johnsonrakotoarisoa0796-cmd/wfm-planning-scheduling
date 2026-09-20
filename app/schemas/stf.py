@@ -22,4 +22,9 @@ class STFCreateInput(BaseModel):
     shrinkage_pct: float = Field(ge=0, lt=100)
     service_level_target_pct: float = Field(ge=0, le=100)
 
+    @property
+    def handling_time_seconds(self) -> float:
+        """Handling Time opérationnel (AHT = Talk + Hold + ACW lorsqu'il est mesuré)."""
+        return self.aht_seconds
+
     notes: Optional[str] = None
