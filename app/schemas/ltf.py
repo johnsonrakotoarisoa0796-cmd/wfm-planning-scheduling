@@ -31,6 +31,11 @@ class LTFCreateInput(BaseModel):
     indoor_shrinkage_pct: float = Field(ge=0, le=100)
     outdoor_shrinkage_pct: float = Field(ge=0, le=100)
 
+    @property
+    def handling_time_seconds(self) -> float:
+        """Handling Time opérationnel (AHT = Talk + Hold + ACW lorsqu'il est mesuré)."""
+        return self.forecast_aht_seconds
+
     notes: Optional[str] = None
 
     @model_validator(mode="after")
