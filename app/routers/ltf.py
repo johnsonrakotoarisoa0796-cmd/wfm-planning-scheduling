@@ -418,6 +418,7 @@ def view_ltf(
 
     campaign = session.get(Campaign, ltf.campaign_id)
     skill = session.get(Skill, ltf.skill_id)
+    version = session.get(ForecastVersion, ltf.forecast_version_id)
     history = forecast_service.get_ltf_version_history(
         session,
         campaign_id=ltf.campaign_id,
@@ -442,9 +443,10 @@ def view_ltf(
                 else f"Semaine {ltf.iso_year}-W{ltf.iso_week:02d}"
             ),
             "concurrency_factor": skill.concurrency_factor,
+            "calculation_engine_version": version.calculation_engine_version if version else "legacy-v1",
             "contact_handling_hours": ltf.forecast_volume * ltf.forecast_aht_seconds / 3600.0,
             "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
-            "calculation_incoherent": ltf.productive_hours + 1e-6 < channel_service.normalized_workload_hours(
+            "calculation_incoherent": (version is not None and version.calculation_engine_version != "2.1") or ltf.productive_hours + 1e-6 < channel_service.normalized_workload_hours(
                 ltf.forecast_volume,
                 ltf.forecast_aht_seconds,
                 skill.channel,
