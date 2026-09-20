@@ -429,7 +429,7 @@ def view_ltf(
             "month_label": MONTH_LABELS_FR[ltf.month],
             "concurrency_factor": channel_service.concurrency_for_channel(skill.channel),
             "contact_handling_hours": ltf.forecast_volume * ltf.forecast_aht_seconds / 3600.0,
-            "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel),
+            "agent_workload_hours": channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel, concurrency_factor=skill.concurrency_factor),
             "calculation_incoherent": ltf.paid_hours + 1e-6 < channel_service.normalized_workload_hours(ltf.forecast_volume, ltf.forecast_aht_seconds, skill.channel),
             "campaign": campaign,
             "skill": skill,
