@@ -53,7 +53,7 @@
                 <th>Campagne</th>
                 <th>Skill</th>
                 <th class="numeric">Volume</th>
-                <th class="numeric">Handling Time (s)</th>
+                <th class="numeric">Handling Time (s)</th><th class="numeric">Heures traitement</th>
                 <th class="numeric">Occupancy</th>
                 <th class="numeric">Shrinkage</th>
                 <th class="numeric">HC requis</th><th>Actions</th>
@@ -66,7 +66,7 @@
                 <td>{{ row.campaign_name }}</td>
                 <td>{{ row.skill_name }}</td>
                 <td class="numeric">{{ "{:,.0f}".format(row.forecast.volume).replace(",", " ") }}</td>
-                <td class="numeric">{{ "%.0f"|format(row.forecast.aht_seconds) }}</td>
+                <td class="numeric">{{ "%.0f"|format(row.forecast.aht_seconds) }}</td><td class="numeric">{{ "%.1f"|format((row.forecast.volume * row.forecast.aht_seconds) / 3600) }} h</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.occupancy_pct) }}%</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.shrinkage_pct) }}%</td>
                 <td class="numeric">{{ "%.1f"|format(row.forecast.headcount_required) }}</td><td class="actions"><a class="btn-secondary btn-small" href="/stf/{{ row.forecast.id }}">Voir</a> {% if can_edit %}<a class="btn-secondary btn-small" href="/stf/{{ row.forecast.id }}/edit">Rectifier</a><form method="post" action="/stf/{{ row.forecast.id }}/delete" style="display:inline" onsubmit="return confirm('Supprimer ce STF ? Une version précédente sera restaurée si elle existe.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Supprimer</button></form>{% endif %}</td>
