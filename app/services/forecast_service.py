@@ -656,3 +656,59 @@ def delete_stf_forecast(session: Session, stf_id: int) -> None:
     session.delete(stf)
     session.delete(version)
     session.commit()
+
+
+def recalculate_ltf_forecast(
+    session: Session,
+    ltf: LTFForecast,
+    *,
+    created_by_user_id: int,
+) -> LTFForecast:
+    """Rejoue le moteur actuel sur les mêmes entrées et crée une nouvelle version."""
+    data = LTFCreateInput(
+        iso_year=ltf.iso_year,
+        iso_week=ltf.iso_week,
+        year=None if ltf.iso_year is not None else ltf.year,
+        month=None if ltf.iso_year is not None else ltf.month,
+        campaign_id=ltf.campaign_id,
+        skill_id=ltf.skill_id,
+        forecast_volume=ltf.forecast_volume,
+        forecast_aht_seconds=ltf.forecast_aht_seconds,
+        aht_required_seconds=ltf.aht_required_seconds,
+        occupancy_required_pct=ltf.occupancy_required_pct,
+        service_level_target_pct=ltf.service_level_target_pct,
+        asa_target_seconds=ltf.asa_target_seconds,
+        indoor_shrinkage_pct=ltf.indoor_shrinkage_pct,
+        outdoor_shrinkage_pct=ltf.outdoor_shrinkage_pct,
+    )
+    return create_ltf_forecast(
+        session,
+        data,
+        created_by_user_id=created_by_user_id,
+    )
+
+
+def recalculate_stf_forecast(
+    session: Session,
+    stf: STFForecast,
+    *,
+    created_by_user_id: int,
+) -> STFForecast:
+    """Rejoue le moteur actuel STF et conserve l'ancienne version."""
+    data = STFCreateInput(
+        iso_year=stf.iso_year,
+        iso_week=stf.iso_week,
+        campaign_id=stf.campaign_id,
+        skill_id=stf.skill_id,
+        volume=stf.volume,
+        aht_seconds=stf.aht_seconds,
+        occupancy_pct=stf.occupancy_pct,
+        shrinkage_pct=stf.shrinkage_pct,
+        service_level_target_pct=stf.service_level_target_pct,
+        notes=None,
+    )
+    return create_stf_forecast(
+        session,
+        data,
+        created_by_user_id=created_by_user_id,
+    )
