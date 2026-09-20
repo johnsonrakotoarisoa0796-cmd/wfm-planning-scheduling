@@ -20,6 +20,7 @@
 <div class="field"><label for="skill_channel">Canal</label><select id="skill_channel" name="channel" required>{% for value, label in channel_labels.items() %}<option value="{{ value.value }}">{{ label }}</option>{% endfor %}</select></div>
 <div class="field"><label for="skill_name">Nom du skill</label><input id="skill_name" name="name" placeholder="Phone L1" required></div>
 <div class="field"><label for="skill_market">Marché</label><select id="skill_market" name="market_id"><option value="">Sans marché</option>{% for m in markets %}<option value="{{ m.id }}">{{ m.code }} · {{ m.name }}</option>{% endfor %}</select></div>
+<div class="field"><label for="skill_concurrency">Simultanéité contacts / agent</label><input id="skill_concurrency" type="number" name="concurrency_factor" min="1" step="0.1" value="1.0" required><div class="field__hint">Phone/Backoffice : généralement 1. Email/Chat : valeur métier configurable.</div></div>
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le skill</button></div></form>
 {% else %}<p class="field__hint">Réservé aux rôles WFM autorisés.</p>{% endif %}</section></div>
