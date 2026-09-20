@@ -44,6 +44,7 @@
                 <th class="numeric">Current HC</th>
                 <th class="numeric">Required HC</th>
                 <th class="numeric">Projected HC</th>
+                <th class="numeric">Projected Available HC</th>
                 <th class="numeric">Gap projeté</th>
                 <th>Statut</th>
             </tr>
@@ -57,6 +58,7 @@
                 <td class="numeric">{{ "%.1f"|format(row.plan.current_hc) }}</td>
                 <td class="numeric">{{ "%.1f"|format(row.plan.required_hc) }}</td>
                 <td class="numeric">{{ "%.1f"|format(row.plan.projected_hc) }}</td>
+                <td class="numeric">{{ "%.1f"|format(row.plan.projected_available_hc) }}</td>
                 <td class="numeric">{{ "%+.1f"|format(row.gap) }}</td>
                 <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status }}</span></td>
             </tr>
