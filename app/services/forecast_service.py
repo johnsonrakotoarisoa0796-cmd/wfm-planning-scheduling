@@ -21,6 +21,7 @@ from app.models.enums import ForecastVersionType
 from app.models.campaign import Campaign
 from app.models.skill import Skill
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
+from app.models.intraday import IntervalForecast
 from app.schemas.ltf import LTFCreateInput
 from app.schemas.stf import STFCreateInput
 from app.services import channel_service, kpi_service
@@ -529,3 +530,94 @@ def compare_ltf_stf(ltf: LTFForecast, stf: STFForecast) -> list[LTFvsSTFRow]:
         _row("Productive Hours", ltf.productive_hours, stf.productive_hours, "h"),
         _row("Overtime Required", ltf.overtime_required_hours, stf.overtime_required_hours, "h"),
     ]
+
+
+def _promote_previous_ltf_version(session: Session, current: ForecastVersion) -> None:
+    previous = session.exec(
+        select(ForecastVersion)
+        .where(
+            ForecastVersion.version_type == ForecastVersionType.LTF,
+            ForecastVersion.campaign_id == current.campaign_id,
+            ForecastVersion.skill_id == current.skill_id,
+            ForecastVersion.period_start == current.period_start,
+            ForecastVersion.period_end == current.period_end,
+            ForecastVersion.id != current.id,
+            ForecastVersion.is_current == False,  # noqa: E712
+        )
+        .order_by(ForecastVersion.created_at.desc())
+    ).first()
+    if previous is not None:
+        previous.is_current = True
+        session.add(previous)
+
+
+def delete_ltf_forecast(session: Session, ltf_id: int) -> None:
+    ltf = session.get(LTFForecast, ltf_id)
+    if ltf is None:
+        raise ValueError("Forecast LTF introuvable.")
+
+    version = session.get(ForecastVersion, ltf.forecast_version_id)
+    if version is None:
+        raise ValueError("Version LTF introuvable.")
+
+    children = session.exec(
+        select(ForecastVersion).where(ForecastVersion.parent_version_id == version.id)
+    ).first()
+    if children is not None:
+        raise ValueError(
+            "Impossible de supprimer ce LTF : un ou plusieurs STF dépendent de cette version. "
+            "Supprimez ou rectifiez d'abord les STF concernés."
+        )
+
+    _promote_previous_ltf_version(session, version)
+    session.delete(ltf)
+    session.delete(version)
+    session.commit()
+
+
+def _promote_previous_stf_version(session: Session, current: ForecastVersion) -> None:
+    previous = session.exec(
+        select(ForecastVersion)
+        .where(
+            ForecastVersion.version_type == ForecastVersionType.STF,
+            ForecastVersion.campaign_id == current.campaign_id,
+            ForecastVersion.skill_id == current.skill_id,
+            ForecastVersion.period_start == current.period_start,
+            ForecastVersion.period_end == current.period_end,
+            ForecastVersion.id != current.id,
+            ForecastVersion.is_current == False,  # noqa: E712
+        )
+        .order_by(ForecastVersion.created_at.desc())
+    ).first()
+    if previous is not None:
+        previous.is_current = True
+        session.add(previous)
+
+
+def delete_stf_forecast(session: Session, stf_id: int) -> None:
+    stf = session.get(STFForecast, stf_id)
+    if stf is None:
+        raise ValueError("Forecast STF introuvable.")
+
+    existing_daily = session.exec(
+        select(IntervalForecast).where(
+            IntervalForecast.campaign_id == stf.campaign_id,
+            IntervalForecast.skill_id == stf.skill_id,
+            IntervalForecast.date >= stf.week_start_date,
+            IntervalForecast.date <= stf.week_start_date + timedelta(days=6),
+        )
+    ).first()
+    if existing_daily is not None:
+        raise ValueError(
+            "Impossible de supprimer ce STF : des données Daily/Intraday existent déjà "
+            "pour cette semaine. Supprimez ou remplacez d'abord la dispersion Daily."
+        )
+
+    version = session.get(ForecastVersion, stf.forecast_version_id)
+    if version is None:
+        raise ValueError("Version STF introuvable.")
+
+    _promote_previous_stf_version(session, version)
+    session.delete(stf)
+    session.delete(version)
+    session.commit()
