@@ -182,7 +182,9 @@ def build_intraday_forecast_rows(
     channel = skill.channel
     created: list[IntervalForecast] = []
 
-    for slot_index, pct in enumerate(profile_pct):
+    slot_indices = [i for i, pct in enumerate(profile_pct) if pct > 0] if profile_pct_48 is not None else range(SLOTS_PER_DAY)
+    for slot_index in slot_indices:
+        pct = profile_pct[slot_index]
         interval_start, interval_end = slot_bounds(slot_index)
         interval_volume = data.daily_volume * (pct / 100)
 
