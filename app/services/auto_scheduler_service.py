@@ -452,7 +452,7 @@ def generate_schedule(
                     for item in generated
                     if item.entry.date == day
                     and not item.entry.is_day_off
-                    and scheduling_service._shift_covers_interval(item.shift, row.interval_start, row.interval_end)
+                    and _shift_productive_in_interval(item.shift, row, day)
                 ),
             ) * settings.interval_minutes / 60
             for row in intervals
@@ -463,7 +463,7 @@ def generate_schedule(
                 required_hc_hours=required_h,
                 scheduled_hc_hours=scheduled_h,
                 shortage_hc_hours=max(required_h - covered_h, 0.0),
-                coverage_pct=(covered_h / required_h * 100.0) if required_h else 100.0,
+                coverage_pct=min(100.0, covered_h / required_h * 100.0) if required_h else 100.0,
             )
         )
 
