@@ -153,9 +153,16 @@ def build_control_tower(
     actual_hcs = [row.actual_hc for row in intervals if row.actual_hc is not None]
     peak_actual = max(actual_hcs) if actual_hcs else None
 
-    interval_hours = intraday_service.INTERVAL_MINUTES / 60.0
-    shortage_h = sum(max(row.required_hc - (row.actual_hc if row.actual_hc is not None else row.scheduled_hc), 0.0) for row in intervals) * interval_hours
-    surplus_h = sum(max((row.actual_hc if row.actual_hc is not None else row.scheduled_hc) - row.required_hc, 0.0) for row in intervals) * interval_hours
+    shortage_h = sum(
+        max(row.required_hc - (row.actual_hc if row.actual_hc is not None else row.scheduled_hc), 0.0)
+        * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
+        for row in intervals
+    )
+    surplus_h = sum(
+        max((row.actual_hc if row.actual_hc is not None else row.scheduled_hc) - row.required_hc, 0.0)
+        * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
+        for row in intervals
+    )
     overtime_h = overtime_service.compute_overtime_report(
         session,
         start_date=target_date,
