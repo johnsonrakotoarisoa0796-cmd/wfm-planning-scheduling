@@ -53,7 +53,7 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Volume STF</td><td class="numeric">{{ "{:,.0f}".format(stf.volume).replace(",", " ") }} contacts</td></tr>
-                <tr><td>Handling Time (AHT) par contact</td><td class="numeric">{{ "%.0f"|format(stf.aht_seconds) }} s</td></tr><tr><td>Heures de traitement des contacts</td><td class="numeric"><strong>{{ "%.1f"|format(contact_handling_hours) }} h</strong></td></tr><tr><td>Charge agent après simultanéité</td><td class="numeric"><strong>{{ "%.1f"|format(agent_workload_hours) }} h</strong></td></tr>
+                <tr><td>Handling Time (AHT) par contact</td><td class="numeric">{{ "%.0f"|format(stf.aht_seconds) }} s</td></tr><tr><td>Heures de traitement des contacts</td><td class="numeric"><strong>{{ "%.1f"|format(contact_handling_hours) }} h</strong></td></tr><tr><td>Charge agent après simultanéité</td><td class="numeric"><strong>{{ "%.1f"|format(agent_workload_hours) }} h</strong></td></tr><tr><td>Simultanéité du canal</td><td class="numeric">{{ "%.1f"|format(concurrency_factor) }} contact(s) simultané(s)</td></tr>
             </tbody>
         </table>
     </div>
