@@ -44,20 +44,20 @@
         </fieldset>
 
         <fieldset>
-            <legend>Volume &amp; AHT</legend>
+            <legend>Volume &amp; Handling Time</legend>
             <div class="form-grid">
                 <div class="field">
                     <label for="forecast_volume">Volume prévisionnel (contacts)</label>
                     <input type="number" id="forecast_volume" name="forecast_volume" min="0" step="1" value="{{ values.forecast_volume or '' }}" required>
                 </div>
                 <div class="field">
-                    <label for="forecast_aht_seconds">AHT prévisionnel (secondes)</label>
-                    <input type="number" id="forecast_aht_seconds" name="forecast_aht_seconds" min="1" step="1" value="{{ values.forecast_aht_seconds or '' }}" required>
+                    <label for="handling_time_seconds">Handling Time / AHT prévisionnel (secondes)</label>
+                    <input type="number" id="handling_time_seconds" name="handling_time_seconds" min="1" step="1" value="{{ values.forecast_aht_seconds or '' }}" required>
                 </div>
                 <div class="field">
-                    <label for="aht_required_seconds">AHT Required (secondes)</label>
+                    <label for="aht_required_seconds">Handling Time cible / AHT Required (secondes)</label>
                     <input type="number" id="aht_required_seconds" name="aht_required_seconds" min="1" step="1" value="{{ values.aht_required_seconds or '' }}" required>
-                    <div class="field__hint">Cible fixée par le WFM, comparée à l'AHT forecast/actual (§13).</div>
+                    <div class="field__hint">Cible de Handling Time utilisée par le WFM pour comparer le forecast et les actuals.</div>
                 </div>
             </div>
         </fieldset>
