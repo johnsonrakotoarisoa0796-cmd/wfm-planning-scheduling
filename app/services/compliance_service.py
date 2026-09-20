@@ -16,7 +16,7 @@ from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
 from app.models.skill import Skill
 from app.schemas.compliance import CompliancePolicyInput
-from app.services import client_stf_service, intraday_service, scheduling_service, workforce_service
+from app.services import client_stf_service, intraday_service, workforce_service
 
 
 @dataclass(frozen=True)
@@ -120,6 +120,12 @@ def list_policies(session: Session, *, campaign_id: Optional[int] = None) -> lis
         query = query.where(CompliancePolicy.campaign_id == campaign_id)
     return list(session.exec(query.order_by(CompliancePolicy.campaign_id, CompliancePolicy.skill_id)).all())
 
+
+
+def _shift_covers_interval(shift: Shift, interval_start: time) -> bool:
+    if shift.start_time <= shift.end_time:
+        return shift.start_time <= interval_start < shift.end_time
+    return interval_start >= shift.start_time or interval_start < shift.end_time
 
 def _shift_datetimes(entry: ScheduleEntry, shift: Shift) -> tuple[datetime, datetime]:
     start = datetime.combine(entry.date, shift.start_time)
@@ -346,9 +352,7 @@ def _coverage(
                 for entry in shift_rows
                 if entry.date == day
                 and entry.shift_id in shifts
-                and scheduling_service._shift_covers_interval(
-                    shifts[entry.shift_id], row.interval_start, row.interval_end
-                )
+                and _shift_covers_interval(shifts[entry.shift_id], row.interval_start)
             )
             required = max(row.required_hc, 0.0)
             covered = min(required, float(scheduled))
