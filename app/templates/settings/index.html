@@ -39,7 +39,7 @@
 <div class="field"><label for="service_level_target_pct">Service Level (%)</label><input id="service_level_target_pct" type="number" name="service_level_target_pct" min="0" max="100" step="0.1" value="80" required></div>
 <div class="field"><label for="answer_time_target_seconds">ASA / Answer Time cible (s)</label><input id="answer_time_target_seconds" type="number" name="answer_time_target_seconds" min="0" step="1" value="20" required></div>
 <div class="field"><label for="shrinkage_pct">Shrinkage (%)</label><input id="shrinkage_pct" type="number" name="shrinkage_pct" min="0" max="99" step="0.1" value="0" required></div>
-<div class="field"><label for="interval_minutes">Intervalle (minutes)</label><input id="interval_minutes" type="number" name="interval_minutes" min="5" step="5" value="30" required></div>
+<div class="field"><label for="interval_minutes">Intervalle WFM</label><input id="interval_minutes" type="number" name="interval_minutes" value="30" readonly><div class="field__hint">La granularité opérationnelle actuelle du moteur est fixe : 30 minutes.</div></div>
 </div>
 <div class="field"><label for="weekly_notes">Notes</label><textarea id="weekly_notes" name="notes" rows="2" placeholder="Hypothèses AHT, évolution attendue, SLA contractuel..."></textarea></div>
 <div class="form-actions"><button class="btn-primary" type="submit">Enregistrer les paramètres</button></div>
