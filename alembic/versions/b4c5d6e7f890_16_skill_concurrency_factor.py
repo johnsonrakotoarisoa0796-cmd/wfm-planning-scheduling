@@ -12,7 +12,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column("skills", sa.Column("concurrency_factor", sa.Float(), nullable=False, server_default="1"))
-    op.execute("UPDATE skills SET concurrency_factor = CASE channel WHEN 'email' THEN 3.0 WHEN 'chat' THEN 2.0 ELSE 1.0 END")
+    op.execute(
+        "UPDATE skills SET concurrency_factor = CASE CAST(channel AS TEXT) "
+        "WHEN 'email' THEN 3.0 WHEN 'chat' THEN 2.0 ELSE 1.0 END"
+    )
 
 
 def downgrade() -> None:
