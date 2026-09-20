@@ -105,6 +105,23 @@ def workload_hours(volume_contacts: float, aht_seconds: float) -> float:
     return (volume_contacts * aht_seconds) / 3600
 
 
+def agent_workload_hours(
+    volume_contacts: float,
+    aht_seconds: float,
+    concurrency_factor: float = 1.0,
+) -> float:
+    """Charge en heures d'activité agent, après simultanéité du canal.
+
+    Pour la voix (concurrency=1), elle est égale aux heures de traitement
+    des contacts. Pour l'email/chat asynchrone, plusieurs contacts peuvent
+    être actifs simultanément et la charge agent est donc inférieure à la
+    charge brute des contacts.
+    """
+    if concurrency_factor <= 0:
+        raise ValueError("concurrency_factor doit être strictement positif.")
+    return workload_hours(volume_contacts, aht_seconds) / concurrency_factor
+
+
 def required_hc_aggregate(
     workload_hours_value: float,
     available_hours_per_agent: float,
