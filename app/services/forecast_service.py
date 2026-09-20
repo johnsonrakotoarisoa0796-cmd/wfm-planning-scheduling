@@ -163,7 +163,6 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
             agent_workload_hours_value,
             available_hours_per_agent,
             data.occupancy_required_pct,
-            skill.channel,
         )
         gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
         paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
