@@ -66,6 +66,19 @@ def intraday_window_profile_to_48(profile_pct: list[float]) -> list[float]:
     return result
 
 
+
+
+def intraday_window_rate_profile_to_48(profile_pct: list[float]) -> list[float]:
+    """Convertit un profil de taux 10:00 -> 02:00 sans normaliser sa somme."""
+    if len(profile_pct) != len(DEFAULT_PROFILE_START_SLOTS):
+        raise ValueError(f"Le profil de taux doit contenir {len(DEFAULT_PROFILE_START_SLOTS)} tranches.")
+    if any(weight < 0 or weight > 100 for weight in profile_pct):
+        raise ValueError("Chaque taux intraday doit être compris entre 0% et 100%.")
+    result = [0.0] * SLOTS_PER_DAY
+    for slot_index, weight in zip(DEFAULT_PROFILE_START_SLOTS, profile_pct):
+        result[slot_index] = weight
+    return result
+
 def _default_profile_raw_weights() -> list[float]:
     """Poids bruts (non normalisés) d'une courbe de volume typique de
     centre de contacts sur 24h : quasi nulle la nuit, deux pics (matin
