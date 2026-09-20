@@ -149,6 +149,10 @@ def build_intraday_forecast_rows(
     *,
     check_existing: bool = True,
     profile_pct_48: list[float] | None = None,
+    absence_rate_pct: float = 0.0,
+    leave_rate_pct: float = 0.0,
+    break_15m_pct_48: list[float] | None = None,
+    lunch_break_pct_48: list[float] | None = None,
 ) -> list[IntervalForecast]:
     """Construit les intervalles sans persister ; réutilisable par Daily et Weekly."""
     if check_existing:
@@ -207,7 +211,18 @@ def build_intraday_forecast_rows(
                 channel=channel,
             )
 
-        gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
+        base_gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
+        break_15 = break_15m_pct_48[slot_index] if break_15m_pct_48 else 0.0
+        lunch_break = lunch_break_pct_48[slot_index] if lunch_break_pct_48 else 0.0
+        total_unavailability_pct = min(
+            99.0,
+            data.shrinkage_pct + absence_rate_pct + leave_rate_pct + break_15 + lunch_break,
+        )
+        gross_required_hc = apply_shrinkage(net_required_hc, total_unavailability_pct)
+
+        interval_unavailable_hours = base_gross_required_hc * (INTERVAL_MINUTES / 60.0)
+        absence_hours = interval_unavailable_hours * (absence_rate_pct / 100.0)
+        leave_hours = interval_unavailable_hours * (leave_rate_pct / 100.0)
         created.append(
             IntervalForecast(
                 date=data.target_date,
@@ -218,7 +233,14 @@ def build_intraday_forecast_rows(
                 channel=channel,
                 forecast_volume=interval_volume,
                 forecast_aht_seconds=data.daily_aht_seconds,
+                handling_time_seconds=data.daily_aht_seconds,
                 required_hc=gross_required_hc,
+                absence_rate_pct=absence_rate_pct,
+                leave_rate_pct=leave_rate_pct,
+                absence_hours=absence_hours,
+                leave_hours=leave_hours,
+                break_15m_pct=break_15,
+                lunch_break_pct=lunch_break,
                 scheduled_hc=0.0,
                 service_level_target_pct=data.service_level_target_pct,
                 answer_time_target_seconds=data.answer_time_target_seconds,
