@@ -6,8 +6,8 @@
 <div class="field"><label>DU</label><input type="date" name="start_date" value="{{ filters.start_date }}"></div>
 <div class="field"><label>AU</label><input type="date" name="end_date" value="{{ filters.end_date }}"></div>
 <div class="field"><label>DATE REFORECAST</label><input type="date" name="target_date" value="{{ filters.target_date }}"></div>
-<div class="field"><label>CAMPAGNE</label><select name="campaign_id"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-<div class="field"><label>SKILL</label><select name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+<div class="field"><label>CAMPAGNE</label><select name="campaign_id" data-skill-filter="#forecast_lab_skill"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+<div class="field"><label>SKILL</label><select id="forecast_lab_skill" name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
 <button type="submit">Analyser</button></form>
 {% if metrics %}
 <div class="kpi-grid">
