@@ -283,6 +283,42 @@ def link_user_to_employee(
     return RedirectResponse("/settings", status_code=303)
 
 
+
+
+@router.post("/admin-security", dependencies=[Depends(verify_csrf)])
+def update_admin_security(
+    keyword1: str = Form(...),
+    keyword2: str = Form(...),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    session: Session = Depends(get_session),
+):
+    key1 = keyword1.strip()
+    key2 = keyword2.strip()
+
+    if len(key1) < 4 or len(key2) < 4:
+        return RedirectResponse(
+            "/settings?error=Les+deux+mots-clés+doivent+contenir+au+moins+4+caractères#users",
+            status_code=303,
+        )
+    if len(key1) > 64 or len(key2) > 64:
+        return RedirectResponse(
+            "/settings?error=Les+deux+mots-clés+doivent+contenir+au+maximum+64+caractères#users",
+            status_code=303,
+        )
+    if key1.casefold() == key2.casefold():
+        return RedirectResponse(
+            "/settings?error=Les+deux+mots-clés+doivent+être+différents#users",
+            status_code=303,
+        )
+
+    from app.core.security import hash_password
+
+    current_user.admin_keyword1_hash = hash_password(key1.casefold())
+    current_user.admin_keyword2_hash = hash_password(key2.casefold())
+    session.add(current_user)
+    session.commit()
+    return RedirectResponse("/settings?error=Mots-clés+admin+mis+à+jour#users", status_code=303)
+
 @router.post("/users/{user_id}", dependencies=[Depends(verify_csrf)])
 def manage_user(
     user_id: int,
