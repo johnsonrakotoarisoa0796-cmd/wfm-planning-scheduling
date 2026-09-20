@@ -202,7 +202,7 @@ def disperse_stf_with_weights(
             skill_id=stf.skill_id,
             timezone_name=timezone_name,
             daily_volume=daily_volume,
-            daily_aht_seconds=stf.aht_seconds,
+            daily_aht_seconds=dispersion.handling_time_seconds,
             service_level_target_pct=stf.service_level_target_pct,
             answer_time_target_seconds=parameters.answer_time_target_seconds,
             occupancy_target_pct=stf.occupancy_pct,
