@@ -16,7 +16,7 @@
     </div>
     <div class="field">
         <label for="campaign_id">Campagne</label>
-        <select id="campaign_id" name="campaign_id" required>
+        <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
             <option value="" disabled {% if not filters.campaign_id %}selected{% endif %}>Choisir...</option>
             {% for c in campaigns %}
             <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
