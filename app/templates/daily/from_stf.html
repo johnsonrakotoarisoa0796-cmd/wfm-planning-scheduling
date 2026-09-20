@@ -71,9 +71,9 @@
         <h2>Handling Time, absentéisme et congés</h2>
         <div class="form-grid">
             <div class="field">
-                <label for="handling_time_seconds">Handling Time / AHT (secondes)</label>
+                <label for="handling_time_seconds">Handling Time (AHT) par contact — secondes</label>
                 <input id="handling_time_seconds" type="number" name="handling_time_seconds" min="1" step="1" value="{{ handling_time_seconds }}" required>
-                <div class="field__hint">Prérempli avec l'AHT du STF, mais modifiable pour la génération intraday.</div>
+                <div class="field__hint">Prérempli avec l'AHT du STF. C'est la durée moyenne de traitement d'un contact.</div>
             </div>
             <div class="field">
                 <label for="absence_rate_pct">Taux d'absentéisme proposé (%)</label>
