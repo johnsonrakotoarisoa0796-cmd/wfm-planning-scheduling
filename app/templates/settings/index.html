@@ -7,6 +7,46 @@
 {% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
 </tbody></table>
 </section>
+{% if current_user.role.value == "admin" %}
+<section class="form-card form-card--wide" style="margin-top:20px">
+<div class="panel-kicker">COMPTES UTILISATEURS</div>
+<h2>Gestion des utilisateurs</h2>
+<p class="field__hint">Les inscriptions publiques arrivent ici avec le statut « En attente ». L’administrateur contrôle l’activation, le rôle et la réinitialisation du 2FA.</p>
+<table class="data-table">
+<thead><tr><th>Email</th><th>Rôle</th><th>Statut</th><th>2FA</th><th>Créé le</th><th>Actions</th></tr></thead>
+<tbody>
+{% for user in users %}
+<tr>
+<td><strong>{{ user.email }}</strong>{% if user.id == current_user.id %}<div class="field__hint">Votre compte</div>{% endif %}</td>
+<td>
+<form method="post" action="/settings/users/{{ user.id }}" style="display:flex;gap:6px;align-items:center">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="action" value="role">
+<select name="role">
+{% for role in ["viewer", "team_lead", "wfm_analyst", "admin"] %}
+<option value="{{ role }}" {% if user.role.value == role %}selected{% endif %}>{{ role }}</option>
+{% endfor %}
+</select>
+<button class="btn-secondary btn-small" type="submit">Rôle</button>
+</form>
+</td>
+<td>{% if user.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill status-pill--warning">En attente / Inactif</span>{% endif %}</td>
+<td>{% if user.totp_secret %}<span class="status-pill status-pill--balanced">Configuré</span>{% else %}<span class="status-pill">À configurer</span>{% endif %}</td>
+<td>{{ user.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+<td style="display:flex;gap:6px;flex-wrap:wrap">
+{% if user.is_active %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="deactivate"><button class="btn-secondary btn-small" type="submit">Désactiver</button></form>
+{% else %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="activate"><button class="btn-primary btn-small" type="submit">Activer</button></form>
+{% endif %}
+<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_2fa"><button class="btn-secondary btn-small" type="submit">Réinitialiser 2FA</button></form>
+</td>
+</tr>
+{% else %}<tr><td colspan="6">Aucun utilisateur.</td></tr>{% endfor %}
+</tbody>
+</table>
+</section>
+{% endif %}
 {% endif %}
 {% endblock %}
 {% block content %}
