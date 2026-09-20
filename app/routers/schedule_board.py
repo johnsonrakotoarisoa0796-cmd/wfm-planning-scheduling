@@ -36,7 +36,7 @@ def schedule_board(
             week_start = today - __import__("datetime").timedelta(days=today.weekday())
     else:
         week_start = today - __import__("datetime").timedelta(days=today.weekday())
-    week_days = [week_start + timedelta(days=i) for i in range(5)]
+    week_days = [week_start + timedelta(days=i) for i in range(7)]
     valid_skill_ids = {s.id for s in skills}
     if skill_id is not None and skill_id not in valid_skill_ids:
         skill_id = None
