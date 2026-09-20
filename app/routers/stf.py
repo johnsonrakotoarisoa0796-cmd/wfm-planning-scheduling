@@ -258,6 +258,28 @@ def edit_stf(
     return RedirectResponse(url="/stf?success=Forecast+STF+rectifié+%3A+ancienne+version+conservée", status_code=303)
 
 
+@router.post("/{stf_id}/recalculate", dependencies=[Depends(verify_csrf)])
+def recalculate_stf(
+    stf_id: int,
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    stf = session.get(STFForecast, stf_id)
+    if stf is None:
+        raise HTTPException(status_code=404, detail="Forecast STF introuvable.")
+    try:
+        forecast_service.recalculate_stf_forecast(
+            session,
+            stf,
+            created_by_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        return RedirectResponse(f"/stf?error={quote_plus(str(exc))}", status_code=303)
+    return RedirectResponse(
+        url=f"/stf/{stf_id}?success=Calculs+STF+rejoués+avec+le+moteur+WFM+actuel",
+        status_code=303,
+    )
+
 @router.post("/{stf_id}/delete", dependencies=[Depends(verify_csrf)])
 def delete_stf(
     stf_id: int,
