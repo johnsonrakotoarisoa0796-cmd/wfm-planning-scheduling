@@ -31,7 +31,7 @@
 <form method="post" action="/settings/weekly-parameters">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div class="form-grid">
-<div class="field"><label for="weekly_period">Semaine</label><select id="weekly_period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}">{{ w.label }}</option>{% endfor %}</select></div>
+<div class="field"><label for="weekly_period">Semaine</label><select id="weekly_period" name="period" required><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if w.value == current_week %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
 <div class="field"><label for="weekly_campaign_id">Campagne</label><select id="weekly_campaign_id" name="campaign_id" data-skill-filter="#weekly_skill_id" required><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
 <div class="field"><label for="weekly_skill_id">Skill</label><select id="weekly_skill_id" name="skill_id" required><option value="">Choisir...</option>{% for s in skill_rows %}<option value="{{ s.skill.id }}" data-campaign-id="{{ s.skill.campaign_id }}">{{ s.skill.name }} · {{ s.campaign.name if s.campaign else "—" }}</option>{% endfor %}</select></div>
 <div class="field"><label for="aht_seconds">AHT / Handle Time (s)</label><input id="aht_seconds" type="number" name="aht_seconds" min="1" step="1" value="300" required></div>
