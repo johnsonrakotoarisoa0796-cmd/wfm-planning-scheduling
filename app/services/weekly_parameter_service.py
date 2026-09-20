@@ -136,8 +136,8 @@ def upsert_weekly_parameters(
         raise ValueError("ASA cible invalide.")
     if not 0 <= shrinkage_pct < 100:
         raise ValueError("Shrinkage doit être compris entre 0 et 100%.")
-    if interval_minutes <= 0:
-        raise ValueError("La durée d'intervalle doit être positive.")
+    if interval_minutes != 30:
+        raise ValueError("La granularité WFM actuelle est fixée à 30 minutes.")
 
     row = session.exec(
         select(WeeklyWFMParameter).where(
