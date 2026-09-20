@@ -196,6 +196,7 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
         created_by=created_by_user_id,
         notes=data.notes,
         is_current=True,
+        calculation_engine_version="2.1",
     )
     session.add(version)
     session.commit()
