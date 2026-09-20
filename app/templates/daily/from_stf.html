@@ -5,7 +5,7 @@
     <div>
         <span class="panel-kicker">STF → DAILY / INTRADAY</span>
         <h1>Distribuer le volume hebdomadaire</h1>
-        <p class="page-header__meta">Le volume STF est réparti sur les 7 jours puis sur les intervalles intraday selon les profils que vous définissez.</p>
+        <p class="page-header__meta">Le volume STF est réparti sur les 7 jours puis sur les intervalles intraday. Les hypothèses de staffing peuvent être ajustées avant génération.</p>
     </div>
     <a href="/stf/{{ stf.id }}" class="btn-secondary">← Retour au STF</a>
 </div>
@@ -14,7 +14,15 @@
 <div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
 {% endif %}
 
-<form method="post" action="/daily/from-stf/{{ stf.id }}">
+{% if existing_intervals_count %}
+<div class="error-banner" style="margin-bottom:18px">
+    <strong>{{ existing_intervals_count }} intervalles existent déjà</strong> pour cette semaine / campagne / skill.
+    Pour régénérer avec les nouvelles hypothèses, cochez <strong>« Remplacer les intervalles existants »</strong>.
+    Sans cette confirmation, aucune donnée existante ne sera supprimée.
+</div>
+{% endif %}
+
+<form method="post" action="/daily/from-stf/{{ stf.id }}" id="stf-dispersion-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
     <section class="wfm-control">
@@ -42,13 +50,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                {% set fields = ["monday_pct","tuesday_pct","wednesday_pct","thursday_pct","friday_pct","saturday_pct","sunday_pct"] %}
+                {% set day_fields = ["monday_pct","tuesday_pct","wednesday_pct","thursday_pct","friday_pct","saturday_pct","sunday_pct"] %}
                 {% for i in range(7) %}
                     <tr>
                         <td><strong>{{ days[i][0] }}</strong></td>
                         <td>{{ days[i][1].strftime("%d/%m/%Y") }}</td>
                         <td class="numeric">
-                            <input class="weight-input" type="number" name="{{ fields[i] }}" min="0" max="100" step="0.1" value="{{ weights[i] }}" required>
+                            <input class="weight-input" type="number" name="{{ day_fields[i] }}" min="0" max="100" step="0.1" value="{{ weights[i] }}" required>
                         </td>
                         <td class="numeric daily-volume-preview">{{ "{:,.1f}".format(daily_volumes[i]).replace(",", " ") }}</td>
                     </tr>
@@ -59,12 +67,46 @@
     </section>
 
     <section class="form-card form-card--wide" style="margin-top:18px">
+        <div class="panel-kicker">HYPOTHÈSES DE STAFFING</div>
+        <h2>Handling Time, absentéisme et congés</h2>
+        <div class="form-grid">
+            <div class="field">
+                <label for="handling_time_seconds">Handling Time / AHT (secondes)</label>
+                <input id="handling_time_seconds" type="number" name="handling_time_seconds" min="1" step="1" value="{{ handling_time_seconds }}" required>
+                <div class="field__hint">Prérempli avec l'AHT du STF, mais modifiable pour la génération intraday.</div>
+            </div>
+            <div class="field">
+                <label for="absence_rate_pct">Taux d'absentéisme proposé (%)</label>
+                <input id="absence_rate_pct" type="number" name="absence_rate_pct" min="0" max="99" step="0.1" value="{{ absence_rate_pct }}" required>
+                <div class="field__hint">Hypothèse de planification, pas une règle légale.</div>
+            </div>
+            <div class="field">
+                <label for="leave_rate_pct">Taux de congés proposé (%)</label>
+                <input id="leave_rate_pct" type="number" name="leave_rate_pct" min="0" max="99" step="0.1" value="{{ leave_rate_pct }}" required>
+                <div class="field__hint">Hypothèse de planification, modifiable par le WFM.</div>
+            </div>
+            <div class="field">
+                <label>Heures d'absentéisme proposées / agent / jour</label>
+                <input id="absence_hours_per_agent" value="{{ '%.2f'|format(absence_hours_per_agent) }} h" readonly>
+            </div>
+            <div class="field">
+                <label>Heures de congés proposées / agent / jour</label>
+                <input id="leave_hours_per_agent" value="{{ '%.2f'|format(leave_hours_per_agent) }} h" readonly>
+            </div>
+            <div class="field">
+                <label>Base journalière</label>
+                <input value="8.00 h" readonly>
+            </div>
+        </div>
+    </section>
+
+    <section class="form-card form-card--wide" style="margin-top:18px">
         <div class="panel-kicker">DISTRIBUTION INTRADAY</div>
-        <h2>Profil par défaut des contacts dans la journée</h2>
+        <h2>Profil des contacts + pauses par tranche</h2>
         <p class="field__hint">
-            Après le calcul du volume journalier, le système le répartit sur ces <strong>33 intervalles de 30 minutes</strong>.
-            Le profil par défaut couvre <strong>10:00 → 02:30</strong>. Vous pouvez modifier chaque poids.
-            La somme du profil doit rester à <strong>100%</strong>.
+            Après le calcul du volume journalier, le système répartit les contacts sur 33 intervalles.
+            Les taux <strong>Break 15 min</strong> et <strong>Lunch</strong> sont des hypothèses d'indisponibilité
+            du staffing par tranche. Ils peuvent être modifiés avant génération.
         </p>
 
         <div class="data-table-wrapper">
@@ -72,8 +114,10 @@
                 <thead>
                     <tr>
                         <th>Heure</th>
-                        <th class="numeric">Poids %</th>
-                        <th class="numeric">Contacts pour 10 000</th>
+                        <th class="numeric">Volume %</th>
+                        <th class="numeric">Contacts / 10 000</th>
+                        <th class="numeric">Break 15 min %</th>
+                        <th class="numeric">Lunch %</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -81,18 +125,15 @@
                     <tr>
                         <td><strong>{{ intraday_slots[i] }}</strong></td>
                         <td class="numeric">
-                            <input
-                                class="intraday-weight-input"
-                                type="number"
-                                name="intraday_profile_pct"
-                                min="0"
-                                max="100"
-                                step="0.1"
-                                value="{{ intraday_profile_pct[i] }}"
-                                required
-                            >
+                            <input class="intraday-weight-input" type="number" name="intraday_profile_pct" min="0" max="100" step="0.1" value="{{ intraday_profile_pct[i] }}" required>
                         </td>
                         <td class="numeric intraday-preview">—</td>
+                        <td class="numeric">
+                            <input class="break-input" type="number" name="break_15m_pct" min="0" max="100" step="0.1" value="{{ break_15m_pct[i] }}" required>
+                        </td>
+                        <td class="numeric">
+                            <input class="lunch-input" type="number" name="lunch_break_pct" min="0" max="100" step="0.1" value="{{ lunch_break_pct[i] }}" required>
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -119,24 +160,29 @@
     </section>
 
     <section class="form-card form-card--wide" style="margin-top:18px">
-        <div class="panel-kicker">CALCUL</div>
+        <div class="panel-kicker">REMPLACEMENT</div>
+        <label style="display:flex;align-items:center;gap:10px;font-weight:700">
+            <input type="checkbox" name="replace_existing" value="true" id="replace_existing" {% if existing_intervals_count == 0 %}disabled{% endif %}>
+            Remplacer les intervalles existants
+        </label>
         <p class="field__hint">
-            Pour chaque journée : <strong>Volume STF × poids du jour</strong>.
-            Puis, pour chaque intervalle : <strong>Volume journalier × poids intraday</strong>.
-            Les intervalles alimentent ensuite le calcul du HC requis.
+            Cette option supprime uniquement les intervalles Daily/Intraday de cette semaine, campagne et skill,
+            puis génère la nouvelle version avec les paramètres ci-dessus. Le STF reste inchangé.
         </p>
     </section>
 
     <div class="form-actions" style="margin-top:16px">
-        <button class="btn-primary" id="generate-week-btn" type="submit">⚡ Générer les 7 journées / 231 intervalles</button>
+        <button class="btn-primary" id="generate-week-btn" type="submit">⚡ Générer / remplacer les journées Intraday</button>
         <a href="/stf/{{ stf.id }}" class="btn-secondary">Annuler</a>
     </div>
 </form>
 
 <script>
 (() => {
-    const inputs = [...document.querySelectorAll(".weight-input")];
+    const dayInputs = [...document.querySelectorAll(".weight-input")];
     const intradayInputs = [...document.querySelectorAll(".intraday-weight-input")];
+    const replaceBox = document.getElementById("replace_existing");
+    const form = document.getElementById("stf-dispersion-form");
     const totalEl = document.getElementById("weight-total");
     const statusEl = document.getElementById("weight-status");
     const intradayTotalEl = document.getElementById("intraday-total");
@@ -145,15 +191,13 @@
     const volume = Number({{ stf.volume }});
 
     const refresh = () => {
-        let total = 0;
-        inputs.forEach((input) => {
+        let dayTotal = 0;
+        dayInputs.forEach((input) => {
             const weight = Number(input.value || 0);
-            total += weight;
+            dayTotal += weight;
             const row = input.closest("tr");
             const preview = row?.querySelector(".daily-volume-preview");
-            if (preview) {
-                preview.textContent = (volume * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
-            }
+            if (preview) preview.textContent = (volume * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
         });
 
         let intradayTotal = 0;
@@ -162,13 +206,11 @@
             intradayTotal += weight;
             const row = input.closest("tr");
             const preview = row?.querySelector(".intraday-preview");
-            if (preview) {
-                preview.textContent = (10000 * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
-            }
+            if (preview) preview.textContent = (10000 * weight / 100).toLocaleString("fr-FR", {maximumFractionDigits: 1});
         });
 
-        totalEl.textContent = total.toFixed(1) + "%";
-        const daysValid = Math.abs(total - 100) <= 0.01;
+        totalEl.textContent = dayTotal.toFixed(1) + "%";
+        const daysValid = Math.abs(dayTotal - 100) <= 0.01;
         statusEl.textContent = daysValid ? "✓ 100% — prêt" : "Les poids jours doivent totaliser 100%";
 
         intradayTotalEl.textContent = intradayTotal.toFixed(1) + "%";
@@ -178,8 +220,29 @@
         button.disabled = !(daysValid && intradayValid);
     };
 
-    inputs.forEach((input) => input.addEventListener("input", refresh));
+    const updateHours = () => {
+        const absence = Number(document.getElementById("absence_rate_pct").value || 0);
+        const leave = Number(document.getElementById("leave_rate_pct").value || 0);
+        document.getElementById("absence_hours_per_agent").value = (8 * absence / 100).toFixed(2) + " h";
+        document.getElementById("leave_hours_per_agent").value = (8 * leave / 100).toFixed(2) + " h";
+    };
+
+    dayInputs.forEach((input) => input.addEventListener("input", refresh));
     intradayInputs.forEach((input) => input.addEventListener("input", refresh));
+    document.getElementById("absence_rate_pct").addEventListener("input", updateHours);
+    document.getElementById("leave_rate_pct").addEventListener("input", updateHours);
+
+    form.addEventListener("submit", (event) => {
+        if (replaceBox && replaceBox.checked) {
+            const confirmed = window.confirm(
+                "Confirmer le remplacement des intervalles Daily/Intraday existants ?\n\n" +
+                "Les intervalles de cette semaine/campagne/skill seront supprimés puis régénérés."
+            );
+            if (!confirmed) event.preventDefault();
+        }
+    });
+
+    updateHours();
     refresh();
 })();
 </script>
