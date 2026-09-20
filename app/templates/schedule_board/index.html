@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header"><div><span class="panel-kicker">PLANNING BOARD</span><h1>Schedule Board</h1><p class="page-header__meta">Vue hebdomadaire type Teleopti : agent × journée × shift.</p></div><a class="btn-secondary" href="/scheduling/generate">Générer un planning</a></div>
 <form class="filter-bar" method="get" action="/schedule-board">
-<div class="field field--compact"><label>SEMAINE</label><input type="week" name="week" value="{{ filters.week }}"></div>
+<div class="field field--compact"><label>SEMAINE</label><select name="week"><option value="">Choisir une semaine...</option>{% for w in week_options %}<option value="{{ w.value }}" {% if filters.week == w.value %}selected{% endif %}>{{ w.label }}</option>{% endfor %}</select></div>
 <div class="field"><label>CAMPAGNE</label><select name="campaign_id" data-skill-filter="#schedule_board_skill"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
 <div class="field"><label>SKILL</label><select id="schedule_board_skill" name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
 <button type="submit">Afficher</button></form>
