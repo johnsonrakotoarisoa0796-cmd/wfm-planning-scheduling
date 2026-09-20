@@ -40,7 +40,7 @@ class IntervalUpdateInput(BaseModel):
 
 
 class WeeklyDispersionInput(BaseModel):
-    """Pondérations lundi -> dimanche pour disperser un STF hebdomadaire."""
+    """Pondérations hebdomadaires + profil intraday personnalisable."""
     monday_pct: float = Field(ge=0, le=100)
     tuesday_pct: float = Field(ge=0, le=100)
     wednesday_pct: float = Field(ge=0, le=100)
@@ -48,6 +48,7 @@ class WeeklyDispersionInput(BaseModel):
     friday_pct: float = Field(ge=0, le=100)
     saturday_pct: float = Field(ge=0, le=100)
     sunday_pct: float = Field(ge=0, le=100)
+    intraday_profile_pct: list[float] = Field(min_length=33, max_length=33)
 
     @property
     def weights(self) -> list[float]:
@@ -65,6 +66,20 @@ class WeeklyDispersionInput(BaseModel):
     def total_pct(self) -> float:
         return sum(self.weights)
 
+    @property
+    def intraday_total_pct(self) -> float:
+        return sum(self.intraday_profile_pct)
+
     def validate_total(self) -> None:
         if abs(self.total_pct - 100.0) > 0.01:
-            raise ValueError(f"La somme des poids doit être égale à 100%. Actuellement : {self.total_pct:.2f}%.")
+            raise ValueError(
+                f"La somme des poids jours doit être égale à 100%. "
+                f"Actuellement : {self.total_pct:.2f}%."
+            )
+        if abs(self.intraday_total_pct - 100.0) > 0.01:
+            raise ValueError(
+                f"La somme du profil intraday doit être égale à 100%. "
+                f"Actuellement : {self.intraday_total_pct:.2f}%."
+            )
+        if any(value < 0 or value > 100 for value in self.intraday_profile_pct):
+            raise ValueError("Chaque poids intraday doit être compris entre 0% et 100%.")
