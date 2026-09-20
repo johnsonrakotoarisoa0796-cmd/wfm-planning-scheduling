@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.models.campaign import Campaign
 from app.models.campaign_workforce import CampaignWorkforcePlan
 from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
+from app.models.enums import EmployeeStatus
 from app.models.forecast import LTFForecast
 from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
@@ -114,7 +115,7 @@ def build_control_tower(
         scheduled_hc = row.scheduled_hc
         gap_basis = actual_hc if actual_hc is not None else scheduled_hc
         gap = gap_basis - row.required_hc
-        coverage = (gap_basis / row.required_hc * 100.0) if row.required_hc > 0 else 100.0
+        coverage = min(100.0, gap_basis / row.required_hc * 100.0) if row.required_hc > 0 else 100.0
         run_rate_volume = row.actual_volume
         run_rate_aht = row.actual_aht_seconds
         if gap < -0.05:
@@ -152,8 +153,9 @@ def build_control_tower(
     actual_hcs = [row.actual_hc for row in intervals if row.actual_hc is not None]
     peak_actual = max(actual_hcs) if actual_hcs else None
 
-    shortage_h = sum(max(row.required_hc - (row.actual_hc if row.actual_hc is not None else row.scheduled_hc), 0.0) for row in intervals) * 0.5
-    surplus_h = sum(max((row.actual_hc if row.actual_hc is not None else row.scheduled_hc) - row.required_hc, 0.0) for row in intervals) * 0.5
+    interval_hours = intraday_service.INTERVAL_MINUTES / 60.0
+    shortage_h = sum(max(row.required_hc - (row.actual_hc if row.actual_hc is not None else row.scheduled_hc), 0.0) for row in intervals) * interval_hours
+    surplus_h = sum(max((row.actual_hc if row.actual_hc is not None else row.scheduled_hc) - row.required_hc, 0.0) for row in intervals) * interval_hours
     overtime_h = overtime_service.compute_overtime_report(
         session,
         start_date=target_date,
@@ -226,7 +228,7 @@ def build_week_board(session: Session, *, week_start: date, campaign_id: int, sk
     rows = []
     for employee in employees:
         days = []
-        for offset in range(5):
+        for offset in range(7):
             day = week_start + timedelta(days=offset)
             entry = session.exec(
                 select(__import__("app.models.schedule", fromlist=["ScheduleEntry"]).ScheduleEntry).where(
