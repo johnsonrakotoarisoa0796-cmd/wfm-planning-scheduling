@@ -15,8 +15,8 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Forecast Volume</td><td class="numeric">{{ "{:,.0f}".format(ltf.forecast_volume).replace(",", " ") }} contacts</td></tr>
-                <tr><td>Handling Time / AHT Forecast</td><td class="numeric">{{ "%.0f"|format(ltf.forecast_aht_seconds) }} s</td></tr>
-                <tr><td>Handling Time cible / AHT Required</td><td class="numeric">{{ "%.0f"|format(ltf.aht_required_seconds) }} s</td></tr>
+                <tr><td>Handling Time (AHT) par contact</td><td class="numeric">{{ "%.0f"|format(ltf.forecast_aht_seconds) }} s</td></tr>
+                <tr><td>AHT cible par contact</td><td class="numeric">{{ "%.0f"|format(ltf.aht_required_seconds) }} s</td></tr>
             </tbody>
         </table>
     </div>
