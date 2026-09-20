@@ -6,8 +6,8 @@
     <section class="auth-brand" aria-labelledby="auth-title">
         <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
         <div class="auth-brand__pitch">
-            <h1 id="auth-title">Vérification en deux étapes.</h1>
-            <p>Ouvrez votre application d’authentification et saisissez le code à 6 chiffres généré pour ce compte.</p>
+            <h1 id="auth-title">{{ "Sécurité renforcée administrateur." if is_admin else "Vérification en deux étapes." }}</h1>
+            <p>{% if is_admin %}Pour un administrateur, la connexion nécessite le code TOTP de l'authenticator et les deux mots-clés secrets définis par l'administrateur.{% else %}Ouvrez votre application d’authentification et saisissez le code à 6 chiffres généré pour ce compte.{% endif %}</p>
             {% include "partials/interval_strip.html" %}
         </div>
         <div></div>
@@ -15,17 +15,27 @@
     <section class="auth-form-pane">
         <div>
             <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
-            <form class="auth-form" method="post" action="/login/verify">
-                <h2>Code de vérification</h2>
-                <p class="subtitle">Valide 30 secondes, renouvelé automatiquement.</p>
+            <form class="auth-form" method="post" action="{{ '/login/admin-security' if is_admin else '/login/verify' }}">
+                <h2>{{ "Validation administrateur" if is_admin else "Code de vérification" }}</h2>
+                <p class="subtitle">{{ email or "" }}</p>
                 {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="field">
-                    <label for="code">Code à 6 chiffres</label>
+                    <label for="code">Code TOTP à 6 chiffres</label>
                     <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
                 </div>
-                <button type="submit" class="btn-primary">Valider</button>
-                <p class="auth-form__footer">Session de connexion valide 5 minutes.</p>
+                {% if is_admin %}
+                <div class="field">
+                    <label for="keyword1">Mot-clé 1</label>
+                    <input type="password" id="keyword1" name="keyword1" autocomplete="off" required>
+                </div>
+                <div class="field">
+                    <label for="keyword2">Mot-clé 2</label>
+                    <input type="password" id="keyword2" name="keyword2" autocomplete="off" required>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn-primary">Valider et accéder</button>
+                <p class="auth-form__footer">{% if is_admin %}Les deux mots-clés sont secrets et ne sont jamais affichés dans l’application.{% else %}Le code TOTP est valable environ 30 secondes.{% endif %}</p>
             </form>
         </div>
     </section>
