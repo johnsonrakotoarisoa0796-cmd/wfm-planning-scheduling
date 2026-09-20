@@ -312,6 +312,31 @@ def validate_rest_between(
     return None
 
 
+def _entry_on_break(entry: ScheduleEntry, interval_start: time, interval_end: time) -> bool:
+    start_min = interval_start.hour * 60 + interval_start.minute
+    end_min = interval_end.hour * 60 + interval_end.minute
+    if end_min <= start_min:
+        end_min += 24 * 60
+
+    def overlaps(period_start: Optional[time], period_end: Optional[time]) -> bool:
+        if period_start is None or period_end is None:
+            return False
+        ps = period_start.hour * 60 + period_start.minute
+        pe = period_end.hour * 60 + period_end.minute
+        if pe <= ps:
+            pe += 24 * 60
+        return ps < end_min and start_min < pe
+
+    return any(
+        overlaps(start, end)
+        for start, end in (
+            (entry.break_start, entry.break_end),
+            (entry.break2_start, entry.break2_end),
+            (entry.lunch_start, entry.lunch_end),
+        )
+    )
+
+
 def _coverage(
     session: Session,
     *,
@@ -353,10 +378,11 @@ def _coverage(
                 if entry.date == day
                 and entry.shift_id in shifts
                 and _shift_covers_interval(shifts[entry.shift_id], row.interval_start)
+                and not _entry_on_break(entry, row.interval_start, row.interval_end)
             )
             required = max(row.required_hc, 0.0)
             covered = min(required, float(scheduled))
-            hours = intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
+            hours = intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
             required_h += required * hours
             covered_h += covered * hours
             shortage_h += max(required - scheduled, 0.0) * hours
@@ -409,7 +435,10 @@ def evaluate_week(
             shift = shifts.get(row.shift_id)
             if shift is None:
                 continue
-            hours = workforce_service.shift_hours(shift).paid_hours
+            hours = workforce_service.shift_hours(
+                shift,
+                contract_daily_hours=workforce_service.daily_contract_hours(employee),
+            ).paid_hours
             total_hours += hours
             if hours > policy.max_daily_hours + 1e-6:
                 violations.append(ComplianceViolation(
