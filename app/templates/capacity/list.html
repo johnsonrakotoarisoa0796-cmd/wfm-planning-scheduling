@@ -14,7 +14,7 @@
 <form class="filter-bar" method="get" action="/capacity">
     <div class="field">
         <label for="campaign_id">Campagne</label>
-        <select id="campaign_id" name="campaign_id">
+        <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
             <option value="">Toutes</option>
             {% for c in campaigns %}
             <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
