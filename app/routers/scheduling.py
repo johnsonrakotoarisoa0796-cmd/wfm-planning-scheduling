@@ -415,7 +415,7 @@ def _render_schedule_generator(
     entries = []
     compliance_report = None
     if campaign_id is not None and skill_id is not None:
-        for offset in range(5):
+        for offset in range(7):
             entries.extend(
                 scheduling_service.list_schedule_entries(
                     session,
@@ -435,7 +435,7 @@ def _render_schedule_generator(
             compliance_report = None
 
     shifts_by_id = {shift.id: shift for shift in scheduling_service.list_shifts(session, active_only=False)}
-    week_days = [week_start + timedelta(days=i) for i in range(5)]
+    week_days = [week_start + timedelta(days=i) for i in range(7)]
     week_rows = []
 
     for employee in employees:
