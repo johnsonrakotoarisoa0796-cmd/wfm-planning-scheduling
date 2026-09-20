@@ -281,3 +281,63 @@ def link_user_to_employee(
     session.add(user)
     session.commit()
     return RedirectResponse("/settings", status_code=303)
+
+
+@router.post("/users/{user_id}", dependencies=[Depends(verify_csrf)])
+def manage_user(
+    user_id: int,
+    action: str = Form(...),
+    role: str = Form("viewer"),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    session: Session = Depends(get_session),
+):
+    user = session.get(User, user_id)
+    if user is None:
+        return RedirectResponse("/settings?error=Utilisateur+introuvable", status_code=303)
+
+    error = None
+
+    if action == "activate":
+        user.is_active = True
+    elif action == "deactivate":
+        if user.id == current_user.id:
+            error = "Vous ne pouvez pas désactiver votre propre compte admin."
+        elif user.role == UserRole.ADMIN:
+            active_admins = session.exec(
+                select(User).where(User.role == UserRole.ADMIN, User.is_active == True)  # noqa: E712
+            ).all()
+            if len(active_admins) <= 1:
+                error = "Impossible de désactiver le dernier administrateur actif."
+            else:
+                user.is_active = False
+        else:
+            user.is_active = False
+    elif action == "role":
+        try:
+            new_role = UserRole(role)
+        except ValueError:
+            error = "Rôle utilisateur invalide."
+        else:
+            if user.id == current_user.id and new_role != UserRole.ADMIN:
+                error = "Vous ne pouvez pas retirer votre propre rôle admin."
+            elif user.role == UserRole.ADMIN and new_role != UserRole.ADMIN:
+                active_admins = session.exec(
+                    select(User).where(User.role == UserRole.ADMIN, User.is_active == True)  # noqa: E712
+                ).all()
+                if len(active_admins) <= 1:
+                    error = "Impossible de retirer le dernier administrateur actif."
+                else:
+                    user.role = new_role
+            else:
+                user.role = new_role
+    elif action == "reset_2fa":
+        user.totp_secret = None
+    else:
+        error = "Action utilisateur inconnue."
+
+    if error:
+        return RedirectResponse(f"/settings?error={error.replace(' ', '+')}", status_code=303)
+
+    session.add(user)
+    session.commit()
+    return RedirectResponse("/settings", status_code=303)
