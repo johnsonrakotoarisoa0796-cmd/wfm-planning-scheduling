@@ -6,8 +6,8 @@
 </div>
 <form class="filter-bar" method="get" action="/control-tower">
   <div class="field field--compact"><label>JOUR</label><input type="date" name="target_date" value="{{ filters.target_date }}"></div>
-  <div class="field"><label>CAMPAGNE</label><select name="campaign_id"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-  <div class="field"><label>SKILL</label><select name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }} · {{ s.campaign_id }}</option>{% endfor %}</select></div>
+  <div class="field"><label>CAMPAGNE</label><select name="campaign_id" data-skill-filter="#control_tower_skill"><option value="">Choisir...</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label>SKILL</label><select id="control_tower_skill" name="skill_id"><option value="">Choisir...</option>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
   <button type="submit">Actualiser</button>
 </form>
 {% if not data %}
