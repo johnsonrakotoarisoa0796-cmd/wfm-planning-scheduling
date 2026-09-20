@@ -52,8 +52,8 @@ def list_capacity(
             "plan": p,
             "campaign_name": campaigns_by_id[p.campaign_id].name if p.campaign_id in campaigns_by_id else "?",
             "skill_name": skills_by_id[p.skill_id].name if p.skill_id in skills_by_id else "?",
-            "gap": kpi_service.staffing_gap(p.projected_hc, p.required_hc),
-            "status": kpi_service.staffing_status(kpi_service.staffing_gap(p.projected_hc, p.required_hc)).value,
+            "gap": kpi_service.staffing_gap(p.projected_available_hc, p.required_hc),
+            "status": kpi_service.staffing_status(kpi_service.staffing_gap(p.projected_available_hc, p.required_hc)).value,
         }
         for p in plans
     ]
@@ -154,7 +154,7 @@ def view_capacity(
     skill = session.get(Skill, plan.skill_id)
 
     current_gap = kpi_service.staffing_gap(plan.current_hc, plan.required_hc)
-    projected_gap = kpi_service.staffing_gap(plan.projected_hc, plan.required_hc)
+    projected_gap = kpi_service.staffing_gap(plan.projected_available_hc, plan.required_hc)
 
     return templates.TemplateResponse(
         request,
@@ -169,5 +169,6 @@ def view_capacity(
             "current_status": kpi_service.staffing_status(current_gap).value,
             "projected_gap": projected_gap,
             "projected_status": kpi_service.staffing_status(projected_gap).value,
+            "projected_available_hc": plan.projected_available_hc,
         },
     )
