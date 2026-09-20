@@ -23,7 +23,7 @@ from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.scheduling import EmployeeAbsenceInput, ScheduleEntryInput, ShiftInput
-from app.services import client_stf_service, planner_service, scheduling_service, intraday_service, auto_scheduler_service
+from app.services import client_stf_service, compliance_service, planner_service, scheduling_service, intraday_service, auto_scheduler_service
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -413,6 +413,7 @@ def _render_schedule_generator(
         period = f"{week_start.isocalendar().year}-W{week_start.isocalendar().week:02d}"
 
     entries = []
+    compliance_report = None
     if campaign_id is not None and skill_id is not None:
         for offset in range(5):
             entries.extend(
@@ -423,6 +424,15 @@ def _render_schedule_generator(
                     skill_id=skill_id,
                 )
             )
+        try:
+            compliance_report = compliance_service.evaluate_week(
+                session,
+                week_start_date=week_start,
+                campaign_id=campaign_id,
+                skill_id=skill_id,
+            )
+        except ValueError:
+            compliance_report = None
 
     shifts_by_id = {shift.id: shift for shift in scheduling_service.list_shifts(session, active_only=False)}
     week_days = [week_start + timedelta(days=i) for i in range(5)]
@@ -456,6 +466,7 @@ def _render_schedule_generator(
             "errors": errors,
             "can_edit": current_user.role in WRITE_ROLES,
             "has_schedule": bool(entries),
+            "compliance_report": compliance_report,
         },
         status_code=status_code,
     )
