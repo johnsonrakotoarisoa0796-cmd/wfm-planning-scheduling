@@ -58,7 +58,7 @@ def _render_admin_setup(request: Request, user: User, *, error: str | None = Non
     uri = totp_provisioning_uri(user.totp_secret, user.email)
     qr = qrcode.make(uri)
     buffer = BytesIO()
-    qr.save(buffer, format="PNG")
+    qr.save(buffer)
     qr_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     return templates.TemplateResponse(
@@ -150,7 +150,7 @@ def setup_2fa_form(request: Request, session: Session = Depends(get_session)):
     uri = totp_provisioning_uri(user.totp_secret, user.email)
     qr = qrcode.make(uri)
     buffer = BytesIO()
-    qr.save(buffer, format="PNG")
+    qr.save(buffer)
     qr_data = base64.b64encode(buffer.getvalue()).decode("ascii")
 
     return templates.TemplateResponse(
