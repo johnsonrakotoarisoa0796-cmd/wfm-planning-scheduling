@@ -224,16 +224,31 @@ def projected_headcount(
     transfers_in: float,
     transfers_out: float,
     attrition_pct: float,
+) -> float:
+    """Effectif projeté en fin de période.
+
+    L'attrition réduit réellement le headcount. L'absentéisme ne réduit
+    jamais le headcount : il réduit la disponibilité opérationnelle et doit
+    être traité séparément.
+    """
+    if current_hc < 0 or hiring < 0 or transfers_in < 0 or transfers_out < 0:
+        raise ValueError("Les effectifs et mouvements doivent être >= 0.")
+    if not 0 <= attrition_pct <= 100:
+        raise ValueError("attrition_pct doit être compris entre 0 et 100%.")
+    attrition_hc = min(current_hc, current_hc * attrition_pct / 100.0)
+    return max(0.0, current_hc + hiring + transfers_in - transfers_out - attrition_hc)
+
+
+def projected_available_headcount(
+    projected_hc: float,
     absenteeism_pct: float,
 ) -> float:
-    """Future HC = Current HC + Hiring + Transfers In - Transfers Out
-    - Attrition - Absenteeism (§31).
-
-    attrition_pct et absenteeism_pct sont des taux (%) appliqués au Current
-    HC (perte attendue sur l'effectif actuel), pas des valeurs absolues.
-    """
-    losses = current_hc * (attrition_pct / 100) + current_hc * (absenteeism_pct / 100)
-    return current_hc + hiring + transfers_in - transfers_out - losses
+    """HC projeté réellement disponible après absentéisme prévu."""
+    if projected_hc < 0:
+        raise ValueError("projected_hc doit être >= 0.")
+    if not 0 <= absenteeism_pct <= 100:
+        raise ValueError("absenteeism_pct doit être compris entre 0 et 100%.")
+    return max(0.0, projected_hc * (1.0 - absenteeism_pct / 100.0))
 
 
 def staffing_status(gap: float, balanced_tolerance_hc: float = 0.5) -> StaffingStatus:
