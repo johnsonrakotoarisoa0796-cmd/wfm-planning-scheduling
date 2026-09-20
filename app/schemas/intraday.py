@@ -49,6 +49,11 @@ class WeeklyDispersionInput(BaseModel):
     saturday_pct: float = Field(ge=0, le=100)
     sunday_pct: float = Field(ge=0, le=100)
     intraday_profile_pct: list[float] = Field(min_length=33, max_length=33)
+    handling_time_seconds: float = Field(gt=0)
+    absence_rate_pct: float = Field(ge=0, le=100)
+    leave_rate_pct: float = Field(ge=0, le=100)
+    break_15m_pct: list[float] = Field(min_length=33, max_length=33)
+    lunch_break_pct: list[float] = Field(min_length=33, max_length=33)
 
     @property
     def weights(self) -> list[float]:
@@ -83,3 +88,9 @@ class WeeklyDispersionInput(BaseModel):
             )
         if any(value < 0 or value > 100 for value in self.intraday_profile_pct):
             raise ValueError("Chaque poids intraday doit être compris entre 0% et 100%.")
+        if len(self.break_15m_pct) != 33 or len(self.lunch_break_pct) != 33:
+            raise ValueError("Les profils de pauses doivent contenir 33 tranches.")
+        if any(value < 0 or value > 100 for value in self.break_15m_pct + self.lunch_break_pct):
+            raise ValueError("Chaque taux de pause doit être compris entre 0% et 100%.")
+        if self.absence_rate_pct + self.leave_rate_pct >= 100:
+            raise ValueError("Absentéisme + congés doivent rester inférieurs à 100%.")
