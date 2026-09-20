@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Configurer la validation — WFM Planning & Scheduling{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
+{% block content %}
+<div class="auth-shell">
+    <section class="auth-brand" aria-labelledby="auth-title">
+        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+        <div class="auth-brand__pitch">
+            <h1 id="auth-title">Configurez votre validation en deux étapes.</h1>
+            <p>Cette étape est faite par vous. Scannez le QR code avec Google Authenticator, Microsoft Authenticator, Authy ou une application compatible TOTP.</p>
+            {% include "partials/interval_strip.html" %}
+        </div>
+        <div></div>
+    </section>
+    <section class="auth-form-pane">
+        <div>
+            <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
+            <div class="auth-form">
+                <h2>Activer votre authenticator</h2>
+                <p class="subtitle">{{ email }}</p>
+                {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+                <div style="display:flex;justify-content:center;margin:18px 0 14px">
+                    <img src="data:image/png;base64,{{ qr_data }}" alt="QR code de configuration TOTP" width="220" height="220" style="border-radius:12px;background:#fff;padding:10px">
+                </div>
+                <div class="field">
+                    <label>Clé manuelle</label>
+                    <input value="{{ manual_secret }}" readonly class="totp-code-input" style="font-size:16px !important;letter-spacing:.08em">
+                    <small class="field__hint">Utilisez-la uniquement si le scan QR n’est pas possible.</small>
+                </div>
+                <form class="auth-form" method="post" action="/login/setup-2fa">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="field">
+                        <label for="code">Code généré par l’application</label>
+                        <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+                    </div>
+                    <button type="submit" class="btn-primary">Valider mon authenticator</button>
+                </form>
+                <p class="auth-form__footer">Une fois validé, vous utiliserez ce code à chaque connexion.</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
