@@ -240,6 +240,7 @@ def build_intraday_forecast_rows(
                 interval_seconds=INTERVAL_SECONDS,
                 occupancy_target_pct=data.occupancy_target_pct,
                 channel=channel,
+                concurrency_factor=skill.concurrency_factor,
             )
 
         base_gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
@@ -398,6 +399,7 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
                 interval.actual_volume,
                 interval.actual_aht_seconds,
                 interval.channel,
+                concurrency_factor=skill.concurrency_factor,
             )
             capacity_hours = agents * (INTERVAL_SECONDS / 3600.0)
             interval.occupancy_pct = (
