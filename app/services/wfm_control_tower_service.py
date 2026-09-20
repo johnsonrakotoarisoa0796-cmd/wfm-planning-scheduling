@@ -228,7 +228,7 @@ def build_week_board(session: Session, *, week_start: date, campaign_id: int, sk
         session.exec(
             select(Employee)
             .where(Employee.campaign_id == campaign_id)
-            .where(Employee.status == "active")
+            .where(Employee.status == EmployeeStatus.ACTIVE)
             .order_by(Employee.last_name, Employee.first_name)
         ).all()
     )
