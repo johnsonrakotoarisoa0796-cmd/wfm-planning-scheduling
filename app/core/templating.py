@@ -66,7 +66,25 @@ def _timezone_options() -> list[str]:
     return ordered
 
 
+def _month_options() -> list[dict]:
+    """Mois de planification autour du mois courant."""
+    today = date.today()
+    options = []
+    for offset in range(-12, 37):
+        month_index = today.year * 12 + (today.month - 1) + offset
+        year = month_index // 12
+        month = month_index % 12 + 1
+        options.append(
+            {
+                "value": f"{year:04d}-{month:02d}",
+                "label": f"{month:02d}/{year}",
+            }
+        )
+    return options
+
+
 _WEEK_OPTIONS = _week_options()
+_MONTH_OPTIONS = _month_options()
 _TIMEZONE_OPTIONS = _timezone_options()
 
 
@@ -80,6 +98,7 @@ def _global_context(request: Request) -> dict:
         # automatiquement le cache navigateur des assets statiques après chaque release.
         "asset_version": os.environ.get("RENDER_GIT_COMMIT", "dev"),
         "week_options": _WEEK_OPTIONS,
+        "month_options": _MONTH_OPTIONS,
         "timezone_options": _TIMEZONE_OPTIONS,
         "current_week": current_week,
     }
