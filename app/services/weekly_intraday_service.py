@@ -11,7 +11,7 @@ from app.models.market import Market
 from app.models.skill import Skill
 from app.models.intraday import IntervalForecast
 from app.schemas.intraday import GenerateIntradayInput, WeeklyDispersionInput
-from app.services.intraday_service import build_intraday_forecast_rows
+from app.services.intraday_service import build_intraday_forecast_rows, intraday_window_profile_to_48
 from app.services.weekly_parameter_service import get_weekly_parameters
 
 settings = get_settings()
@@ -81,7 +81,7 @@ def disperse_week(
             occupancy_target_pct=occupancy_pct,
             shrinkage_pct=shrinkage_pct,
         )
-        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False))
+        rows.extend(build_intraday_forecast_rows(session, data, check_existing=False, profile_pct_48=profile_48))
 
     session.add_all(rows)
     session.commit()
@@ -168,6 +168,7 @@ def disperse_stf_with_weights(
         )
 
     timezone_name = _timezone_for_skill(session, stf.skill_id)
+    profile_48 = intraday_window_profile_to_48(dispersion.intraday_profile_pct)
     rows: list[IntervalForecast] = []
     for day, weight in zip(expected_dates, dispersion.weights):
         daily_volume = stf.volume * (weight / 100.0)
