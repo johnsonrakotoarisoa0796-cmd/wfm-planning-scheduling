@@ -19,8 +19,8 @@
             <div class="form-grid">
                 <div class="field">
                     <label for="period">Semaine ISO</label>
-                    <input type="week" id="period" name="period" value="{{ values.period or '' }}" required>
-                    <div class="field__hint">Le LTF alimente ensuite le STF, puis la dispersion quotidienne et intraday.</div>
+                    <input type="text" id="period" name="period" value="{{ values.period or '' }}" placeholder="2026-W41" pattern="[0-9]{4}-W[0-9]{1,2}|W[0-9]{1,2}|[0-9]{1,2}" autocomplete="off" required>
+                    <div class="field__hint">Format recommandé : YYYY-Www (ex. 2026-W41). Le numéro de semaine seul (41) est aussi accepté et utilise l’année ISO courante.</div>
                 </div>
                 <div class="field">
                     <label for="campaign_id">Campagne</label>
