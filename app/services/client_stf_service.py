@@ -335,6 +335,7 @@ def create_plan(
                             interval_seconds=interval_seconds,
                             occupancy_target_pct=parameters.occupancy_pct,
                             channel=skill.channel,
+                            concurrency_factor=skill.concurrency_factor,
                         )
                     required_hc = apply_shrinkage(net_required_hc, parameters.shrinkage_pct)
                 else:
