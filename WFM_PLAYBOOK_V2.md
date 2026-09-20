@@ -50,7 +50,7 @@ Elle répond à quatre questions : combien faut-il, combien est planifié, combi
 
 ## 5. Publication du planning
 
-Avant publication : générer → Schedule Board → absences → pauses → Control Tower → exceptions / OT → publication.
+Pour une semaine 7/7 : générer → Schedule Board → absences → pauses → Control Tower → exceptions / OT → publication.
 
 ## 6. V2 et évolutions
 
@@ -60,7 +60,6 @@ La plateforme est structurée pour recevoir forecasting multi-modèles, intégra
 
 Une recommandation du moteur n'est pas une décision. La publication reste une action WFM explicite.
 
-> Vérification technique : la branche principale est validée par la suite pytest du repository avant publication des évolutions.
 
 
 ## 9. Compliance & Weekly Coverage
@@ -110,7 +109,7 @@ La somme doit être exactement **100%**. Pour un STF de 53 200 contacts :
 - samedi = 53 200 × 13% = 6 916
 - dimanche = 53 200 × 13% = 6 916
 
-Le système génère ensuite **7 journées × 48 intervalles de 30 minutes = 336 intervalles**, puis calcule le HC requis par intervalle avec les hypothèses STF (AHT, SL, occupancy, shrinkage et fuseau du marché).
+Le système génère ensuite **7 journées × 33 intervalles actifs de 30 minutes = 231 intervalles**, puis calcule le HC requis par intervalle avec les hypothèses STF (AHT, SL, occupancy, shrinkage et fuseau du marché).
 
 ### Profil intraday journalier par défaut
 
@@ -177,3 +176,14 @@ Pour les actuals, le Handle Time total est composé de **Talk Time + Hold Time +
 Pour la planification :
 
 **Workload (heures) = Volume × AHT / 3600.**
+
+
+### Cohérence des heures WFM
+
+Le moteur distingue désormais :
+- **Heures de traitement des contacts** = Volume × AHT / 3600.
+- **Charge agent** = heures de traitement / simultanéité du canal (pour Email/Chat).
+- **Paid Hours** = heures contractuelles nécessaires pour couvrir la charge agent à l'occupancy cible et après shrinkage.
+- **Idle / Buffer Hours** = capacité productive non consommée par la charge agent.
+
+Ainsi, pour Email/Chat, il est normal que les heures de traitement des contacts soient supérieures aux Paid Hours : les contacts peuvent être traités simultanément. Pour Phone, la simultanéité vaut 1 et la charge de contact doit rester inférieure ou égale aux heures productives planifiées lorsque l'occupancy cible est strictement inférieure à 100%.
