@@ -43,15 +43,15 @@
         </fieldset>
 
         <fieldset>
-            <legend>Volume &amp; AHT réajustés</legend>
+            <legend>Volume &amp; Handling Time réajustés</legend>
             <div class="form-grid">
                 <div class="field">
                     <label for="volume">Volume réajusté (contacts)</label>
                     <input type="number" id="volume" name="volume" min="0" step="1" value="{{ values.volume or '' }}" required>
                 </div>
                 <div class="field">
-                    <label for="aht_seconds">AHT réajusté (secondes)</label>
-                    <input type="number" id="aht_seconds" name="aht_seconds" min="1" step="1" value="{{ values.aht_seconds or '' }}" required>
+                    <label for="handling_time_seconds">Handling Time / AHT réajusté (secondes)</label>
+                    <input type="number" id="handling_time_seconds" name="handling_time_seconds" min="1" step="1" value="{{ values.handling_time_seconds or values.aht_seconds or '' }}" required>
                 </div>
             </div>
         </fieldset>
