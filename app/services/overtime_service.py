@@ -53,13 +53,16 @@ class OvertimeReport:
 
 
 def _hours_from_intervals(intervals: list[IntervalForecast]) -> tuple[float, float]:
-    """(Required Hours, Available Hours) en agent-heures, à partir
-    d'intervalles de 30 min : somme(required_hc x 0.5h), somme(scheduled_hc x 0.5h)."""
-    required = sum(i.required_hc for i in intervals) * _INTERVAL_DURATION_HOURS
-    available = sum(i.scheduled_hc for i in intervals) * _INTERVAL_DURATION_HOURS
+    """Required et Available en agent-heures avec la durée réelle de chaque intervalle."""
+    required = sum(
+        max(i.required_hc, 0.0) * interval_duration_hours(i.interval_start, i.interval_end)
+        for i in intervals
+    )
+    available = sum(
+        max(i.scheduled_hc, 0.0) * interval_duration_hours(i.interval_start, i.interval_end)
+        for i in intervals
+    )
     return required, available
-
-
 def compute_overtime_report(
     session: Session, *, start_date: date, end_date: date, campaign_id: int, skill_id: int
 ) -> OvertimeReport:
