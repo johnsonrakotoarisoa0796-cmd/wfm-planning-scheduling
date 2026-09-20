@@ -140,7 +140,6 @@ def create_ltf_forecast(session: Session, data: LTFCreateInput, created_by_user_
             agent_workload_hours_value,
             available_hours_per_agent,
             data.occupancy_required_pct,
-            skill.channel,
         )
         gross_required_hc = apply_shrinkage(net_required_hc, total_shrinkage_pct)
         paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
@@ -387,14 +386,13 @@ def create_stf_forecast(session: Session, data: STFCreateInput, created_by_user_
         agent_workload_hours_value,
         available_hours_per_agent,
         data.occupancy_pct,
-        skill.channel,
     )
     gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
 
     paid_hours_value = kpi_service.paid_hours(gross_required_hc, settings.daily_hours, working_days)
     total_shrinkage_hours = paid_hours_value * (data.shrinkage_pct / 100)
     productive_hours_value = kpi_service.productive_hours(paid_hours_value, total_shrinkage_hours)
-    waiting_hours = max(productive_hours_value - workload, 0.0)
+    waiting_hours = max(productive_hours_value - agent_workload_hours_value, 0.0)
     production_hours_value = kpi_service.production_hours(productive_hours_value, waiting_hours)
 
     week_end_date = date.fromisocalendar(data.iso_year, data.iso_week, 7)
