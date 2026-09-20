@@ -28,9 +28,7 @@ from app.models.intraday import IntervalForecast
 from app.models.overtime import OvertimePlan
 from app.schemas.overtime import OvertimeActualInput, OvertimePlanInput
 from app.services import client_stf_service, kpi_service
-from app.services.intraday_service import INTERVAL_MINUTES
-
-_INTERVAL_DURATION_HOURS = INTERVAL_MINUTES / 60  # 0.5
+from app.services.intraday_service import interval_duration_hours
 
 
 @dataclass(frozen=True)
