@@ -21,5 +21,6 @@ class CapacityPlan(SQLModel, table=True):
     attrition_pct: float = Field(default=0)
     absenteeism_pct: float = Field(default=0)
     projected_hc: float = Field(default=0)
+    projected_available_hc: float = Field(default=0)
     notes: Optional[str] = Field(default=None)
     created_by: Optional[int] = Field(default=None, foreign_key="users.id")
