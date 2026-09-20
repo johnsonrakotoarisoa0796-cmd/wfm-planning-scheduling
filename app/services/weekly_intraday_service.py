@@ -11,7 +11,7 @@ from app.models.market import Market
 from app.models.skill import Skill
 from app.models.intraday import IntervalForecast
 from app.schemas.intraday import GenerateIntradayInput, WeeklyDispersionInput
-from app.services.intraday_service import build_intraday_forecast_rows, intraday_window_profile_to_48
+from app.services.intraday_service import build_intraday_forecast_rows, intraday_window_profile_to_48, intraday_window_rate_profile_to_48
 from app.services.weekly_parameter_service import get_weekly_parameters
 
 settings = get_settings()
@@ -216,8 +216,8 @@ def disperse_stf_with_weights(
                 profile_pct_48=profile_48,
                 absence_rate_pct=dispersion.absence_rate_pct,
                 leave_rate_pct=dispersion.leave_rate_pct,
-                break_15m_pct_48=intraday_window_profile_to_48(dispersion.break_15m_pct),
-                lunch_break_pct_48=intraday_window_profile_to_48(dispersion.lunch_break_pct),
+                break_15m_pct_48=intraday_window_rate_profile_to_48(dispersion.break_15m_pct),
+                lunch_break_pct_48=intraday_window_rate_profile_to_48(dispersion.lunch_break_pct),
             )
         )
 
