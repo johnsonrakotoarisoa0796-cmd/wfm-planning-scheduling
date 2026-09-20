@@ -42,7 +42,8 @@ class ScheduleGenerationResult:
 
 
 def _weekdays(week_start_date: date) -> list[date]:
-    return [week_start_date + timedelta(days=i) for i in range(5)]
+    """Les forecasts intraday couvrent les 7 jours calendaires de la semaine."""
+    return [week_start_date + timedelta(days=i) for i in range(7)]
 
 
 def _eligible_employees(session: Session, *, campaign_id: int, skill_id: int, week_start_date: date) -> list[Employee]:
