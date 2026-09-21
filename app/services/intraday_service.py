@@ -138,7 +138,13 @@ def default_intraday_profile_pct() -> list[float]:
 
 
 def interval_duration_hours(interval_start: time, interval_end: time) -> float:
-    """Durée réelle d'un intervalle, y compris les intervalles qui passent minuit."""
+    """Durée logique d'un intervalle.
+
+    Les tranches WFM sont des fenêtres de 30 minutes. Le dernier créneau
+    23:30-24:00 est représenté techniquement comme 23:30-23:59:59 car
+    datetime.time ne permet pas 24:00. Il doit néanmoins rester exactement
+    égal à 0,5 heure dans tous les agrégats.
+    """
     start_seconds = (
         interval_start.hour * 3600
         + interval_start.minute * 60
@@ -149,6 +155,14 @@ def interval_duration_hours(interval_start: time, interval_end: time) -> float:
         + interval_end.minute * 60
         + interval_end.second
     )
+    if (
+        interval_start.hour == 23
+        and interval_start.minute == 30
+        and interval_end.hour == 23
+        and interval_end.minute == 59
+        and interval_end.second == 59
+    ):
+        return INTERVAL_MINUTES / 60.0
     if end_seconds <= start_seconds:
         end_seconds += 24 * 3600
     return max(0.0, (end_seconds - start_seconds) / 3600.0)
@@ -395,6 +409,9 @@ def update_interval(session: Session, *, interval_id: int, data: IntervalUpdateI
                 asa_estimate if (asa_estimate is not None and math.isfinite(asa_estimate)) else None
             )
         else:
+            skill = session.get(Skill, interval.skill_id)
+            if skill is None:
+                raise ValueError("Skill introuvable.")
             workload_hours = channel_service.normalized_workload_hours(
                 interval.actual_volume,
                 interval.actual_aht_seconds,
