@@ -1987,3 +1987,7 @@ table.data-table {
 .capacity-actions { margin-top: 14px; }
 
 .capacity-detail-card { margin-top: 16px; }
+
+.ltf-version-alert { margin: 16px 0; width: 100%; box-sizing: border-box; }
+.ltf-detail-note { margin-top: 8px; }
+.ltf-detail-note--sm { margin-top: 10px; }
