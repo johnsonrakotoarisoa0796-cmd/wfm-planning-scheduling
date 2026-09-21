@@ -27,15 +27,33 @@
                 </div>
                 <div class="field">
                     <label for="password">Mot de passe</label>
-                    <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" required>
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" required>
+                        <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Afficher le mot de passe" aria-pressed="false">Afficher</button>
+                    </div>
                 </div>
                 <div class="field">
                     <label for="password_confirm">Confirmer le mot de passe</label>
-                    <input type="password" id="password_confirm" name="password_confirm" minlength="8" autocomplete="new-password" required>
+                    <div class="password-field">
+                        <input type="password" id="password_confirm" name="password_confirm" minlength="8" autocomplete="new-password" required>
+                        <button type="button" class="password-toggle" data-password-toggle="password_confirm" aria-label="Afficher la confirmation" aria-pressed="false">Afficher</button>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary">Demander un accès</button>
                 <p class="auth-form__footer">Déjà un compte ? <a href="/login">Se connecter</a></p>
             </form>
+            <script>
+            (() => {
+              document.querySelectorAll("[data-password-toggle]").forEach((button) => button.addEventListener("click", () => {
+                const input = document.getElementById(button.dataset.passwordToggle);
+                if (!input) return;
+                const visible = input.type === "text";
+                input.type = visible ? "password" : "text";
+                button.textContent = visible ? "Afficher" : "Masquer";
+                button.setAttribute("aria-pressed", String(!visible));
+              }));
+            })();
+            </script>
         </div>
     </section>
 </div>
