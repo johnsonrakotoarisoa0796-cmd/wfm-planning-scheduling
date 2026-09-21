@@ -50,4 +50,4 @@ def test_email_otp_rejects_invalid_code(monkeypatch):
 
     session = FakeSession()
     otp_service.issue_email_otp(session, user, force=True)
-    assert otp_service.verify_email_otp(session, "000000") is False
+    assert otp_service.verify_email_otp(session, user, "000000") is False
