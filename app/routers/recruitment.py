@@ -42,7 +42,14 @@ def recruitment_page(
         weeks = list_ramp_weeks(session, plan.id)
         rows.append({
             "plan": plan,
-            "weeks": project_ramp(plan, weeks),
+            "weeks": project_ramp(
+                plan,
+                weeks,
+                concurrency_factor=(
+                    float(skills_by_id[plan.skill_id].concurrency_factor)
+                    if plan.skill_id in skills_by_id else 1.0
+                ),
+            ),
             "progress": progress_snapshot(plan),
             "campaign": campaigns_by_id.get(plan.campaign_id),
             "skill": skills_by_id.get(plan.skill_id),
