@@ -90,7 +90,9 @@ def understaffed_day(engine, reference_data):
 def _make_user(engine, email: str, role: UserRole) -> dict:
     secret = pyotp.random_base32()
     with Session(engine) as session:
-        user = User(email=email, hashed_password=hash_password(TEST_PASSWORD), role=role, is_active=True, totp_secret=secret)
+        user = User(email=email, hashed_password=hash_password(TEST_PASSWORD), role=role, is_active=True, totp_secret=secret,
+            admin_keyword1_hash=hash_password("admin-key-one") if role == UserRole.ADMIN else None,
+            admin_keyword2_hash=hash_password("admin-key-two") if role == UserRole.ADMIN else None)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -100,10 +102,33 @@ def _make_user(engine, email: str, role: UserRole) -> dict:
 def _login(client: TestClient, email: str, secret: str) -> None:
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post("/login", data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf}, follow_redirects=False)
-    client.get("/login/verify")
-    csrf2 = client.cookies.get("csrf_token")
-    client.post("/login/verify", data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2}, follow_redirects=False)
+    step1 = client.post(
+        "/login",
+        data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert step1.status_code == 303
+    if step1.headers.get("location") == "/login/admin-security":
+        page = client.get("/login/admin-security")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/admin-security",
+            data={
+                "code": pyotp.TOTP(secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        client.get("/login/verify")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/verify",
+            data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2},
+            follow_redirects=False,
+        )
 
 
 def _overtime_payload(reference_data: dict, **overrides) -> dict:
