@@ -27,6 +27,7 @@ REQUIRED_COLUMNS = {
     "offered", "handled", "abandoned", "talk_time_seconds",
     "hold_time_seconds", "acw_seconds", "agents_staffed", "paid_hours",
 }
+OPTIONAL_COLUMNS = {"answered_within_threshold"}
 
 
 def _as_time(value) -> time:
@@ -87,6 +88,17 @@ async def import_actuals(
             acw = float(raw["acw_seconds"] or 0)
             offered = float(raw["offered"] or 0)
             abandoned = float(raw["abandoned"] or 0)
+            answered_raw = raw.get("answered_within_threshold")
+            answered_within_threshold = (
+                float(answered_raw) if pd.notna(answered_raw) and str(answered_raw).strip() else None
+            )
+            if answered_within_threshold is not None and (
+                answered_within_threshold < 0 or answered_within_threshold > offered
+            ):
+                raise ValueError(
+                    f"Ligne {int(getattr(raw, 'name', 0)) + 2}: answered_within_threshold doit être "
+                    "compris entre 0 et offered."
+                )
             agents = float(raw["agents_staffed"] or 0)
             campaign_id = int(raw["campaign_id"])
             skill_id = int(raw["skill_id"])
@@ -100,6 +112,7 @@ async def import_actuals(
                     offered=offered,
                     handled=handled,
                     abandoned=abandoned,
+                    answered_within_threshold=answered_within_threshold,
                     talk_time_seconds=talk,
                     hold_time_seconds=hold,
                     acw_seconds=acw,
@@ -126,6 +139,11 @@ async def import_actuals(
                 interval.abandon_rate_pct = (
                     abandoned / offered * 100.0 if offered > 0 else 0.0
                 )
+                if answered_within_threshold is not None and offered > 0:
+                    eligible = max(0.0, offered)
+                    interval.service_level_pct = (
+                        answered_within_threshold / eligible * 100.0
+                    )
                 if interval.actual_hc and interval.actual_aht_seconds:
                     capacity_hours = interval.actual_hc * intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
                     skill = session.get(Skill, skill_id)
@@ -138,7 +156,27 @@ async def import_actuals(
                         concurrency_factor=skill.concurrency_factor,
                     )
                     interval.occupancy_pct = workload_hours / capacity_hours * 100.0 if capacity_hours else 0.0
-                    interval.staffing_gap = interval.actual_hc - interval.required_hc
+                    effective_required_hc = interval.required_hc
+                    client_plan = session.exec(
+                        select(__import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan).where(
+                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.week_start_date
+                            <= interval.date,
+                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.campaign_id == campaign_id,
+                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.skill_id == skill_id,
+                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.is_current == True,
+                        )
+                    ).first()
+                    if client_plan is not None:
+                        client_rows = session.exec(
+                            select(__import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval).where(
+                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.plan_id == client_plan.id,
+                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.date == interval.date,
+                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.interval_start == interval.interval_start,
+                            )
+                        ).first()
+                        if client_rows is not None:
+                            effective_required_hc = client_rows.required_hc
+                    interval.staffing_gap = interval.actual_hc - effective_required_hc
                 session.add(interval)
                 matched += 1
             imported += 1
