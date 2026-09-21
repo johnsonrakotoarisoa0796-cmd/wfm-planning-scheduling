@@ -187,3 +187,20 @@ Le moteur distingue désormais :
 - **Idle / Buffer Hours** = capacité productive non consommée par la charge agent.
 
 Ainsi, pour Email/Chat, il est normal que les heures de traitement des contacts soient supérieures aux Paid Hours : les contacts peuvent être traités simultanément. Pour Phone, la simultanéité vaut 1 et la charge de contact doit rester inférieure ou égale aux heures productives planifiées lorsque l'occupancy cible est strictement inférieure à 100%.
+
+
+## OTP par email / Gmail
+
+L'authentification peut utiliser un **OTP à 6 chiffres envoyé à l'adresse email du compte**. Lorsque Gmail/SMTP est configuré, le code est envoyé automatiquement après le mot de passe, puis l'utilisateur le saisit dans l'écran de vérification.
+
+Paramètres Render :
+- `SMTP_HOST=smtp.gmail.com`
+- `SMTP_PORT=587`
+- `SMTP_USERNAME=<adresse Gmail d'envoi>`
+- `SMTP_PASSWORD=<mot de passe d'application Google>`
+- `SMTP_FROM_EMAIL=<adresse Gmail d'envoi>`
+- `SMTP_FROM_NAME=WFM Planning & Scheduling`
+- `SMTP_USE_TLS=true`
+- `OTP_DELIVERY_MODE=auto` pour conserver le TOTP tant que Gmail n'est pas configuré, ou `email` pour forcer l'OTP email.
+
+Le compte Gmail utilisé pour l'envoi doit avoir la validation en deux étapes activée pour pouvoir utiliser un mot de passe d'application. Google documente également `smtp.gmail.com` avec TLS/STARTTLS sur le port 587. 
