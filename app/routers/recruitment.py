@@ -15,7 +15,7 @@ from app.models.recruitment import RecruitmentPlan, RecruitmentRampWeek
 from app.models.enums import UserRole
 from app.models.skill import Skill
 from app.models.user import User
-from app.services.recruitment_service import create_recruitment_plan, list_ramp_weeks, project_ramp
+from app.services.recruitment_service import create_recruitment_plan, list_ramp_weeks, project_ramp, progress_snapshot, update_progress
 
 router = APIRouter(prefix="/recruitment", tags=["recruitment"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST)
@@ -43,6 +43,7 @@ def recruitment_page(
         rows.append({
             "plan": plan,
             "weeks": project_ramp(plan, weeks),
+            "progress": progress_snapshot(plan),
             "campaign": campaigns_by_id.get(plan.campaign_id),
             "skill": skills_by_id.get(plan.skill_id),
         })
@@ -154,6 +155,35 @@ def create_recruitment(
             },
             status_code=400,
         )
+
+
+@router.post("/{plan_id}/progress", dependencies=[Depends(verify_csrf)])
+def update_recruitment_progress(
+    plan_id: int,
+    recruited_hc: int = Form(...),
+    training_hc: int = Form(...),
+    nesting_hc: int = Form(...),
+    production_hc: int = Form(...),
+    exited_hc: int = Form(...),
+    current_user: User = Depends(require_role(*WRITE_ROLES)),
+    session: Session = Depends(get_session),
+):
+    plan = session.get(RecruitmentPlan, plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="Cohorte de recrutement introuvable.")
+    try:
+        update_progress(
+            session,
+            plan,
+            recruited_hc=recruited_hc,
+            training_hc=training_hc,
+            nesting_hc=nesting_hc,
+            production_hc=production_hc,
+            exited_hc=exited_hc,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return RedirectResponse(f"/recruitment#plan-{plan_id}", status_code=303)
 
 
 @router.post("/{plan_id}/weeks/{week_id}", dependencies=[Depends(verify_csrf)])
