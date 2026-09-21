@@ -70,6 +70,8 @@ def reference_data(engine):
             session.add(emp)
             session.commit()
             session.refresh(emp)
+            session.add(EmployeeSkill(employee_id=emp.id, skill_id=skill.id, is_primary=(i == 0)))
+            session.commit()
             employee_ids.append(emp.id)
 
         shift = scheduling_service.create_shift(
