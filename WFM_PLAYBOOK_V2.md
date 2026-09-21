@@ -204,3 +204,17 @@ Paramètres Render :
 - `OTP_DELIVERY_MODE=auto` pour conserver le TOTP tant que Gmail n'est pas configuré, ou `email` pour forcer l'OTP email.
 
 Le compte Gmail utilisé pour l'envoi doit avoir la validation en deux étapes activée pour pouvoir utiliser un mot de passe d'application. Google documente également `smtp.gmail.com` avec TLS/STARTTLS sur le port 587. 
+
+
+## OTP email sur Render Free
+
+Les services web Free de Render bloquent les connexions SMTP sortantes sur les ports 25, 465 et 587. Le transport OTP de production utilise donc l'API HTTPS de Brevo.
+
+Variables Render :
+- `OTP_DELIVERY_MODE=email`
+- `EMAIL_PROVIDER=brevo`
+- `BREVO_API_KEY=<clé API Brevo>`
+- `BREVO_FROM_EMAIL=<adresse expéditrice vérifiée>`
+- `BREVO_FROM_NAME=WFM Planning & Scheduling`
+
+L'adresse `BREVO_FROM_EMAIL` doit être enregistrée et vérifiée dans Brevo. Les utilisateurs peuvent ensuite recevoir les OTP sur leurs boîtes Gmail ou tout autre fournisseur de messagerie.
