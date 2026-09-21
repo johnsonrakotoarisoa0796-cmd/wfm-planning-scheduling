@@ -218,3 +218,41 @@
   color:var(--success);
   font-size:11px;
 }
+
+.password-field {
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+.password-field input {
+  width:100%;
+  padding-right:84px;
+}
+.password-toggle {
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  min-height:30px;
+  padding:5px 9px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--surface);
+  color:var(--text-muted);
+  font:700 9px var(--font-mono);
+  cursor:pointer;
+}
+.password-toggle:hover {
+  color:var(--text);
+  border-color:var(--border-strong);
+}
+.warning-banner {
+  margin-bottom:14px;
+  padding:10px 12px;
+  border:1px solid rgba(230,166,62,.34);
+  border-radius:10px;
+  background:rgba(230,166,62,.08);
+  color:var(--warning);
+  font-size:11px;
+  line-height:1.5;
+}
