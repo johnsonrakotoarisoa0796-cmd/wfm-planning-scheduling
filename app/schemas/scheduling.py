@@ -19,6 +19,12 @@ class ShiftInput(BaseModel):
     lunch_minutes: int = Field(default=60, ge=0, le=180)
     lunch_paid: bool = False
 
+    @model_validator(mode="after")
+    def _validate_shift_range(self) -> "ShiftInput":
+        if self.start_time == self.end_time:
+            raise ValueError("Un shift ne peut pas avoir la même heure de début et de fin.")
+        return self
+
 
 class ScheduleEntryInput(BaseModel):
     """Affectation d'un employé à un shift pour une date donnée.
