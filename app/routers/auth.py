@@ -4,10 +4,6 @@ Pour les comptes standard : mot de passe + TOTP.
 Pour les comptes admin : mot de passe + TOTP + deux mots-clés secrets
 choisis par l'administrateur. Les mots-clés ne sont jamais stockés en clair.
 """
-import base64
-from io import BytesIO
-
-import qrcode
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
@@ -31,6 +27,8 @@ from app.core.security import (
 from app.core.templating import templates
 from app.models.enums import UserRole
 from app.models.user import User
+from app.services.email_service import smtp_configured
+from app.services.otp_service import issue_email_otp, verify_email_otp
 
 router = APIRouter(tags=["auth"])
 settings = get_settings()
@@ -51,24 +49,20 @@ def _render_login(
     )
 
 
-def _render_admin_setup(request: Request, user: User, *, error: str | None = None, status_code: int = 200):
-    if not user.totp_secret:
-        user.totp_secret = generate_totp_secret()
-
-    uri = totp_provisioning_uri(user.totp_secret, user.email)
-    qr = qrcode.make(uri)
-    buffer = BytesIO()
-    qr.save(buffer)
-    qr_data = base64.b64encode(buffer.getvalue()).decode("ascii")
-
+def _render_admin_setup(
+    request: Request,
+    user: User,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+):
     return templates.TemplateResponse(
         request,
         "auth/setup_admin_security.html",
         {
             "error": error,
             "email": user.email,
-            "qr_data": qr_data,
-            "manual_secret": user.totp_secret,
+            "email_otp": _email_otp_enabled(),
         },
         status_code=status_code,
     )
@@ -107,16 +101,31 @@ def login_submit(
             status_code=403,
         )
 
-    response = RedirectResponse(
-        url="/login/admin-security" if user.role == UserRole.ADMIN and (
+    if _email_otp_enabled():
+        try:
+            issue_email_otp(session, user, force=True)
+        except (ValueError, RuntimeError, OSError, smtplib.SMTPException) as exc:
+            session.rollback()
+            return _render_login(
+                request,
+                error=str(exc) if isinstance(exc, ValueError) else _otp_configuration_error(),
+                email=normalized_email,
+                status_code=503,
+            )
+        next_url = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+    else:
+        if user.role == UserRole.ADMIN and (
             not user.totp_secret
             or not user.admin_keyword1_hash
             or not user.admin_keyword2_hash
-        ) else (
-            "/login/verify" if user.totp_secret else "/login/setup-2fa"
-        ),
-        status_code=303,
-    )
+        ):
+            next_url = "/login/admin-security"
+        elif user.totp_secret:
+            next_url = "/login/verify"
+        else:
+            next_url = "/login/setup-2fa"
+
+    response = RedirectResponse(url=next_url, status_code=303)
     response.set_cookie(
         PENDING_2FA_COOKIE_NAME,
         create_pending_2fa_token(user.id),
@@ -197,25 +206,24 @@ def setup_2fa_submit(
 
 @router.get("/login/admin-security")
 def admin_security_form(request: Request, session: Session = Depends(get_session)):
-    pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
-    user_id = read_pending_2fa_token(pending_token) if pending_token else None
-    if user_id is None:
+    user = _pending_user(request, session)
+    if user is None or user.role != UserRole.ADMIN:
         return RedirectResponse(url="/login", status_code=303)
 
-    user = session.get(User, user_id)
-    if user is None or not user.is_active or user.role != UserRole.ADMIN:
-        return RedirectResponse(url="/login", status_code=303)
-
-    if not user.totp_secret or not user.admin_keyword1_hash or not user.admin_keyword2_hash:
-        response = _render_admin_setup(request, user)
-        session.add(user)
-        session.commit()
-        return response
+    needs_setup = not user.admin_keyword1_hash or not user.admin_keyword2_hash
+    if needs_setup:
+        return _render_admin_setup(request, user)
 
     return templates.TemplateResponse(
         request,
         "auth/verify_2fa.html",
-        {"error": None, "email": user.email, "is_admin": True},
+        {
+            "error": request.query_params.get("error"),
+            "email": user.email,
+            "is_admin": True,
+            "email_otp": _email_otp_enabled(),
+            "resent": request.query_params.get("resent") == "1",
+        },
     )
 
 
@@ -229,41 +237,38 @@ def admin_security_submit(
     new_keyword2: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
-    user_id = read_pending_2fa_token(pending_token) if pending_token else None
-    if user_id is None:
+    user = _pending_user(request, session)
+    if user is None or user.role != UserRole.ADMIN:
         return RedirectResponse(url="/login", status_code=303)
 
-    user = session.get(User, user_id)
-    if user is None or not user.is_active or user.role != UserRole.ADMIN:
-        return RedirectResponse(url="/login", status_code=303)
+    needs_setup = not user.admin_keyword1_hash or not user.admin_keyword2_hash
 
-    needs_setup = not user.totp_secret or not user.admin_keyword1_hash or not user.admin_keyword2_hash
     if needs_setup:
         key1 = new_keyword1.strip()
         key2 = new_keyword2.strip()
         if len(key1) < 4 or len(key2) < 4:
-            session.rollback()
             return _render_admin_setup(
-                request,
-                user,
+                request, user,
                 error="Les deux mots-clés doivent contenir au moins 4 caractères.",
                 status_code=400,
             )
         if key1.casefold() == key2.casefold():
-            session.rollback()
             return _render_admin_setup(
-                request,
-                user,
+                request, user,
                 error="Les deux mots-clés doivent être différents.",
                 status_code=400,
             )
-        if not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
-            session.rollback()
+        if _email_otp_enabled():
+            if not verify_email_otp(session, user, code):
+                return _render_admin_setup(
+                    request, user,
+                    error="Code email invalide, expiré ou trop de tentatives.",
+                    status_code=400,
+                )
+        elif not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
             return _render_admin_setup(
-                request,
-                user,
-                error="Le code TOTP est invalide ou expiré.",
+                request, user,
+                error="Code TOTP invalide ou expiré.",
                 status_code=400,
             )
 
@@ -273,19 +278,129 @@ def admin_security_submit(
         session.commit()
         return _finish_login(user, request)
 
-    valid_totp = bool(user.totp_secret and verify_totp_code(user.totp_secret, code.strip()))
     valid_key1 = verify_password(keyword1.strip().casefold(), user.admin_keyword1_hash)
     valid_key2 = verify_password(keyword2.strip().casefold(), user.admin_keyword2_hash)
-
-    if not (valid_totp and valid_key1 and valid_key2):
+    if not (valid_key1 and valid_key2):
         return templates.TemplateResponse(
             request,
             "auth/verify_2fa.html",
-            {"error": "Code TOTP ou mots-clés incorrects.", "email": user.email, "is_admin": True},
+            {
+                "error": "Un ou plusieurs mots-clés administrateur sont incorrects.",
+                "email": user.email,
+                "is_admin": True,
+                "email_otp": _email_otp_enabled(),
+            },
+            status_code=400,
+        )
+
+    if _email_otp_enabled():
+        if not verify_email_otp(session, user, code):
+            return templates.TemplateResponse(
+                request,
+                "auth/verify_2fa.html",
+                {
+                    "error": "Code email invalide, expiré ou trop de tentatives.",
+                    "email": user.email,
+                    "is_admin": True,
+                    "email_otp": True,
+                },
+                status_code=400,
+            )
+    elif not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
+        return templates.TemplateResponse(
+            request,
+            "auth/verify_2fa.html",
+            {"error": "Code TOTP invalide ou expiré.", "email": user.email, "is_admin": True, "email_otp": False},
             status_code=400,
         )
 
     return _finish_login(user, request)
+
+
+@router.get("/login/verify")
+def verify_2fa_form(request: Request, session: Session = Depends(get_session)):
+    user = _pending_user(request, session)
+    if user is None or user.role == UserRole.ADMIN:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if _email_otp_enabled():
+        return templates.TemplateResponse(
+            request,
+            "auth/verify_2fa.html",
+            {
+                "error": request.query_params.get("error"),
+                "email": user.email,
+                "is_admin": False,
+                "email_otp": True,
+                "resent": request.query_params.get("resent") == "1",
+            },
+        )
+
+    if not user.totp_secret:
+        return RedirectResponse(url="/login/setup-2fa", status_code=303)
+
+    return templates.TemplateResponse(
+        request,
+        "auth/verify_2fa.html",
+        {"error": None, "email": user.email, "is_admin": False, "email_otp": False},
+    )
+
+
+@router.post("/login/verify", dependencies=[Depends(verify_csrf)])
+def verify_2fa_submit(
+    request: Request,
+    code: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    user = _pending_user(request, session)
+    if user is None or user.role == UserRole.ADMIN:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if _email_otp_enabled():
+        if not verify_email_otp(session, user, code):
+            return templates.TemplateResponse(
+                request,
+                "auth/verify_2fa.html",
+                {
+                    "error": "Code email invalide, expiré ou trop de tentatives.",
+                    "email": user.email,
+                    "is_admin": False,
+                    "email_otp": True,
+                },
+                status_code=400,
+            )
+    elif not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
+        return templates.TemplateResponse(
+            request,
+            "auth/verify_2fa.html",
+            {"error": "Code TOTP invalide ou expiré.", "email": user.email, "is_admin": False, "email_otp": False},
+            status_code=400,
+        )
+
+    return _finish_login(user, request)
+
+
+@router.post("/login/resend-otp", dependencies=[Depends(verify_csrf)])
+def resend_otp(
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    user = _pending_user(request, session)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    if not _email_otp_enabled():
+        return RedirectResponse(url="/login/verify?error=La+validation+email+est+d%C3%A9sactiv%C3%A9e", status_code=303)
+    try:
+        issue_email_otp(session, user)
+    except ValueError as exc:
+        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        return RedirectResponse(f"{target}?error={quote_plus(str(exc))}", status_code=303)
+    except Exception:
+        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        return RedirectResponse(f"{target}?error={quote_plus(_otp_configuration_error())}", status_code=303)
+
+    target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+    return RedirectResponse(f"{target}?resent=1", status_code=303)
 
 
 @router.get("/login/verify")
