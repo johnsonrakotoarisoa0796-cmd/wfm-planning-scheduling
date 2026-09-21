@@ -111,11 +111,11 @@
   <div>
     <span class="panel-kicker">EMAIL OTP · GMAIL / SMTP</span>
     <strong>Tester l’envoi OTP</strong>
-    <p>Envoie un email de test à l’adresse de l’administrateur connecté. Aucun secret SMTP n’est affiché.</p>
+    <p>Envoie un email de test à l’adresse de l’administrateur connecté via le transport email HTTPS configuré.</p>
   </div>
   <form method="post" action="/settings/test-email">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button class="btn-secondary" type="submit">✉ Tester Gmail SMTP</button>
+    <button class="btn-secondary" type="submit">✉ Tester l’envoi OTP</button>
   </form>
 </div>
 <form method="post" action="/settings/admin-security">
