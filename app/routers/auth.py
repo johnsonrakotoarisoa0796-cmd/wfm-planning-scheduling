@@ -70,8 +70,8 @@ def _email_otp_enabled() -> bool:
 def _otp_configuration_error() -> str:
     config_error = email_delivery_configuration_error()
     if settings.otp_delivery_mode.lower().strip() == "email" and config_error:
-        return f"{config_error} Vérifiez les variables Gmail/SMTP dans Render."
-    return "Impossible d'envoyer le code de vérification par email. Vérifiez la configuration Gmail/SMTP."
+        return f"{config_error} Vérifiez les variables BREVO dans Render."
+    return "Impossible d'envoyer le code de vérification par email. Vérifiez le transport email HTTPS configuré dans Render."
 
 
 def _pending_user(request: Request, session: Session) -> User | None:
