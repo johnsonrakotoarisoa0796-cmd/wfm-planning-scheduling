@@ -138,3 +138,83 @@
     padding: 30px 20px 44px;
   }
 }
+
+.auth-security-divider {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:18px 0 12px;
+  color:var(--text-muted);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+.auth-security-divider::before,
+.auth-security-divider::after {
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--border);
+}
+.auth-security-divider span:first-child {
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  border-radius:50%;
+  background:var(--accent-soft);
+  color:var(--accent);
+}
+.otp-mail-card {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin:0 0 16px;
+  padding:12px 13px;
+  border:1px solid rgba(95,122,255,.24);
+  border-radius:12px;
+  background:rgba(86,116,235,.07);
+}
+.otp-mail-card__icon {
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  border-radius:9px;
+  background:var(--accent-soft);
+  color:var(--accent);
+}
+.otp-mail-card strong,
+.otp-mail-card span {
+  display:block;
+}
+.otp-mail-card strong {
+  color:var(--text);
+  font-size:10px;
+}
+.otp-mail-card span {
+  margin-top:3px;
+  color:var(--text-soft);
+  font-size:9px;
+  line-height:1.5;
+}
+.otp-resend-form {
+  width:min(100%, 380px);
+  margin:10px auto 0;
+}
+.otp-resend-form .btn-secondary {
+  width:100%;
+  min-height:42px;
+}
+.success-banner {
+  margin-bottom:14px;
+  padding:10px 12px;
+  border:1px solid rgba(31,190,123,.3);
+  border-radius:10px;
+  background:rgba(31,190,123,.08);
+  color:var(--success);
+  font-size:11px;
+}
