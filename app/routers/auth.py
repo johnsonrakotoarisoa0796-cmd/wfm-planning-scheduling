@@ -33,7 +33,7 @@ from app.core.security import (
 from app.core.templating import templates
 from app.models.enums import UserRole
 from app.models.user import User
-from app.services.email_service import smtp_configured, smtp_configuration_error
+from app.services.email_service import email_delivery_configured, email_delivery_configuration_error
 from app.services.otp_service import issue_email_otp, verify_email_otp
 
 router = APIRouter(tags=["auth"])
@@ -61,14 +61,14 @@ def _render_login(
 def _email_otp_enabled() -> bool:
     mode = settings.otp_delivery_mode.lower().strip()
     if mode == "email":
-        return smtp_configured()
+        return email_delivery_configured()
     if mode == "totp":
         return False
-    return smtp_configured()
+    return email_delivery_configured()
 
 
 def _otp_configuration_error() -> str:
-    config_error = smtp_configuration_error()
+    config_error = email_delivery_configuration_error()
     if settings.otp_delivery_mode.lower().strip() == "email" and config_error:
         return f"{config_error} Vérifiez les variables Gmail/SMTP dans Render."
     return "Impossible d'envoyer le code de vérification par email. Vérifiez la configuration Gmail/SMTP."
