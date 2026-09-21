@@ -24,6 +24,74 @@ from app.services import kpi_service
 from app.services.forecast_service import get_current_ltf_forecast
 
 
+def resolve_required_hc(
+    session: Session,
+    *,
+    period: str,
+    campaign_id: int,
+    skill_id: int,
+) -> tuple[float | None, str | None, list[LTFForecast]]:
+    """Résout le Required HC pour un mois.
+
+    Priorité:
+    1) LTF mensuel courant du mois;
+    2) pic des LTF hebdomadaires courants qui chevauchent le mois.
+    Les anciens LTF hebdomadaires dont week_start_date est NULL sont
+    reconstruits depuis iso_year/iso_week.
+    """
+    year, month = (int(part) for part in period.split("-"))
+    monthly = get_current_ltf_forecast(
+        session,
+        year=year,
+        month=month,
+        campaign_id=campaign_id,
+        skill_id=skill_id,
+    )
+    if monthly is not None:
+        return monthly.headcount_required, f"LTF mensuel #{monthly.id}", [monthly]
+
+    month_start = date(year, month, 1)
+    month_end = date(year, month, monthrange(year, month)[1])
+
+    candidates = list(
+        session.exec(
+            select(LTFForecast)
+            .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
+            .where(
+                LTFForecast.campaign_id == campaign_id,
+                LTFForecast.skill_id == skill_id,
+                ForecastVersion.is_current == True,  # noqa: E712
+                LTFForecast.iso_year.is_not(None),
+                LTFForecast.iso_week.is_not(None),
+            )
+        ).all()
+    )
+
+    weekly: list[LTFForecast] = []
+    for row in candidates:
+        start = row.week_start_date
+        if start is None and row.iso_year is not None and row.iso_week is not None:
+            try:
+                start = date.fromisocalendar(row.iso_year, row.iso_week, 1)
+            except ValueError:
+                continue
+        if start is None:
+            continue
+        end = start + timedelta(days=6)
+        if start <= month_end and end >= month_start:
+            weekly.append(row)
+
+    if not weekly:
+        return None, None, []
+
+    peak = max(row.headcount_required for row in weekly)
+    weeks = [f"W{row.iso_week:02d}/{row.iso_year}" for row in sorted(
+        weekly,
+        key=lambda item: (item.iso_year or 0, item.iso_week or 0),
+    )]
+    return peak, f"Pic LTF hebdomadaire · {', '.join(weeks)}", weekly
+
+
 def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_user_id: int) -> CapacityPlan:
     """Crée ou met à jour le plan de capacité d'une période/campagne/skill.
 
@@ -31,50 +99,16 @@ def upsert_capacity_plan(session: Session, data: CapacityPlanInput, created_by_u
     le calcul de gap n'ont pas de sens sans plan de référence (même
     logique de dépendance que le STF vis-à-vis du LTF).
     """
-    year, month = (int(part) for part in data.period.split("-"))
-    ltf = get_current_ltf_forecast(
+    required_hc, required_source, _reference_ltfs = resolve_required_hc(
         session,
-        year=year,
-        month=month,
+        period=data.period,
         campaign_id=data.campaign_id,
         skill_id=data.skill_id,
     )
-
-    required_hc = None
-    required_source = None
-    if ltf is not None:
-        required_hc = ltf.headcount_required
-        required_source = f"LTF mensuel #{ltf.id}"
-    else:
-        month_start = date(year, month, 1)
-        month_end = date(year, month, monthrange(year, month)[1])
-        weekly_candidates = list(
-            session.exec(
-                select(LTFForecast)
-                .join(ForecastVersion, LTFForecast.forecast_version_id == ForecastVersion.id)
-                .where(
-                    LTFForecast.campaign_id == data.campaign_id,
-                    LTFForecast.skill_id == data.skill_id,
-                    LTFForecast.week_start_date.is_not(None),
-                    LTFForecast.week_start_date <= month_end,
-                    ForecastVersion.is_current == True,  # noqa: E712
-                )
-            ).all()
-        )
-        weekly_ltfs = [
-            row
-            for row in weekly_candidates
-            if row.week_start_date is not None
-            and row.week_start_date + timedelta(days=6) >= month_start
-        ]
-        if weekly_ltfs:
-            required_hc = max(row.headcount_required for row in weekly_ltfs)
-            required_source = f"Peak weekly LTF ({len(weekly_ltfs)} semaine(s))"
-
     if required_hc is None:
         raise ValueError(
             f"Aucun LTF actif couvrant {data.period} sur cette campagne/skill — "
-            "créez un LTF mensuel ou des LTF hebdomadaires pour cette période."
+            "créez un LTF mensuel ou au moins un LTF hebdomadaire couvrant le mois."
         )
 
     projected_hc = kpi_service.projected_headcount(
