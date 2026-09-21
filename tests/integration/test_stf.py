@@ -131,7 +131,7 @@ def _stf_form_payload(reference_data: dict, **overrides) -> dict:
         "campaign_id": str(reference_data["campaign_id"]),
         "skill_id": str(reference_data["skill_id"]),
         "volume": "44500",
-        "aht_seconds": "335",
+        "handling_time_seconds": "335",
         "occupancy_pct": "86",
         "shrinkage_pct": "28",
         "service_level_target_pct": "80",
