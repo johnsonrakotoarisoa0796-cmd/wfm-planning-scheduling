@@ -1991,3 +1991,13 @@ table.data-table {
 .ltf-version-alert { margin: 16px 0; width: 100%; box-sizing: border-box; }
 .ltf-detail-note { margin-top: 8px; }
 .ltf-detail-note--sm { margin-top: 10px; }
+
+
+/* STF detail calculation refresh alert */
+.stf-version-alert {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 16px 0;
+}
+.stf-version-alert__metrics { margin-top: 8px; }
+.stf-version-alert__note { margin-top: 10px; }
