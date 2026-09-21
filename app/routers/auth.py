@@ -55,6 +55,37 @@ def _render_login(
     )
 
 
+
+
+
+def _email_otp_enabled() -> bool:
+    mode = settings.otp_delivery_mode.lower().strip()
+    if mode == "email":
+        return smtp_configured()
+    if mode == "totp":
+        return False
+    return smtp_configured()
+
+
+def _otp_configuration_error() -> str:
+    if settings.otp_delivery_mode.lower().strip() == "email" and not smtp_configured():
+        return (
+            "La validation par email est activée mais Gmail/SMTP n'est pas configuré. "
+            "Renseignez SMTP_USERNAME, SMTP_PASSWORD et SMTP_FROM_EMAIL dans Render."
+        )
+    return "Impossible d'envoyer le code de vérification par email. Vérifiez la configuration Gmail/SMTP."
+
+
+def _pending_user(request: Request, session: Session) -> User | None:
+    pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
+    user_id = read_pending_2fa_token(pending_token) if pending_token else None
+    if user_id is None:
+        return None
+    user = session.get(User, user_id)
+    if user is None or not user.is_active:
+        return None
+    return user
+
 def _render_admin_setup(
     request: Request,
     user: User,
