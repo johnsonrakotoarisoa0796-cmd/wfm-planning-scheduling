@@ -1956,3 +1956,19 @@ table.data-table {
   .recruitment-kpis { grid-template-columns:1fr; }
   .recruitment-progress-form { grid-template-columns:1fr; }
 }
+
+.smtp-test-panel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:16px 0 18px;
+  padding:14px 15px;
+  border:1px solid rgba(96,122,255,.22);
+  border-radius:12px;
+  background:rgba(86,116,235,.06);
+}
+.smtp-test-panel strong,.smtp-test-panel p{display:block}
+.smtp-test-panel strong{margin-top:3px;color:var(--text);font-size:11px}
+.smtp-test-panel p{margin-top:4px;color:var(--text-soft);font-size:9px;line-height:1.5}
+@media(max-width:650px){.smtp-test-panel{align-items:stretch;flex-direction:column}.smtp-test-panel .btn-secondary{width:100%}}
