@@ -1,77 +1,66 @@
 {% extends "app_base.html" %}
-{% block title %}Capacity Planning — WFM Planning & Scheduling{% endblock %}
+{% block title %}Capacity Planning — WFM{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>Capacity Planning</h1>
-        <p class="page-header__meta">Projection HC (§31) — mis à jour au fil de l'eau, pas versionné comme le LTF/STF.</p>
-    </div>
-    {% if can_edit %}
-    <a href="/capacity/new" class="btn-secondary">+ Nouveau plan</a>
-    {% endif %}
-</div>
 
-<form class="filter-bar" method="get" action="/capacity">
-    <div class="field">
-        <label for="campaign_id">Campagne</label>
-        <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
-            <option value="">Toutes</option>
-            {% for c in campaigns %}
-            <option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="field">
-        <label for="skill_id">Skill</label>
-        <select id="skill_id" name="skill_id">
-            <option value="">Tous</option>
-            {% for s in skills %}
-            <option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <button type="submit">Filtrer</button>
+<section class="capacity-hero">
+  <div>
+    <div class="panel-kicker">WORKFORCE MANAGEMENT · CAPACITY</div>
+    <h1>Capacity Planning</h1>
+    <p>Suivez l’écart entre le besoin forecast, l’effectif actuel et la capacité réellement disponible après projection.</p>
+    <div class="capacity-hero__meta"><span><i></i> Source LTF</span><span>Projection RH</span><span>Gap opérationnel</span></div>
+  </div>
+  {% if can_edit %}<a class="btn-hero-primary" href="/capacity/new">+ Nouveau plan <span>→</span></a>{% endif %}
+</section>
+
+<form class="filter-bar capacity-filter-bar" method="get" action="/capacity">
+  <div class="field field--compact">
+    <label for="period">Mois</label>
+    <input id="period" type="month" name="period" value="{{ filters.period or '' }}">
+  </div>
+  <div class="field">
+    <label for="campaign_id">Campagne</label>
+    <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
+      <option value="">Toutes les campagnes</option>
+      {% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="skill_id">Skill</label>
+    <select id="skill_id" name="skill_id">
+      <option value="">Tous les skills</option>
+      {% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <button class="btn-primary" type="submit">Actualiser</button>
 </form>
 
 {% if rows %}
-<div class="data-table-wrapper">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Période</th>
-                <th>Campagne</th>
-                <th>Skill</th>
-                <th class="numeric">Current HC</th>
-                <th class="numeric">Required HC</th>
-                <th class="numeric">Projected HC</th>
-                <th class="numeric">Projected Available HC</th>
-                <th class="numeric">Gap projeté</th>
-                <th>Statut</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr>
-                <td><a href="/capacity/{{ row.plan.id }}">{{ row.plan.period }}</a></td>
-                <td>{{ row.campaign_name }}</td>
-                <td>{{ row.skill_name }}</td>
-                <td class="numeric">{{ "%.1f"|format(row.plan.current_hc) }}</td>
-                <td class="numeric">{{ "%.1f"|format(row.plan.required_hc) }}</td>
-                <td class="numeric">{{ "%.1f"|format(row.plan.projected_hc) }}</td>
-                <td class="numeric">{{ "%.1f"|format(row.plan.projected_available_hc) }}</td>
-                <td class="numeric">{{ "%+.1f"|format(row.gap) }}</td>
-                <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status }}</span></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="data-table-wrapper capacity-table">
+  <table class="data-table">
+    <thead><tr><th>Période</th><th>Campagne</th><th>Skill</th><th class="numeric">Current HC</th><th class="numeric">Required</th><th class="numeric">Projected</th><th class="numeric">Available</th><th class="numeric">Gap</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><a href="/capacity/{{ row.plan.id }}"><strong>{{ row.plan.period }}</strong></a></td>
+        <td>{{ row.campaign_name }}</td>
+        <td><span class="user-role-badge">{{ row.skill_name }}</span></td>
+        <td class="numeric">{{ "%.1f"|format(row.plan.current_hc) }}</td>
+        <td class="numeric"><strong>{{ "%.1f"|format(row.plan.required_hc) }}</strong></td>
+        <td class="numeric">{{ "%.1f"|format(row.plan.projected_hc) }}</td>
+        <td class="numeric">{{ "%.1f"|format(row.plan.projected_available_hc) }}</td>
+        <td class="numeric {% if row.gap < 0 %}negative{% else %}positive{% endif %}">{{ "%+.1f"|format(row.gap) }}</td>
+        <td><span class="status-pill status-pill--{{ row.status }}">{{ row.status }}</span></td>
+        <td><a class="btn-secondary btn-small" href="/capacity/{{ row.plan.id }}">Ouvrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% else %}
-<div class="data-table-wrapper">
-    <div class="empty-state">
-        Aucun plan de capacité pour ces filtres.
-        {% if can_edit %}<br><a href="/capacity/new">Créer le premier plan</a>.{% endif %}
-    </div>
-</div>
+<section class="planner-empty">
+  <strong>Aucun plan de capacité trouvé</strong>
+  <p style="margin-top:6px">Ajustez les filtres ou créez un nouveau plan à partir d’un LTF mensuel ou hebdomadaire couvrant la période.</p>
+  {% if can_edit %}<div style="margin-top:14px"><a href="/capacity/new" class="btn-primary">Créer un plan</a></div>{% endif %}
+</section>
 {% endif %}
 {% endblock %}
