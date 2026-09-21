@@ -1981,3 +1981,7 @@ table.data-table {
 .smtp-test-panel strong{margin-top:3px;color:var(--text);font-size:11px}
 .smtp-test-panel p{margin-top:4px;color:var(--text-soft);font-size:9px;line-height:1.5}
 @media(max-width:650px){.smtp-test-panel{align-items:stretch;flex-direction:column}.smtp-test-panel .btn-secondary{width:100%}}
+
+
+.capacity-help { margin-top: 6px; }
+.capacity-actions { margin-top: 14px; }
