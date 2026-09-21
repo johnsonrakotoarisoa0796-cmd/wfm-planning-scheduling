@@ -18,7 +18,7 @@ from app.models.client_stf import ClientSTFPlan, ClientSTFInterval
 from app.models.enums import UserRole
 from app.models.user import User
 from app.models.skill import Skill
-from app.services import channel_service, intraday_service
+from app.services import channel_service, intraday_service, client_stf_service
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST, UserRole.TEAM_LEAD)
@@ -169,7 +169,7 @@ async def import_actuals(
                     client_plan = session.exec(
                         select(ClientSTFPlan).where(
                             ClientSTFPlan.week_start_date
-                            <= interval.date,
+                            == client_stf_service.monday_of_week(interval.date),
                             ClientSTFPlan.campaign_id == campaign_id,
                             ClientSTFPlan.skill_id == skill_id,
                             ClientSTFPlan.is_current == True,  # noqa: E712
