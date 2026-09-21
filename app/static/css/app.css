@@ -2009,3 +2009,19 @@ table.data-table {
   align-items: center;
   gap: 8px;
 }
+
+
+/* Template layout helpers */
+.totp-qr-wrap { display:flex; justify-content:center; margin:18px 0 14px; }
+.totp-qr { border-radius:12px; background:#fff; padding:10px; }
+.totp-code-input--large { font-size:16px !important; letter-spacing:.08em; }
+.daily-stf-error { margin-bottom:18px; }
+.daily-stf-section { margin-top:18px; }
+.daily-stf-control-grid { margin-top:16px; }
+.daily-stf-choice-label { display:flex; align-items:center; gap:10px; font-weight:700; }
+.daily-stf-actions { margin-top:16px; }
+.success-banner--spaced { margin-bottom:16px; }
+.wfm-control--spaced { margin-top:18px; }
+.success-banner--mt { margin-top:18px; }
+.imports-form--spaced { margin-top:18px; }
+.imports-rule-card { margin-top:18px; }
