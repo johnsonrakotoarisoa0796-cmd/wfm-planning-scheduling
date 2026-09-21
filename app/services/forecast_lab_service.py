@@ -52,10 +52,29 @@ def compute_metrics(rows: list[IntervalForecast]) -> ForecastLabMetrics:
     forecast_volume = sum(max(row.forecast_volume, 0.0) for row in rows)
     actual_rows = [row for row in rows if row.actual_volume is not None]
     actual_volume = sum(max(row.actual_volume or 0.0, 0.0) for row in actual_rows)
-    abs_error = sum(abs(row.forecast_volume - (row.actual_volume or 0.0)) for row in actual_rows)
+    actualized_forecast_volume = sum(
+        max(row.forecast_volume, 0.0) for row in actual_rows
+    )
+    abs_error = sum(
+        abs(row.forecast_volume - (row.actual_volume or 0.0))
+        for row in actual_rows
+    )
     wape = abs_error / actual_volume * 100.0 if actual_volume else None
-    bias = (sum(row.forecast_volume for row in actual_rows) - actual_volume) / actual_volume * 100.0 if actual_volume else None
-    accuracy = max(0.0, 100.0 - wape) if wape is not None else None
+    bias = (
+        (actualized_forecast_volume - actual_volume) / actual_volume * 100.0
+        if actual_volume else None
+    )
+    # Accuracy intraday doit comparer l'actual au forecast des points déjà
+    # réalisés, jamais au forecast futur non encore observé.
+    accuracy = (
+        max(
+            0.0,
+            100.0
+            - abs(actualized_forecast_volume - actual_volume)
+            / actual_volume * 100.0,
+        )
+        if actual_volume else None
+    )
 
     aht_pairs = [
         (row.forecast_aht_seconds, row.actual_aht_seconds, max(row.actual_volume or 0.0, 0.0))
