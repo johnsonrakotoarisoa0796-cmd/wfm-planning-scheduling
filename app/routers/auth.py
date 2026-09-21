@@ -109,7 +109,7 @@ def login_submit(
 
     if _email_otp_enabled():
         try:
-            issue_email_otp(session, user, force=True)
+            issue_email_otp(session, user)
         except (ValueError, RuntimeError, OSError, smtplib.SMTPException) as exc:
             session.rollback()
             return _render_login(
@@ -228,6 +228,7 @@ def admin_security_form(request: Request, session: Session = Depends(get_session
             "email": user.email,
             "is_admin": True,
             "email_otp": _email_otp_enabled(),
+            "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
             "resent": request.query_params.get("resent") == "1",
         },
     )
@@ -309,6 +310,7 @@ def admin_security_submit(
                     "email": user.email,
                     "is_admin": True,
                     "email_otp": True,
+                    "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
                 },
                 status_code=400,
             )
