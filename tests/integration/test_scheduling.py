@@ -409,14 +409,6 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
     from datetime import timedelta
 
     with Session(engine) as session:
-        for employee_id in reference_data["employee_ids"]:
-            session.add(EmployeeSkill(
-                employee_id=employee_id,
-                skill_id=reference_data["skill_id"],
-                is_primary=(employee_id == reference_data["employee_ids"][0]),
-            ))
-        session.commit()
-
         monday = date(2026, 9, 14)
         for offset in range(7):
             intraday_service.generate_intraday_forecast(
