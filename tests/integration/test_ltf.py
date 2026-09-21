@@ -317,3 +317,37 @@ def test_create_ltf_forecast_pipeline_is_internally_consistent(engine, reference
         # staffing_gap et overtime restent a 0 : domaine des commits 09/11.
         assert ltf.staffing_gap == 0.0
         assert ltf.overtime_required_hours == 0.0
+
+
+def test_delete_ltf_with_dependent_stf_requires_and_supports_cascade(engine, reference_data):
+    with Session(engine) as session:
+        ltf = forecast_service.create_ltf_forecast(
+            session,
+            LTFCreateInput(
+                year=2026, month=9,
+                campaign_id=reference_data["campaign_id"], skill_id=reference_data["skill_id"],
+                forecast_volume=42000, forecast_aht_seconds=320, aht_required_seconds=310,
+                occupancy_required_pct=85, service_level_target_pct=80, asa_target_seconds=20,
+                indoor_shrinkage_pct=18, outdoor_shrinkage_pct=7,
+            ),
+            created_by_user_id=None,
+        )
+        stf = forecast_service.create_stf_forecast(
+            session,
+            STFCreateInput(
+                iso_year=2026, iso_week=37,
+                campaign_id=reference_data["campaign_id"], skill_id=reference_data["skill_id"],
+                volume=44500, aht_seconds=335, occupancy_pct=86, shrinkage_pct=28,
+                service_level_target_pct=80,
+            ),
+            created_by_user_id=None,
+        )
+
+        with pytest.raises(ValueError, match="STF"):
+            forecast_service.delete_ltf_forecast(session, ltf.id, cascade=False)
+
+        forecast_service.delete_ltf_forecast(session, ltf.id, cascade=True)
+        assert session.get(LTFForecast, ltf.id) is None
+        assert session.get(STFForecast, stf.id) is None
+        assert session.get(ForecastVersion, ltf.forecast_version_id) is None
+        assert session.get(ForecastVersion, stf.forecast_version_id) is None
