@@ -210,9 +210,6 @@ def setup_2fa_form(request: Request, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
     if user is None or not user.is_active:
         return RedirectResponse(url="/login", status_code=303)
-    if user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login/admin-security", status_code=303)
-
     if not user.totp_secret:
         user.totp_secret = generate_totp_secret()
         session.add(user)
@@ -233,6 +230,7 @@ def setup_2fa_form(request: Request, session: Session = Depends(get_session)):
             "email": user.email,
             "qr_data": qr_data,
             "manual_secret": user.totp_secret,
+            "is_admin": user.role == UserRole.ADMIN,
         },
     )
 
@@ -251,8 +249,6 @@ def setup_2fa_submit(
     user = session.get(User, user_id)
     if user is None or not user.is_active:
         return RedirectResponse(url="/login", status_code=303)
-    if user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login/admin-security", status_code=303)
     if not user.totp_secret:
         return RedirectResponse(url="/login/setup-2fa", status_code=303)
 
@@ -264,6 +260,8 @@ def setup_2fa_submit(
             status_code=400,
         )
 
+    if user.role == UserRole.ADMIN:
+        return RedirectResponse(url="/login/admin-security", status_code=303)
     return _finish_login(user, request)
 
 
