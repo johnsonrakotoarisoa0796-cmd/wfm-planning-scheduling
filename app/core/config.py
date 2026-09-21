@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     default_answer_time_target_seconds: float = 20.0
     default_shrinkage_pct: float = 0.0
 
+    # Email / OTP
+    otp_delivery_mode: str = "auto"  # email, totp, auto
+    email_otp_ttl_seconds: int = 10 * 60
+    email_otp_resend_cooldown_seconds: int = 60
+    email_otp_max_attempts: int = 5
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "WFM Planning & Scheduling"
+    smtp_use_tls: bool = True
+
     # Sécurité / sessions
     session_max_age_seconds: int = 60 * 60 * 12  # 12h
     pending_2fa_max_age_seconds: int = 60 * 5  # 5 min, cf. §8
