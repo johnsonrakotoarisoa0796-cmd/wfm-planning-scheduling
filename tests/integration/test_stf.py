@@ -4,6 +4,8 @@ Couvre le flux HTTP complet, la dépendance obligatoire à un LTF actif, le
 versioning hebdomadaire, et le RBAC.
 """
 
+from datetime import date, time
+
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +18,7 @@ from app.main import app
 from app.models.campaign import Campaign
 from app.models.enums import Channel, ForecastVersionType, UserRole
 from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
+from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.ltf import LTFCreateInput
@@ -262,3 +265,38 @@ def test_stf_list_filters_by_iso_year(client: TestClient, engine, reference_data
     other_year = client.get("/stf?iso_year=2030")
     assert "Semaine 37" not in other_year.text
     assert "Aucun forecast" in other_year.text
+
+
+def test_delete_stf_with_intraday_requires_and_supports_cascade(engine, reference_data, existing_ltf):
+    with Session(engine) as session:
+        stf = forecast_service.create_stf_forecast(
+            session,
+            STFCreateInput(
+                iso_year=2026, iso_week=37,
+                campaign_id=reference_data["campaign_id"], skill_id=reference_data["skill_id"],
+                volume=44500, aht_seconds=335, occupancy_pct=86, shrinkage_pct=28,
+                service_level_target_pct=80,
+            ),
+            created_by_user_id=None,
+        )
+        interval = IntervalForecast(
+            date=date(2026, 9, 7),
+            interval_start=time(10, 0),
+            interval_end=time(10, 30),
+            campaign_id=reference_data["campaign_id"],
+            skill_id=reference_data["skill_id"],
+            forecast_volume=100,
+            forecast_aht_seconds=335,
+            required_hc=2,
+        )
+        session.add(interval)
+        session.commit()
+
+        with pytest.raises(ValueError, match="Daily/Intraday"):
+            forecast_service.delete_stf_forecast(session, stf.id, cascade=False)
+
+        forecast_service.delete_stf_forecast(session, stf.id, cascade=True)
+        assert session.get(STFForecast, stf.id) is None
+        assert session.get(ForecastVersion, stf.forecast_version_id) is None
+        assert session.exec(select(IntervalForecast)).first() is None
+        assert session.get(LTFForecast, existing_ltf.id) is not None
