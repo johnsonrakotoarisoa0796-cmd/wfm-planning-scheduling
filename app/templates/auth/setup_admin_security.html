@@ -8,7 +8,11 @@
     <div class="auth-brand__pitch">
       <h1 id="auth-title">Finalisez votre sécurité administrateur.</h1>
       <p>
-        Votre code de connexion est envoyé à votre adresse email.
+        {% if email_otp %}
+          Votre code de connexion est envoyé à votre adresse email.
+        {% else %}
+          Le mode email n'est pas encore configuré ; utilisez votre authenticator TOTP.
+        {% endif %}
         Pour l'accès admin, choisissez ensuite deux mots-clés secrets personnels.
       </p>
       {% include "partials/interval_strip.html" %}
@@ -23,6 +27,7 @@
         <p class="subtitle">{{ email }}</p>
         {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
 
+        {% if email_otp %}
         <div class="otp-mail-card">
           <span class="otp-mail-card__icon">✉</span>
           <div>
@@ -30,11 +35,20 @@
             <span>Le code arrive dans la boîte de réception de <b>{{ email }}</b>.</span>
           </div>
         </div>
+        {% else %}
+        <div class="otp-mail-card">
+          <span class="otp-mail-card__icon">◉</span>
+          <div>
+            <strong>Mode TOTP de compatibilité</strong>
+            <span>Configurez Gmail/SMTP pour passer à l'OTP email.</span>
+          </div>
+        </div>
+        {% endif %}
 
         <form method="post" action="/login/admin-security">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <div class="field">
-            <label for="code">Code reçu par email</label>
+            <label for="code">{{ "Code reçu par email" if email_otp else "Code TOTP à 6 chiffres" }}</label>
             <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
           </div>
           <div class="field">
@@ -48,10 +62,12 @@
           <button type="submit" class="btn-primary">Créer ma sécurité admin</button>
         </form>
 
+        {% if email_otp %}
         <form method="post" action="/login/resend-otp" class="otp-resend-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit" class="btn-secondary">Renvoyer le code</button>
         </form>
+        {% endif %}
 
         <p class="auth-form__footer">Les deux mots-clés sont enregistrés sous forme de hash. Ils ne sont jamais visibles dans l’application.</p>
       </div>
