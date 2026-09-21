@@ -14,6 +14,7 @@ from app.core.database import get_session
 from app.core.security import require_role, verify_csrf
 from app.core.templating import templates
 from app.models.intraday import ActualPerformanceRaw, IntervalForecast
+from app.models.client_stf import ClientSTFPlan, ClientSTFInterval
 from app.models.enums import UserRole
 from app.models.user import User
 from app.models.skill import Skill
@@ -158,24 +159,24 @@ async def import_actuals(
                     interval.occupancy_pct = workload_hours / capacity_hours * 100.0 if capacity_hours else 0.0
                     effective_required_hc = interval.required_hc
                     client_plan = session.exec(
-                        select(__import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan).where(
-                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.week_start_date
+                        select(ClientSTFPlan).where(
+                            ClientSTFPlan.week_start_date
                             <= interval.date,
-                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.campaign_id == campaign_id,
-                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.skill_id == skill_id,
-                            __import__("app.models.client_stf", fromlist=["ClientSTFPlan"]).ClientSTFPlan.is_current == True,
+                            ClientSTFPlan.campaign_id == campaign_id,
+                            ClientSTFPlan.skill_id == skill_id,
+                            ClientSTFPlan.is_current == True,  # noqa: E712
                         )
                     ).first()
                     if client_plan is not None:
-                        client_rows = session.exec(
-                            select(__import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval).where(
-                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.plan_id == client_plan.id,
-                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.date == interval.date,
-                                __import__("app.models.client_stf", fromlist=["ClientSTFInterval"]).ClientSTFInterval.interval_start == interval.interval_start,
+                        client_row = session.exec(
+                            select(ClientSTFInterval).where(
+                                ClientSTFInterval.plan_id == client_plan.id,
+                                ClientSTFInterval.date == interval.date,
+                                ClientSTFInterval.interval_start == interval.interval_start,
                             )
                         ).first()
-                        if client_rows is not None:
-                            effective_required_hc = client_rows.required_hc
+                        if client_row is not None:
+                            effective_required_hc = client_row.required_hc
                     interval.staffing_gap = interval.actual_hc - effective_required_hc
                 session.add(interval)
                 matched += 1
