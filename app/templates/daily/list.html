@@ -11,7 +11,7 @@
     {% endif %}
 </div>
 
-{% if request.query_params.get("generated") == "1" %}<div class="success-banner" style="margin-bottom:16px">✓ Le volume STF a été dispersé sur les 7 jours selon les pondérations définies. Les intervalles Intraday sont générés et prêts à être contrôlés.</div>{% endif %}
+{% if request.query_params.get("generated") == "1" %}<div class="success-banner success-banner--spaced">✓ Le volume STF a été dispersé sur les 7 jours selon les pondérations définies. Les intervalles Intraday sont générés et prêts à être contrôlés.</div>{% endif %}
 
 <form class="filter-bar" method="get" action="/daily">
     <div class="field">
