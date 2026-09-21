@@ -166,7 +166,7 @@ def progress_snapshot(plan: RecruitmentPlan) -> RecruitmentProgressSnapshot:
         else 0.0
     )
 
-    if plan.production_hc > 0 and plan.production_hc >= active_pipeline_hc and active_pipeline_hc > 0:
+    if plan.production_hc > 0:
         current_stage = "production"
     elif plan.nesting_hc > 0:
         current_stage = "nesting"
