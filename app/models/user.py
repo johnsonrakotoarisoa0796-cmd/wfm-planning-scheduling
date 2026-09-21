@@ -22,4 +22,11 @@ class User(SQLModel, table=True):
     admin_keyword1_hash: Optional[str] = Field(default=None)
     admin_keyword2_hash: Optional[str] = Field(default=None)
     employee_id: Optional[int] = Field(default=None, foreign_key="employees.id", index=True)
+
+    # Email OTP / 2FA.
+    email_otp_hash: Optional[str] = Field(default=None)
+    email_otp_expires_at: Optional[datetime] = Field(default=None)
+    email_otp_requested_at: Optional[datetime] = Field(default=None)
+    email_otp_attempts: int = Field(default=0, nullable=False)
+
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
