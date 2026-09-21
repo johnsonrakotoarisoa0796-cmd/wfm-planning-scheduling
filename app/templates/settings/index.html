@@ -124,39 +124,115 @@
 </tbody></table>
 </section>
 
-<section id="users" class="form-card form-card--wide" style="margin-top:20px">
-<div class="panel-kicker">COMPTES UTILISATEURS</div>
-<h2>Gestion des utilisateurs</h2>
-<p class="field__hint">Les inscriptions publiques arrivent ici avec le statut « En attente ». L’administrateur contrôle l’activation, le rôle, le 2FA et la sécurité admin.</p>
-<table class="data-table">
-<thead><tr><th>Email</th><th>Rôle</th><th>Statut</th><th>Sécurité</th><th>Créé le</th><th>Actions</th></tr></thead>
-<tbody>
+<section id="users" class="form-card form-card--wide settings-card settings-users-section" style="margin-top:20px">
+<div class="settings-card__head settings-card__head--users">
+  <div class="settings-card__head-left">
+    <div class="settings-card__icon">♙</div>
+    <div><div class="panel-kicker">COMPTES UTILISATEURS</div><h2>Gestion des utilisateurs</h2></div>
+  </div>
+  <div class="settings-users__summary">
+    <span><b>{{ users|length }}</b> total</span>
+    <span class="settings-dot settings-dot--green"></span><span>Actifs</span>
+    <span class="settings-dot settings-dot--amber"></span><span>En attente</span>
+  </div>
+</div>
+<p class="field__hint">Les inscriptions publiques arrivent ici avec le statut « En attente ». L’administrateur contrôle l’activation, le rôle, le 2FA et la sécurité.</p>
+
+<div class="settings-users__toolbar">
+  <div class="settings-users__search"><span>⌕</span><input id="users-search" type="search" placeholder="Rechercher un utilisateur..." autocomplete="off"></div>
+  <select id="users-role-filter" class="settings-users__filter">
+    <option value="">Tous les rôles</option>
+    <option value="admin">Admin</option>
+    <option value="wfm_analyst">WFM Analyst</option>
+    <option value="team_lead">Team Lead</option>
+    <option value="viewer">Viewer</option>
+  </select>
+  <select id="users-status-filter" class="settings-users__filter">
+    <option value="">Tous les statuts</option>
+    <option value="active">Actifs</option>
+    <option value="pending">En attente</option>
+  </select>
+</div>
+
+<div id="users-grid" class="settings-users-grid">
 {% for user in users %}
-<tr>
-<td><strong>{{ user.email }}</strong>{% if user.id == current_user.id %}<div class="field__hint">Votre compte</div>{% endif %}</td>
-<td><form method="post" action="/settings/users/{{ user.id }}" style="display:flex;gap:6px;align-items:center">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="role">
-<select name="role">{% for role in ["viewer", "team_lead", "wfm_analyst", "admin"] %}<option value="{{ role }}" {% if user.role.value == role %}selected{% endif %}>{{ role }}</option>{% endfor %}</select>
-<button class="btn-secondary btn-small" type="submit">Rôle</button></form></td>
-<td>{% if user.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill status-pill--warning">En attente / Inactif</span>{% endif %}</td>
-<td>
-{% if user.totp_secret %}<span class="status-pill status-pill--balanced">TOTP OK</span>{% else %}<span class="status-pill">TOTP à configurer</span>{% endif %}
-{% if user.role.value == "admin" %}{% if user.admin_keyword1_hash and user.admin_keyword2_hash %}<span class="status-pill status-pill--balanced">2 clés OK</span>{% else %}<span class="status-pill status-pill--critical">2 clés manquantes</span>{% endif %}{% endif %}
-</td>
-<td>{{ user.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
-<td style="display:flex;gap:6px;flex-wrap:wrap">
-{% if user.is_active %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="deactivate"><button class="btn-secondary btn-small" type="submit">Désactiver</button></form>
+<article class="user-admin-card" data-user-card data-email="{{ user.email|lower }}" data-role="{{ user.role.value }}" data-status="{{ 'active' if user.is_active else 'pending' }}">
+  <div class="user-admin-card__top">
+    <div class="user-admin-card__identity">
+      <span class="user-admin-avatar">{{ user.email[0]|upper }}</span>
+      <div>
+        <strong>{{ user.email }}</strong>
+        <small>{% if user.id == current_user.id %}Votre compte{% else %}Compte utilisateur{% endif %}</small>
+      </div>
+    </div>
+    <span class="user-admin-card__menu">•••</span>
+  </div>
+
+  <div class="user-admin-card__badges">
+    <span class="user-role-badge">{{ user.role.value }}</span>
+    {% if user.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill status-pill--warning">En attente</span>{% endif %}
+  </div>
+
+  <div class="user-admin-card__security">
+    <div><span>2FA / TOTP</span>{% if user.totp_secret %}<strong class="user-security-ok">Configuré</strong>{% else %}<strong class="user-security-muted">À configurer</strong>{% endif %}</div>
+    {% if user.role.value == "admin" %}<div><span>Clés admin</span>{% if user.admin_keyword1_hash and user.admin_keyword2_hash %}<strong class="user-security-ok">2 clés OK</strong>{% else %}<strong class="user-security-danger">2 clés manquantes</strong>{% endif %}</div>{% endif %}
+    <div><span>Créé le</span><strong>{{ user.created_at.strftime("%d/%m/%Y") }}</strong></div>
+  </div>
+
+  <div class="user-admin-card__role">
+    <form method="post" action="/settings/users/{{ user.id }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="role">
+      <label for="role-{{ user.id }}">Rôle</label>
+      <div class="user-admin-card__role-form">
+        <select id="role-{{ user.id }}" name="role">
+          {% for role in ["viewer", "team_lead", "wfm_analyst", "admin"] %}<option value="{{ role }}" {% if user.role.value == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
+        </select>
+        <button class="btn-secondary btn-small" type="submit">Mettre à jour</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="user-admin-card__actions">
+    {% if user.is_active %}
+      <form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="deactivate"><button class="btn-secondary btn-small" type="submit">Désactiver</button></form>
+    {% else %}
+      <form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="activate"><button class="btn-primary btn-small" type="submit">Activer</button></form>
+    {% endif %}
+    <form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_2fa"><button class="btn-secondary btn-small" type="submit">Réinitialiser TOTP</button></form>
+    {% if user.role.value == "admin" %}<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_admin_security"><button class="btn-secondary btn-small" type="submit">Réinitialiser 2 clés</button></form>{% endif %}
+  </div>
+</article>
 {% else %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="activate"><button class="btn-primary btn-small" type="submit">Activer</button></form>
-{% endif %}
-<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_2fa"><button class="btn-secondary btn-small" type="submit">Réinitialiser TOTP</button></form>
-{% if user.role.value == "admin" %}<form method="post" action="/settings/users/{{ user.id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_admin_security"><button class="btn-secondary btn-small" type="submit">Réinitialiser 2 clés</button></form>{% endif %}
-</td>
-</tr>
-{% else %}<tr><td colspan="6">Aucun utilisateur.</td></tr>{% endfor %}
-</tbody>
-</table>
+<div class="settings-users__empty"><strong>Aucun utilisateur</strong><span>Les nouvelles inscriptions apparaîtront ici.</span></div>
+{% endfor %}
+</div>
+<div id="users-empty-filtered" class="settings-users__empty settings-users__empty--hidden"><strong>Aucun résultat</strong><span>Modifiez la recherche ou les filtres.</span></div>
+
+<script>
+(() => {
+  const cards = [...document.querySelectorAll("[data-user-card]")];
+  const search = document.getElementById("users-search");
+  const role = document.getElementById("users-role-filter");
+  const status = document.getElementById("users-status-filter");
+  const empty = document.getElementById("users-empty-filtered");
+  const refresh = () => {
+    const q = (search?.value || "").trim().toLowerCase();
+    const roleValue = role?.value || "";
+    const statusValue = status?.value || "";
+    let visible = 0;
+    cards.forEach((card) => {
+      const ok = (!q || card.dataset.email.includes(q))
+        && (!roleValue || card.dataset.role === roleValue)
+        && (!statusValue || card.dataset.status === statusValue);
+      card.hidden = !ok;
+      if (ok) visible += 1;
+    });
+    if (empty) empty.classList.toggle("settings-users__empty--hidden", visible > 0 || cards.length === 0);
+  };
+  [search, role, status].forEach((el) => el?.addEventListener("input", refresh));
+  refresh();
+})();
+</script>
 </section>
 {% endif %}
 {% endblock %}
