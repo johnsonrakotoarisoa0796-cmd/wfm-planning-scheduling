@@ -24,6 +24,13 @@ class RecruitmentPlan(SQLModel, table=True):
     headcount: int = Field(default=1, nullable=False)
     weekly_hours_contract: float = Field(default=40.0, nullable=False)
 
+    # Suivi réel de la cohorte.
+    recruited_hc: int = Field(default=0, nullable=False)
+    training_hc: int = Field(default=0, nullable=False)
+    nesting_hc: int = Field(default=0, nullable=False)
+    production_hc: int = Field(default=0, nullable=False)
+    exited_hc: int = Field(default=0, nullable=False)
+
     training_weeks: int = Field(default=2, nullable=False)
     nesting_weeks: int = Field(default=2, nullable=False)
 
