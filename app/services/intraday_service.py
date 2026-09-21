@@ -257,14 +257,16 @@ def build_intraday_forecast_rows(
                 concurrency_factor=skill.concurrency_factor,
             )
 
-        base_gross_required_hc = apply_shrinkage(net_required_hc, data.shrinkage_pct)
+        base_shrinkage_pct = max(
+            data.shrinkage_pct,
+            0.0 if effective_shrinkage_pct is None else effective_shrinkage_pct,
+            absence_rate_pct + leave_rate_pct,
+        )
+        base_gross_required_hc = apply_shrinkage(
+            net_required_hc, base_shrinkage_pct
+        )
         break_15 = break_15m_pct_48[slot_index] if break_15m_pct_48 else 0.0
         lunch_break = lunch_break_pct_48[slot_index] if lunch_break_pct_48 else 0.0
-        base_shrinkage_pct = (
-            data.shrinkage_pct
-            if effective_shrinkage_pct is None
-            else effective_shrinkage_pct
-        )
         total_unavailability_pct = min(
             99.0,
             base_shrinkage_pct + break_15 + lunch_break,
