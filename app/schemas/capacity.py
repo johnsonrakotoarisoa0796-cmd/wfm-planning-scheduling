@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CapacityPlanInput(BaseModel):
@@ -27,3 +27,10 @@ class CapacityPlanInput(BaseModel):
     absenteeism_pct: float = Field(ge=0, le=100)
 
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _validate_period_month(self) -> "CapacityPlanInput":
+        month = int(self.period.split("-")[1])
+        if month < 1 or month > 12:
+            raise ValueError("La période doit contenir un mois valide.")
+        return self
