@@ -110,7 +110,7 @@ def _login(client: TestClient, email: str, secret: str) -> None:
 
 def _ltf_form_payload(reference_data: dict, **overrides) -> dict:
     payload = {
-        "period": "2026-09",
+        "period": "2026-W37",
         "campaign_id": str(reference_data["campaign_id"]),
         "skill_id": str(reference_data["skill_id"]),
         "forecast_volume": "42000",
@@ -142,7 +142,7 @@ def test_analyst_can_create_and_view_ltf_forecast(client: TestClient, engine, re
 
     list_page = client.get("/ltf")
     assert list_page.status_code == 200
-    assert "Septembre 2026" in list_page.text
+    assert "Semaine 37" in list_page.text
 
     detail_page = client.get("/ltf/1")
     assert detail_page.status_code == 200
@@ -235,10 +235,10 @@ def test_ltf_list_filters_by_campaign(client: TestClient, engine, reference_data
     client.post("/ltf/new", data={**_ltf_form_payload(reference_data), "csrf_token": csrf})
 
     matching = client.get(f"/ltf?campaign_id={reference_data['campaign_id']}")
-    assert "Septembre 2026" in matching.text
+    assert "Semaine 37" in matching.text
 
     other_campaign_filter = client.get("/ltf?campaign_id=999999")
-    assert "Septembre 2026" not in other_campaign_filter.text
+    assert "Semaine 37" not in other_campaign_filter.text
     assert "Aucun forecast" in other_campaign_filter.text
 
 
