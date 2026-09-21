@@ -283,14 +283,23 @@ def recalculate_stf(
 @router.post("/{stf_id}/delete", dependencies=[Depends(verify_csrf)])
 def delete_stf(
     stf_id: int,
+    cascade: bool = Form(False),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
     try:
-        forecast_service.delete_stf_forecast(session, stf_id)
+        forecast_service.delete_stf_forecast(
+            session,
+            stf_id,
+            cascade=cascade,
+        )
     except ValueError as exc:
         return RedirectResponse(f"/stf?error={quote_plus(str(exc))}", status_code=303)
-    return RedirectResponse("/stf?success=STF+supprimé+ou+version+précédente+restaurée", status_code=303)
+
+    message = "STF supprimé et version précédente restaurée"
+    if cascade:
+        message += " · Daily/Intraday supprimés pour cette semaine"
+    return RedirectResponse(f"/stf?success={quote_plus(message)}", status_code=303)
 
 @router.post("/{stf_id}/disperse", dependencies=[Depends(verify_csrf)])
 def disperse_stf(
