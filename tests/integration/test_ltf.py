@@ -16,10 +16,11 @@ from app.core.security import hash_password
 from app.main import app
 from app.models.campaign import Campaign
 from app.models.enums import Channel, ForecastVersionType, UserRole
-from app.models.forecast import ForecastVersion, LTFForecast
+from app.models.forecast import ForecastVersion, LTFForecast, STFForecast
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.ltf import LTFCreateInput
+from app.schemas.stf import STFCreateInput
 from app.services import forecast_service
 
 TEST_PASSWORD = "mot-de-passe-solide-123"
