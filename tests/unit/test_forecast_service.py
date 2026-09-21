@@ -77,7 +77,7 @@ def test_compare_ltf_stf_matches_brief_worked_example():
     rows = {row.metric: row for row in compare_ltf_stf(ltf, stf)}
 
     assert rows["Volume"].adjustment == 2500
-    assert rows["AHT"].adjustment == 15
+    assert rows["Handling Time (AHT)"].adjustment == 15
     assert rows["Occupancy"].adjustment == pytest.approx(1.0)
     assert rows["Shrinkage"].adjustment == pytest.approx(3.0)
     assert rows["Headcount Required"].adjustment == 10
