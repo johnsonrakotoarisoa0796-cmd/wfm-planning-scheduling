@@ -168,11 +168,16 @@ def test_wrong_totp_code_is_rejected(client: TestClient, admin_user):
         data={"email": admin_user["email"], "password": TEST_PASSWORD, "csrf_token": csrf_token},
         follow_redirects=False,
     )
-    client.get("/login/verify")
+    client.get("/login/admin-security")
     csrf_token_2 = client.cookies.get("csrf_token")
     response = client.post(
-        "/login/verify",
-        data={"code": "000000", "csrf_token": csrf_token_2},
+        "/login/admin-security",
+        data={
+            "code": "000000",
+            "keyword1": "admin-key-one",
+            "keyword2": "admin-key-two",
+            "csrf_token": csrf_token_2,
+        },
         follow_redirects=False,
     )
     assert response.status_code == 400
