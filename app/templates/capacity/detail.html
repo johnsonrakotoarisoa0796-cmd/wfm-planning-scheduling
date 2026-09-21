@@ -1,54 +1,56 @@
 {% extends "app_base.html" %}
-{% block title %}{{ plan.period }} — Capacity — WFM Planning & Scheduling{% endblock %}
+{% block title %}{{ plan.period }} — Capacity Planning{% endblock %}
 {% block content %}
+
 <div class="page-header">
-    <div>
-        <h1>{{ plan.period }}</h1>
-        <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}</p>
-    </div>
-    <a href="/capacity" class="btn-secondary">&larr; Retour à la liste</a>
+  <div>
+    <div class="panel-kicker">CAPACITY PLAN · {{ plan.period }}</div>
+    <h1>{{ campaign.name if campaign else "Campagne" }}</h1>
+    <p class="page-header__meta">{{ skill.name if skill else "Skill" }} · projection RH et couverture du besoin</p>
+  </div>
+  <div class="page-actions"><a href="/capacity" class="btn-secondary">← Retour</a><a href="/capacity/new" class="btn-primary">Nouveau plan</a></div>
 </div>
 
-<fieldset>
-    <legend>Effectif &amp; Gap</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Required HC (LTF)</td><td class="numeric">{{ "%.1f"|format(plan.required_hc) }}</td></tr>
-                <tr><td>Current HC</td><td class="numeric">{{ "%.1f"|format(plan.current_hc) }}</td></tr>
-                <tr>
-                    <td>Gap actuel</td>
-                    <td class="numeric">
-                        {{ "%+.1f"|format(current_gap) }}
-                        <span class="status-pill status-pill--{{ current_status }}">{{ current_status }}</span>
-                    </td>
-                </tr>
-                <tr><td>Projected HC (Future)</td><td class="numeric">{{ "%.1f"|format(plan.projected_hc) }}</td></tr><tr><td>Projected Available HC</td><td class="numeric"><strong>{{ "%.1f"|format(plan.projected_available_hc) }}</strong></td></tr>
-                <tr>
-                    <td>Gap projeté</td>
-                    <td class="numeric">
-                        {{ "%+.1f"|format(projected_gap) }}
-                        <span class="status-pill status-pill--{{ projected_status }}">{{ projected_status }}</span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</fieldset>
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="kpi-card__top"><span>Required HC</span><span>FORECAST</span></div><div class="kpi-card__value">{{ "%.1f"|format(plan.required_hc) }}</div><div class="kpi-card__foot"><span>Besoin de référence</span></div></div>
+  <div class="kpi-card"><div class="kpi-card__top"><span>Current HC</span><span>NOW</span></div><div class="kpi-card__value">{{ "%.1f"|format(plan.current_hc) }}</div><div class="kpi-card__foot"><span>Gap actuel</span><strong>{{ "%+.1f"|format(current_gap) }}</strong></div></div>
+  <div class="kpi-card"><div class="kpi-card__top"><span>Projected HC</span><span>FUTURE</span></div><div class="kpi-card__value">{{ "%.1f"|format(plan.projected_hc) }}</div><div class="kpi-card__foot"><span>Après mouvements RH</span></div></div>
+  <div class="kpi-card"><div class="kpi-card__top"><span>Available HC</span><span>OPERATIONAL</span></div><div class="kpi-card__value">{{ "%.1f"|format(plan.projected_available_hc) }}</div><div class="kpi-card__foot"><span>Gap projeté</span><strong>{{ "%+.1f"|format(projected_gap) }}</strong></div></div>
+</div>
 
-<fieldset>
-    <legend>Mouvements pris en compte</legend>
-    <div class="data-table-wrapper">
-        <table class="data-table">
-            <tbody>
-                <tr><td>Recrutements</td><td class="numeric">+{{ "%.1f"|format(plan.hiring) }}</td></tr>
-                <tr><td>Transferts entrants</td><td class="numeric">+{{ "%.1f"|format(plan.transfers_in) }}</td></tr>
-                <tr><td>Transferts sortants</td><td class="numeric">−{{ "%.1f"|format(plan.transfers_out) }}</td></tr>
-                <tr><td>Attrition</td><td class="numeric">{{ "%.1f"|format(plan.attrition_pct) }}%</td></tr>
-                <tr><td>Absentéisme</td><td class="numeric">{{ "%.1f"|format(plan.absenteeism_pct) }}%</td></tr>
-            </tbody>
-        </table>
+<div class="dashboard-grid">
+  <section class="metric-panel">
+    <div class="metric-panel__head"><div><div class="panel-kicker">STAFFING</div><h2>Lecture capacité</h2></div><span class="status-pill status-pill--{{ projected_status }}">{{ projected_status }}</span></div>
+    <div class="metric-list">
+      <div><span>Required HC</span><strong>{{ "%.1f"|format(plan.required_hc) }}</strong></div>
+      <div><span>Current HC</span><strong>{{ "%.1f"|format(plan.current_hc) }}</strong></div>
+      <div><span>Current gap</span><strong>{{ "%+.1f"|format(current_gap) }}</strong></div>
+      <div><span>Projected HC</span><strong>{{ "%.1f"|format(plan.projected_hc) }}</strong></div>
+      <div><span>Projected Available HC</span><strong>{{ "%.1f"|format(plan.projected_available_hc) }}</strong></div>
+      <div><span>Projected gap</span><strong>{{ "%+.1f"|format(projected_gap) }}</strong></div>
     </div>
-    {% if plan.notes %}<p class="field__hint">{{ plan.notes }}</p>{% endif %}
-</fieldset>
+  </section>
+
+  <section class="metric-panel">
+    <div class="metric-panel__head"><div><div class="panel-kicker">MOUVEMENTS RH</div><h2>Construction de l’effectif</h2></div></div>
+    <div class="metric-list">
+      <div><span>Recrutements</span><strong>+{{ "%.1f"|format(plan.hiring) }}</strong></div>
+      <div><span>Transferts entrants</span><strong>+{{ "%.1f"|format(plan.transfers_in) }}</strong></div>
+      <div><span>Transferts sortants</span><strong>−{{ "%.1f"|format(plan.transfers_out) }}</strong></div>
+      <div><span>Attrition</span><strong>{{ "%.1f"|format(plan.attrition_pct) }}%</strong></div>
+      <div><span>Absentéisme</span><strong>{{ "%.1f"|format(plan.absenteeism_pct) }}%</strong></div>
+      <div><span>Règle</span><strong>HC ≠ disponibilité</strong></div>
+    </div>
+  </section>
+</div>
+
+<section class="form-card form-card--wide" style="margin-top:16px">
+  <div class="section-title-row"><div><div class="panel-kicker">INTERPRÉTATION WFM</div><h2>Comment lire ce plan</h2></div></div>
+  <div class="recommendations">
+    <article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">01</div><div><h3>Besoin</h3><p>Required HC provient du LTF mensuel ou du pic des LTF hebdomadaires qui couvrent le mois.</p></div></div></article>
+    <article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">02</div><div><h3>Projection</h3><p>Attrition réduit le headcount projeté ; recrutements et transferts le font évoluer.</p></div></div></article>
+    <article class="recommendation-card"><div class="recommendation-card__main"><div class="recommendation-card__badge">03</div><div><h3>Disponibilité</h3><p>L’absentéisme réduit le HC réellement disponible sans supprimer les postes.</p></div></div></article>
+  </div>
+  {% if plan.notes %}<div class="capacity-summary__help"><strong>Notes WFM</strong><p>{{ plan.notes }}</p></div>{% endif %}
+</section>
 {% endblock %}
