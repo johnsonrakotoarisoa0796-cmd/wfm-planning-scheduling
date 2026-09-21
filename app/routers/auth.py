@@ -356,6 +356,108 @@ def admin_security_submit(
     return _finish_login(user, request)
 
 
+@router.get("/login/verify")
+def verify_2fa_form(request: Request, session: Session = Depends(get_session)):
+    user = _pending_user(request, session)
+    if user is None or user.role == UserRole.ADMIN:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if _email_otp_enabled():
+        return templates.TemplateResponse(
+            request,
+            "auth/verify_2fa.html",
+            {
+                "error": request.query_params.get("error"),
+                "email": user.email,
+                "is_admin": False,
+                "email_otp": True,
+                "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
+                "resent": request.query_params.get("resent") == "1",
+            },
+        )
+
+    if not user.totp_secret:
+        return RedirectResponse(url="/login/setup-2fa", status_code=303)
+
+    return templates.TemplateResponse(
+        request,
+        "auth/verify_2fa.html",
+        {"error": None, "email": user.email, "is_admin": False, "email_otp": False},
+    )
+
+
+@router.post("/login/verify", dependencies=[Depends(verify_csrf)])
+def verify_2fa_submit(
+    request: Request,
+    code: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    user = _pending_user(request, session)
+    if user is None or user.role == UserRole.ADMIN:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if _email_otp_enabled():
+        if not verify_email_otp(session, user, code):
+            return templates.TemplateResponse(
+                request,
+                "auth/verify_2fa.html",
+                {
+                    "error": "Code email invalide, expiré ou trop de tentatives.",
+                    "email": user.email,
+                    "is_admin": False,
+                    "email_otp": True,
+                    "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
+                },
+                status_code=400,
+            )
+    elif not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
+        return templates.TemplateResponse(
+            request,
+            "auth/verify_2fa.html",
+            {
+                "error": "Code TOTP invalide ou expiré.",
+                "email": user.email,
+                "is_admin": False,
+                "email_otp": False,
+            },
+            status_code=400,
+        )
+
+    return _finish_login(user, request)
+
+
+@router.post("/login/resend-otp", dependencies=[Depends(verify_csrf)])
+def resend_otp(
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    user = _pending_user(request, session)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if not _email_otp_enabled():
+        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        return RedirectResponse(
+            f"{target}?error={quote_plus('La validation par email est désactivée.')}",
+            status_code=303,
+        )
+
+    try:
+        issue_email_otp(session, user)
+    except ValueError as exc:
+        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        return RedirectResponse(f"{target}?error={quote_plus(str(exc))}", status_code=303)
+    except Exception:
+        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        return RedirectResponse(
+            f"{target}?error={quote_plus(_otp_configuration_error())}",
+            status_code=303,
+        )
+
+    target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+    return RedirectResponse(f"{target}?resent=1", status_code=303)
+
+
 @router.get("/register")
 def register_form(request: Request, session: Session = Depends(get_session)):
     if get_current_user(session=session, session_token=request.cookies.get(SESSION_COOKIE_NAME)):
