@@ -91,17 +91,16 @@ def shrinkage_pct(total_shrinkage_hours: float, paid_hours: float) -> float:
 
 
 def paid_hours(employee_count: float, daily_hours: float, working_days: float) -> float:
-    """Paid Hours = effectif x heures/jour x jours travaillés.
-
-    daily_hours et working_days doivent toujours venir de la configuration
-    (app/core/config.py ou ConfigParameter en base), jamais d'une valeur en
-    dur (règle §19).
-    """
+    """Paid Hours = effectif x heures/jour x jours travaillés."""
+    if employee_count < 0 or daily_hours < 0 or working_days < 0:
+        raise ValueError("employee_count, daily_hours et working_days doivent être >= 0.")
     return employee_count * daily_hours * working_days
 
 
 def workload_hours(volume_contacts: float, aht_seconds: float) -> float:
-    """Charge de travail totale (heures) = Volume x AHT / 3600 (secondes -> heures)."""
+    """Charge de travail totale = Volume x AHT / 3600."""
+    if volume_contacts < 0 or aht_seconds < 0:
+        raise ValueError("volume_contacts et aht_seconds doivent être >= 0.")
     return (volume_contacts * aht_seconds) / 3600
 
 
@@ -137,13 +136,21 @@ def required_hc_aggregate(
     capacity planning long terme. Le dimensionnement Erlang C précis
     n'intervient qu'au niveau Daily/Intraday (commit 08).
     """
+    if workload_hours_value < 0:
+        raise ValueError("workload_hours_value doit être >= 0.")
+    if available_hours_per_agent <= 0:
+        raise ValueError("available_hours_per_agent doit être > 0.")
+    if not 0 < occupancy_target_pct <= 100:
+        raise ValueError("occupancy_target_pct doit être dans ]0,100].")
     available_capacity_hours = available_hours_per_agent * (occupancy_target_pct / 100)
     return _safe_ratio(workload_hours_value, available_capacity_hours)
 
 
 def productive_hours(paid_hours_value: float, total_shrinkage_hours: float) -> float:
     """Productive Hours = Paid Hours - Total Shrinkage Hours."""
-    return paid_hours_value - total_shrinkage_hours
+    if paid_hours_value < 0 or total_shrinkage_hours < 0:
+        raise ValueError("Les heures payées et shrinkage doivent être >= 0.")
+    return max(0.0, paid_hours_value - total_shrinkage_hours)
 
 
 def production_hours(productive_hours_value: float, waiting_hours: float) -> float:
@@ -182,7 +189,7 @@ def forecast_accuracy_pct(forecast: float, actual: float) -> float:
     """
     if actual == 0:
         return 0.0
-    return (1 - abs(forecast - actual) / actual) * 100
+    return max(0.0, 100.0 - abs(forecast - actual) / abs(actual) * 100.0)
 
 
 # --- Staffing Gap (§32) ---------------------------------------------------------
@@ -387,12 +394,11 @@ def service_level_shortfall_pct(actual_pct: float, target_pct: float) -> float:
 
 
 def coverage_pct(required_hc_hours: float, staffed_hc_hours: float) -> float:
-    """Coverage = heures réellement couvertes / heures requises.
-    
-    Le numérateur doit être plafonné à la demande au moment de l'appelant
-    pour éviter qu'un sur-staffing produise plus de 100%.
-    """
-    return _safe_ratio(staffed_hc_hours, required_hc_hours) * 100
+    """Coverage = heures couvertes / heures requises, plafonnée à 100%."""
+    if required_hc_hours <= 0:
+        return 0.0
+    covered = min(max(staffed_hc_hours, 0.0), required_hc_hours)
+    return covered / required_hc_hours * 100.0
 
 
 def understaffed_hours(required_hc_hours: float, staffed_hc_hours: float) -> float:
