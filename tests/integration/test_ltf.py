@@ -114,7 +114,7 @@ def _ltf_form_payload(reference_data: dict, **overrides) -> dict:
         "campaign_id": str(reference_data["campaign_id"]),
         "skill_id": str(reference_data["skill_id"]),
         "forecast_volume": "42000",
-        "forecast_aht_seconds": "320",
+        "handling_time_seconds": "320",
         "aht_required_seconds": "310",
         "occupancy_required_pct": "85",
         "service_level_target_pct": "80",
