@@ -1,7 +1,10 @@
 """Envoi d'emails transactionnels, notamment les OTP de connexion."""
 from __future__ import annotations
 
+import json
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 from app.core.config import get_settings
@@ -15,6 +18,21 @@ def _smtp_credentials() -> tuple[str, str, str]:
     password = "".join(settings.smtp_password.split())
     from_email = settings.smtp_from_email.strip()
     return username, password, from_email
+
+
+def brevo_configured() -> bool:
+    settings = get_settings()
+    return bool(
+        settings.brevo_api_key.strip()
+        and settings.brevo_from_email.strip()
+    )
+
+
+def email_delivery_configured() -> bool:
+    provider = get_settings().email_provider.lower().strip()
+    if provider == "brevo":
+        return brevo_configured()
+    return smtp_configured()
 
 
 def smtp_configuration_error() -> str | None:
@@ -36,6 +54,71 @@ def smtp_configured() -> bool:
     return smtp_configuration_error() is None
 
 
+def email_delivery_configuration_error() -> str | None:
+    settings = get_settings()
+    provider = settings.email_provider.lower().strip()
+    if provider == "brevo":
+        missing = []
+        if not settings.brevo_api_key.strip():
+            missing.append("BREVO_API_KEY")
+        if not settings.brevo_from_email.strip():
+            missing.append("BREVO_FROM_EMAIL")
+        if missing:
+            return "Variables email manquantes dans Render : " + ", ".join(missing) + "."
+        return None
+    if provider == "smtp":
+        return smtp_configuration_error()
+    return "EMAIL_PROVIDER doit être 'brevo' ou 'smtp'."
+
+
+def _send_via_brevo(
+    *,
+    to_email: str,
+    subject: str,
+    text_body: str,
+    html_body: str | None,
+) -> None:
+    settings = get_settings()
+    payload = {
+        "sender": {
+            "email": settings.brevo_from_email.strip(),
+            "name": settings.brevo_from_name or settings.smtp_from_name,
+        },
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text_body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": settings.brevo_api_key.strip(),
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if response.status < 200 or response.status >= 300:
+                raise RuntimeError(f"Brevo API a renvoyé HTTP {response.status}.")
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            detail = ""
+        raise RuntimeError(
+            f"Brevo a refusé l'envoi (HTTP {exc.code}). {detail[:300]}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            f"Render n'arrive pas à joindre l'API Brevo en HTTPS. Détail réseau: {exc.reason}"
+        ) from exc
+
+
 def send_email(
     *,
     to_email: str,
@@ -44,6 +127,20 @@ def send_email(
     html_body: str | None = None,
 ) -> None:
     settings = get_settings()
+    provider = settings.email_provider.lower().strip()
+
+    if provider == "brevo":
+        config_error = email_delivery_configuration_error()
+        if config_error:
+            raise RuntimeError(config_error)
+        _send_via_brevo(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+        )
+        return
+
     username, password, from_email = _smtp_credentials()
     config_error = smtp_configuration_error()
     if config_error:
@@ -75,18 +172,16 @@ def send_email(
                 smtp.send_message(message)
     except smtplib.SMTPAuthenticationError as exc:
         raise RuntimeError(
-            "Gmail a refusé l'authentification SMTP. Vérifiez SMTP_USERNAME et "
-            "SMTP_PASSWORD ; utilisez un App Password Google, pas le mot de passe Gmail normal. "
+            "Gmail a refusé l'authentification SMTP. Vérifiez SMTP_USERNAME et SMTP_PASSWORD. "
             f"Code SMTP: {exc.smtp_code}"
         ) from exc
     except smtplib.SMTPConnectError as exc:
         raise RuntimeError(
-            f"Connexion Gmail refusée ({exc.smtp_code}). Vérifiez SMTP_HOST={settings.smtp_host}, "
-            f"SMTP_PORT={settings.smtp_port} et SMTP_USE_TLS={settings.smtp_use_tls}."
+            f"Connexion Gmail refusée ({exc.smtp_code}). Vérifiez SMTP_HOST, SMTP_PORT et TLS."
         ) from exc
     except smtplib.SMTPServerDisconnected as exc:
         raise RuntimeError(
-            "Gmail a fermé la connexion SMTP avant l'envoi. Vérifiez TLS/port et les identifiants."
+            "Gmail a fermé la connexion SMTP avant l'envoi."
         ) from exc
     except smtplib.SMTPException as exc:
         raise RuntimeError(
@@ -94,8 +189,10 @@ def send_email(
         ) from exc
     except OSError as exc:
         raise RuntimeError(
-            "Render n'arrive pas à joindre Gmail SMTP. Vérifiez SMTP_HOST, SMTP_PORT et le réseau sortant."
+            "Render n'arrive pas à joindre Gmail SMTP. Les services Free Render bloquent "
+            "les ports SMTP sortants ; utilisez EMAIL_PROVIDER=brevo."
         ) from exc
+
 
 
 def send_login_otp(*, to_email: str, code: str, ttl_minutes: int) -> None:
@@ -119,56 +216,10 @@ def send_login_otp(*, to_email: str, code: str, ttl_minutes: int) -> None:
 
 
 
-def test_smtp_connection(*, send_test_email_to: str | None = None) -> None:
-    """Teste la connexion/authentification SMTP et, optionnellement, envoie un email de test."""
-    settings = get_settings()
-    username, password, from_email = _smtp_credentials()
-    if not username or not password or not from_email:
-        raise RuntimeError(
-            "Configuration SMTP incomplète : SMTP_USERNAME, SMTP_PASSWORD et "
-            "SMTP_FROM_EMAIL sont obligatoires."
-        )
-
-    def _send(smtp):
-        smtp.login(username, password)
-        if send_test_email_to:
-            message = EmailMessage()
-            message["From"] = (
-                f"{settings.smtp_from_name} <{from_email}>"
-                if settings.smtp_from_name
-                else from_email
-            )
-            message["To"] = send_test_email_to
-            message["Subject"] = "Test SMTP — WFM Planning & Scheduling"
-            message.set_content(
-                "Test SMTP réussi. Le service email WFM peut envoyer les OTP."
-            )
-            smtp.send_message(message)
-
-    try:
-        if settings.smtp_use_tls and settings.smtp_port == 587:
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                _send(smtp)
-        else:
-            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
-                _send(smtp)
-    except smtplib.SMTPAuthenticationError as exc:
-        raise RuntimeError(
-            "Gmail a refusé l'authentification SMTP (535/534). "
-            "Vérifiez l'adresse SMTP_USERNAME et utilisez un App Password Google "
-            "de 16 caractères. La validation en deux étapes doit être activée."
-        ) from exc
-    except smtplib.SMTPConnectError as exc:
-        raise RuntimeError(
-            "Impossible de se connecter à smtp.gmail.com. Vérifiez SMTP_HOST/PORT "
-            "et la connectivité sortante de Render."
-        ) from exc
-    except smtplib.SMTPException as exc:
-        raise RuntimeError(f"Gmail SMTP a refusé l'opération : {str(exc)[:220]}") from exc
-    except OSError as exc:
-        raise RuntimeError(
-            "Connexion SMTP impossible depuis Render. Vérifiez SMTP_HOST, SMTP_PORT et le réseau."
-        ) from exc
+def test_email_delivery(*, send_test_email_to: str) -> None:
+    send_email(
+        to_email=send_test_email_to,
+        subject="Test email — WFM Planning & Scheduling",
+        text_body="Test réussi. Le service email WFM peut envoyer les OTP.",
+        html_body="<p><strong>Test réussi.</strong> Le service email WFM peut envoyer les OTP.</p>",
+    )
