@@ -1,76 +1,137 @@
 {% extends "app_base.html" %}
 {% block title %}Recrutement & Ramp-up — WFM{% endblock %}
 {% block content %}
-<div class="page-header">
+
+<section class="recruitment-hero">
   <div>
-    <h1>Recrutement &amp; Ramp-up</h1>
-    <p class="page-header__meta">Planifiez les cohortes, la formation, le nesting et la montée en capacité semaine par semaine.</p>
+    <div class="panel-kicker">WORKFORCE · TALENT PIPELINE</div>
+    <h1>Recrutement → Production</h1>
+    <p>Suivez chaque cohorte depuis le recrutement jusqu’à la mise en production, avec la progression réelle, le ramp-up planifié et la capacité attendue.</p>
+    <div class="recruitment-hero__meta">
+      <span><i></i> Pipeline opérationnel</span>
+      <span>Formation · Nesting · Production</span>
+      <span>Capacité par semaine</span>
+    </div>
   </div>
-  {% if can_edit %}<a href="/recruitment/new" class="btn-primary">+ Nouvelle cohorte</a>{% endif %}
-</div>
+  {% if can_edit %}<a href="/recruitment/new" class="btn-hero-primary">+ Nouvelle cohorte <span>→</span></a>{% endif %}
+</section>
 
 {% if plans %}
 {% for item in plans %}
-<section class="wfm-control" id="plan-{{ item.plan.id }}">
-  <div class="wfm-control__head">
-    <div>
-      <span class="panel-kicker">COHORTE {{ item.plan.cohort_name }}</span>
-      <h2>{{ item.campaign.name if item.campaign else "—" }} · {{ item.skill.name if item.skill else "—" }}</h2>
-      <p>{{ item.plan.headcount }} recrues · démarrage {{ item.plan.start_date }} · formation {{ item.plan.training_weeks }} sem. · nesting {{ item.plan.nesting_weeks }} sem.</p>
+{% set p = item.progress %}
+<section class="recruitment-cohort" id="plan-{{ item.plan.id }}">
+  <header class="recruitment-cohort__header">
+    <div class="recruitment-cohort__identity">
+      <div class="recruitment-cohort__avatar">{{ item.plan.cohort_name[0]|upper }}</div>
+      <div>
+        <span class="panel-kicker">COHORTE · {{ item.plan.cohort_name }}</span>
+        <h2>{{ item.campaign.name if item.campaign else "—" }} <span>·</span> {{ item.skill.name if item.skill else "—" }}</h2>
+        <p>{{ item.plan.headcount }} places planifiées · démarrage {{ item.plan.start_date.strftime("%d/%m/%Y") }} · production attendue {{ p.expected_production_date.strftime("%d/%m/%Y") }}</p>
+      </div>
+    </div>
+    <div class="recruitment-cohort__status">
+      <span class="recruitment-stage-pill recruitment-stage-pill--{{ p.current_stage }}">{{ {
+        "planned":"Planifié",
+        "recruited":"Recrutement terminé",
+        "training":"Formation",
+        "nesting":"Nesting",
+        "production":"Production"
+      }.get(p.current_stage, p.current_stage) }}</span>
+      <strong>{{ "%.0f"|format(p.production_readiness_pct) }}%</strong>
+      <small>ready for production</small>
+    </div>
+  </header>
+
+  <div class="recruitment-kpis">
+    <div class="recruitment-kpi"><span>Planned HC</span><strong>{{ p.planned_hc }}</strong><small>objectif de la cohorte</small></div>
+    <div class="recruitment-kpi"><span>Recrutés</span><strong>{{ p.recruited_hc }}</strong><small>{{ "%.0f"|format(p.recruitment_completion_pct) }}% du besoin</small></div>
+    <div class="recruitment-kpi recruitment-kpi--training"><span>Formation</span><strong>{{ p.training_hc }}</strong><small>en montée en compétence</small></div>
+    <div class="recruitment-kpi recruitment-kpi--nesting"><span>Nesting</span><strong>{{ p.nesting_hc }}</strong><small>capacité supervisée</small></div>
+    <div class="recruitment-kpi recruitment-kpi--production"><span>Production</span><strong>{{ p.production_hc }}</strong><small>agents opérationnels</small></div>
+    <div class="recruitment-kpi"><span>Sorties</span><strong>{{ p.exited_hc }}</strong><small>hors pipeline actif</small></div>
+  </div>
+
+  <div class="recruitment-progress-shell">
+    <div class="recruitment-progress-head">
+      <div><strong>Progression vers la production</strong><span>{{ p.production_hc }} / {{ p.planned_hc }} agents en production</span></div>
+      <strong>{{ "%.0f"|format(p.production_readiness_pct) }}%</strong>
+    </div>
+    <div class="recruitment-progress-track">
+      <div class="recruitment-progress-fill" style="width:{{ [p.production_readiness_pct, 100]|min }}%"></div>
     </div>
   </div>
 
-  <div class="control-grid">
-    <div class="control-card"><span>Headcount</span><strong>{{ item.plan.headcount }}</strong><small>Recrues de la cohorte</small></div>
-    <div class="control-card"><span>Formation</span><strong>{{ item.plan.training_weeks }} sem.</strong><small>Capacité opérationnelle 0%</small></div>
-    <div class="control-card"><span>Nesting</span><strong>{{ item.plan.nesting_weeks }} sem.</strong><small>Facteur configurable par semaine</small></div>
-    <div class="control-card"><span>Production</span><strong>{{ item.weeks[-1].week.week_start_date if item.weeks else "—" }}</strong><small>Première semaine à 100%</small></div>
+  <div class="recruitment-stage-flow">
+    {% set stages = [
+      ("planned","01","Planifié","Besoin validé"),
+      ("recruited","02","Recruté","Contrat / onboarding"),
+      ("training","03","Formation","Knowledge & skills"),
+      ("nesting","04","Nesting","Production supervisée"),
+      ("production","05","Production","Capacité opérationnelle")
+    ] %}
+    {% for stage_code, number, label, sub in stages %}
+    {% set stage_order = loop.index0 %}
+    {% set current_order = {"planned":0,"recruited":1,"training":2,"nesting":3,"production":4}.get(p.current_stage,0) %}
+    <div class="recruitment-stage {% if stage_order < current_order %}is-complete{% elif stage_order == current_order %}is-current{% endif %}">
+      <div class="recruitment-stage__node">{{ "✓" if stage_order < current_order else number }}</div>
+      <div><strong>{{ label }}</strong><small>{{ sub }}</small></div>
+      {% if not loop.last %}<span class="recruitment-stage__line"></span>{% endif %}
+    </div>
+    {% endfor %}
   </div>
 
-  <div class="data-table-wrapper">
+  {% if can_edit %}
+  <details class="recruitment-progress-editor">
+    <summary>Mettre à jour la progression réelle</summary>
+    <form method="post" action="/recruitment/{{ item.plan.id }}/progress" class="recruitment-progress-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="field"><label>Recrutés</label><input type="number" name="recruited_hc" min="0" max="{{ p.planned_hc }}" value="{{ p.recruited_hc }}" required></div>
+      <div class="field"><label>Formation</label><input type="number" name="training_hc" min="0" value="{{ p.training_hc }}" required></div>
+      <div class="field"><label>Nesting</label><input type="number" name="nesting_hc" min="0" value="{{ p.nesting_hc }}" required></div>
+      <div class="field"><label>Production</label><input type="number" name="production_hc" min="0" value="{{ p.production_hc }}" required></div>
+      <div class="field"><label>Sorties</label><input type="number" name="exited_hc" min="0" value="{{ p.exited_hc }}" required></div>
+      <button type="submit" class="btn-primary">Enregistrer la progression</button>
+    </form>
+    <p class="field__hint">Règle : formation + nesting + production ≤ recrutés − sorties. Un agent passe d’une étape à l’autre quand son statut opérationnel change.</p>
+  </details>
+  {% endif %}
+
+  <div class="recruitment-ramp-head">
+    <div><span class="panel-kicker">RAMP-UP PLANIFIÉ</span><h3>Montée en capacité semaine par semaine</h3></div>
+    <div class="recruitment-ramp-legend">
+      <span class="recruitment-legend recruitment-legend--training">Formation</span>
+      <span class="recruitment-legend recruitment-legend--nesting">Nesting</span>
+      <span class="recruitment-legend recruitment-legend--production">Production</span>
+    </div>
+  </div>
+
+  <div class="data-table-wrapper recruitment-ramp-table">
     <table class="data-table">
-      <thead>
-        <tr>
-          <th>Sem.</th><th>Date</th><th>Étape</th>
-          <th class="numeric">AHT</th><th class="numeric">Occupancy</th>
-          <th class="numeric">Facteur capacité</th><th class="numeric">Capacité contacts</th>
-          {% if can_edit %}<th>Action</th>{% endif %}
-        </tr>
-      </thead>
+      <thead><tr><th>Sem.</th><th>Date</th><th>Étape</th><th class="numeric">AHT</th><th class="numeric">Occupancy</th><th class="numeric">Facteur capacité</th><th class="numeric">Capacité contacts</th>{% if can_edit %}<th>Action</th>{% endif %}</tr></thead>
       <tbody>
       {% for projection in item.weeks %}
-        <tr>
-          <td>{{ projection.week.week_number }}</td>
-          <td>{{ projection.week.week_start_date }}</td>
-          <td>
-              {% if can_edit %}
-              <select form="ramp-form-{{ projection.week.id }}" name="stage">
-                <option value="training" {% if projection.week.stage == "training" %}selected{% endif %}>Formation</option>
-                <option value="nesting" {% if projection.week.stage == "nesting" %}selected{% endif %}>Nesting</option>
-                <option value="production" {% if projection.week.stage == "production" %}selected{% endif %}>Production</option>
-              </select>
-              {% else %}{{ projection.week.stage }}{% endif %}
-            </td>
-            <td class="numeric">
-              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="aht_seconds" min="1" step="1" value="{{ "%.0f"|format(projection.week.aht_seconds) }}">{% else %}{{ "%.0f"|format(projection.week.aht_seconds) }} s{% endif %}
-            </td>
-            <td class="numeric">
-              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="occupancy_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.occupancy_pct) }}">{% else %}{{ "%.1f"|format(projection.week.occupancy_pct) }}%{% endif %}
-            </td>
-            <td class="numeric">
-              {% if can_edit %}<input form="ramp-form-{{ projection.week.id }}" class="table-input" type="number" name="capacity_factor_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.capacity_factor_pct) }}">{% else %}{{ "%.1f"|format(projection.week.capacity_factor_pct) }}%{% endif %}
-            </td>
-            <td class="numeric">{{ "{:,.0f}".format(projection.capacity_contacts).replace(",", " ") }}</td>
-            {% if can_edit %}
-            <td>
-              <form id="ramp-form-{{ projection.week.id }}" method="post" action="/recruitment/{{ item.plan.id }}/weeks/{{ projection.week.id }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input class="table-input" type="text" name="notes" value="{{ projection.week.notes or '' }}" placeholder="Note">
-                <button class="btn-secondary btn-small" type="submit">Enregistrer</button>
-              </form>
-            </td>
-            {% endif %}
-        </tr>
+      <tr>
+        <td><strong>W{{ projection.week.week_number }}</strong></td>
+        <td>{{ projection.week.week_start_date.strftime("%d/%m/%Y") }}</td>
+        <td><span class="recruitment-ramp-pill recruitment-ramp-pill--{{ projection.week.stage }}">{{ {"training":"Formation","nesting":"Nesting","production":"Production"}.get(projection.week.stage, projection.week.stage) }}</span></td>
+        <td class="numeric">{{ "%.0f"|format(projection.week.aht_seconds) }} s</td>
+        <td class="numeric">{{ "%.0f"|format(projection.week.occupancy_pct) }}%</td>
+        <td class="numeric">{{ "%.0f"|format(projection.week.capacity_factor_pct) }}%</td>
+        <td class="numeric"><strong>{{ "{:,.0f}".format(projection.capacity_contacts).replace(",", " ") }}</strong></td>
+        {% if can_edit %}
+        <td>
+          <form id="ramp-form-{{ projection.week.id }}" method="post" action="/recruitment/{{ item.plan.id }}/weeks/{{ projection.week.id }}" class="ramp-inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="stage" value="{{ projection.week.stage }}">
+            <input class="table-input" type="number" name="aht_seconds" min="1" step="1" value="{{ "%.0f"|format(projection.week.aht_seconds) }}">
+            <input class="table-input" type="number" name="occupancy_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.occupancy_pct) }}">
+            <input class="table-input" type="number" name="capacity_factor_pct" min="0" max="100" step="0.1" value="{{ "%.1f"|format(projection.week.capacity_factor_pct) }}">
+            <input class="table-input ramp-note" type="text" name="notes" value="{{ projection.week.notes or '' }}" placeholder="Note">
+            <button class="btn-secondary btn-small" type="submit">Mettre à jour</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
       {% endfor %}
       </tbody>
     </table>
@@ -78,6 +139,11 @@
 </section>
 {% endfor %}
 {% else %}
-<div class="data-table-wrapper"><div class="empty-state">Aucune cohorte de recrutement.</div></div>
+<section class="planner-empty">
+  <div class="recruitment-empty__icon">♙</div>
+  <strong>Aucune cohorte de recrutement</strong>
+  <p>Créez une cohorte pour commencer à suivre le parcours recrutement → formation → nesting → production.</p>
+  {% if can_edit %}<a href="/recruitment/new" class="btn-primary">Créer une cohorte</a>{% endif %}
+</section>
 {% endif %}
 {% endblock %}
