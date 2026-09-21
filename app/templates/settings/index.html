@@ -23,7 +23,7 @@
   <a href="#campaigns">Campagnes &amp; Skills</a>
   {% if current_user.role.value == "admin" %}<a href="#security">Sécurité</a><a href="#agents">Liaison agents</a><a href="#users">Utilisateurs</a>{% endif %}
 </nav>
-{% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
+{% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}{% if request.query_params.get("success") %}<div class="success-banner">{{ request.query_params.get("success") }}</div>{% endif %}
 <div id="overview" class="settings-kpi-grid"><div class="settings-kpi"><div class="settings-kpi__icon">◎</div><div><span>Campagnes</span><strong>{{ campaigns|length }}</strong><small>périmètres WFM</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">◇</div><div><span>Skills</span><strong>{{ skill_rows|length }}</strong><small>canaux configurés</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">♙</div><div><span>Utilisateurs actifs</span><strong>{{ users|selectattr("is_active")|list|length }}</strong><small>accès autorisés</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">!</div><div><span>En attente</span><strong>{{ users|rejectattr("is_active")|list|length }}</strong><small>à valider</small></div></div></div><div id="campaigns" class="settings-grid">
 <section class="form-card"><div class="panel-kicker">CAMPAGNES</div><h2>Nouvelle campagne</h2>
 {% if can_edit %}<form method="post" action="/settings/campaigns"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -107,6 +107,17 @@
 <div class="settings-card__head"><div class="settings-card__icon">◆</div><div><div class="panel-kicker">SÉCURITÉ ADMIN</div>
 <h2>Deux mots-clés secrets</h2></div></div>
 <p class="field__hint">Pour le compte admin, la connexion exige le mot de passe, le code TOTP du QR code et ces deux mots-clés. Les mots-clés sont stockés uniquement sous forme de hash.</p>
+<div class="smtp-test-panel">
+  <div>
+    <span class="panel-kicker">EMAIL OTP · GMAIL / SMTP</span>
+    <strong>Tester l’envoi OTP</strong>
+    <p>Envoie un email de test à l’adresse de l’administrateur connecté. Aucun secret SMTP n’est affiché.</p>
+  </div>
+  <form method="post" action="/settings/test-email">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn-secondary" type="submit">✉ Tester Gmail SMTP</button>
+  </form>
+</div>
 <form method="post" action="/settings/admin-security">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div class="form-grid">
