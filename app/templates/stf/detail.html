@@ -7,16 +7,16 @@
         <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }} · débute le {{ stf.week_start_date }}</p>
     </div>
     <a href="/stf" class="btn-secondary">&larr; Retour à la liste</a>{% if request.query_params.get("success") %}<div class="success-banner">{{ request.query_params.get("success") }}</div>{% endif %}{% if calculation_incoherent %}
-<div class="wfm-alert wfm-alert--warning" style="margin:16px 0;width:100%;box-sizing:border-box">
+<div class="wfm-alert wfm-alert--warning stf-version-alert">
   <div><strong>⚠️ Cette version STF doit être recalculée</strong></div>
   <div>Elle a été enregistrée avec une ancienne version du moteur WFM ou présente un écart entre la charge agent et les heures productives.</div>
-  <div style="margin-top:8px">
+  <div class="stf-version-alert__metrics">
     Contact hours : <strong>{{ "%.1f"|format(contact_handling_hours) }} h</strong>
     · Charge agent : <strong>{{ "%.1f"|format(agent_workload_hours) }} h</strong>
     · Productive hours : <strong>{{ "%.1f"|format(stf.productive_hours) }} h</strong>
     · Moteur : <strong>{{ calculation_engine_version }}</strong>
   </div>
-  <div style="margin-top:10px">Le bouton <strong>Recalculer</strong> crée une nouvelle version sans supprimer l'historique.</div>
+  <div class="stf-version-alert__note">Le bouton <strong>Recalculer</strong> crée une nouvelle version sans supprimer l'historique.</div>
 </div>
 {% endif %}{% if current_user.role.value in ["admin", "wfm_analyst"] %}<form method="post" action="/stf/{{ stf.id }}/recalculate" class="form-actions-inline" onsubmit="return confirm('Recalculer ce STF avec le moteur WFM actuel ? Une nouvelle version sera créée.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Recalculer</button></form><a class="btn-secondary btn-small" href="/stf/{{ stf.id }}/edit">Rectifier</a><form method="post" action="/stf/{{ stf.id }}/delete" class="form-actions-inline" onsubmit="return confirm('Supprimer ce STF ? Si Daily/Intraday existent, cette action standard sera refusée.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Supprimer</button></form><form method="post" action="/stf/{{ stf.id }}/delete" class="form-actions-inline" onsubmit="return confirm('ATTENTION : supprimer ce STF ET tous les Daily/Intraday de sa semaine/campagne/skill. Confirmer ?');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="cascade" value="true"><button class="btn-danger btn-small" type="submit">Supprimer + Daily/Intraday</button></form><a class="btn-primary btn-small" href="/daily/from-stf/{{ stf.id }}">Disperser vers Daily</a>{% endif %}
 </div>
