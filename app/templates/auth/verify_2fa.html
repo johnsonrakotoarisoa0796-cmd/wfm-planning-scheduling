@@ -27,6 +27,7 @@
         <h2>{{ "Validation administrateur" if is_admin else "Code de vérification" }}</h2>
         <p class="subtitle">{{ email }}</p>
         {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+        {% if warning %}<div class="warning-banner">{{ warning }}</div>{% endif %}
         {% if resent %}<div class="success-banner">Un nouveau code vient d’être envoyé.</div>{% endif %}
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
@@ -40,11 +41,17 @@
         <div class="auth-security-divider"><span>+</span><span>Deux mots-clés administrateur</span></div>
         <div class="field">
           <label for="keyword1">Mot-clé 1</label>
-          <input type="password" id="keyword1" name="keyword1" autocomplete="off" required>
+          <div class="password-field">
+            <input type="password" id="keyword1" name="keyword1" autocomplete="off" required>
+            <button type="button" class="password-toggle" data-password-toggle="keyword1" aria-label="Afficher le mot-clé 1" aria-pressed="false">Afficher</button>
+          </div>
         </div>
         <div class="field">
           <label for="keyword2">Mot-clé 2</label>
-          <input type="password" id="keyword2" name="keyword2" autocomplete="off" required>
+          <div class="password-field">
+            <input type="password" id="keyword2" name="keyword2" autocomplete="off" required>
+            <button type="button" class="password-toggle" data-password-toggle="keyword2" aria-label="Afficher le mot-clé 2" aria-pressed="false">Afficher</button>
+          </div>
         </div>
         {% endif %}
 
@@ -60,6 +67,18 @@
       {% else %}
       <p class="auth-form__footer">Le mode TOTP est utilisé uniquement lorsque l’envoi email n’est pas configuré.</p>
       {% endif %}
+      <script>
+      (() => {
+        document.querySelectorAll("[data-password-toggle]").forEach((button) => button.addEventListener("click", () => {
+          const input = document.getElementById(button.dataset.passwordToggle);
+          if (!input) return;
+          const visible = input.type === "text";
+          input.type = visible ? "password" : "text";
+          button.textContent = visible ? "Afficher" : "Masquer";
+          button.setAttribute("aria-pressed", String(!visible));
+        }));
+      })();
+      </script>
     </div>
   </section>
 </div>
