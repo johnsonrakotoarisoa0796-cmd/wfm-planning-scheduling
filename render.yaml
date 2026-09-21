@@ -69,6 +69,10 @@ services:
         value: "WFM Planning & Scheduling"
       - key: SMTP_USE_TLS
         value: "true"
+      # Récupération sécurité admin (à retirer immédiatement après usage) :
+      # efface les deux mots-clés et génère un nouveau TOTP affiché dans les logs.
+      - key: RESET_ADMIN_SECURITY_EMAIL
+        sync: false
       # Optionnel : "true" cree une campagne + skill de demo au demarrage
       # si aucune campagne n'existe encore (voir bootstrap_demo_data_if_configured
       # dans app/main.py) - meme logique que le bootstrap admin ci-dessus.
