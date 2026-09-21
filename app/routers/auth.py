@@ -1,9 +1,15 @@
-"""Authentification : inscription, mot de passe, TOTP et sécurité renforcée admin.
+"""Authentification : mot de passe + OTP email, avec sécurité renforcée admin.
 
-Pour les comptes standard : mot de passe + TOTP.
-Pour les comptes admin : mot de passe + TOTP + deux mots-clés secrets
-choisis par l'administrateur. Les mots-clés ne sont jamais stockés en clair.
+Le mode email OTP est prioritaire lorsque Gmail/SMTP est configuré. Le TOTP reste
+supporté comme mécanisme de compatibilité si le mode auto doit retomber dessus.
+Les administrateurs utilisent en plus deux mots-clés secrets.
 """
+import base64
+from io import BytesIO
+from urllib.parse import quote_plus
+import smtplib
+
+import qrcode
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
@@ -311,140 +317,6 @@ def admin_security_submit(
             request,
             "auth/verify_2fa.html",
             {"error": "Code TOTP invalide ou expiré.", "email": user.email, "is_admin": True, "email_otp": False},
-            status_code=400,
-        )
-
-    return _finish_login(user, request)
-
-
-@router.get("/login/verify")
-def verify_2fa_form(request: Request, session: Session = Depends(get_session)):
-    user = _pending_user(request, session)
-    if user is None or user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login", status_code=303)
-
-    if _email_otp_enabled():
-        return templates.TemplateResponse(
-            request,
-            "auth/verify_2fa.html",
-            {
-                "error": request.query_params.get("error"),
-                "email": user.email,
-                "is_admin": False,
-                "email_otp": True,
-                "resent": request.query_params.get("resent") == "1",
-            },
-        )
-
-    if not user.totp_secret:
-        return RedirectResponse(url="/login/setup-2fa", status_code=303)
-
-    return templates.TemplateResponse(
-        request,
-        "auth/verify_2fa.html",
-        {"error": None, "email": user.email, "is_admin": False, "email_otp": False},
-    )
-
-
-@router.post("/login/verify", dependencies=[Depends(verify_csrf)])
-def verify_2fa_submit(
-    request: Request,
-    code: str = Form(...),
-    session: Session = Depends(get_session),
-):
-    user = _pending_user(request, session)
-    if user is None or user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login", status_code=303)
-
-    if _email_otp_enabled():
-        if not verify_email_otp(session, user, code):
-            return templates.TemplateResponse(
-                request,
-                "auth/verify_2fa.html",
-                {
-                    "error": "Code email invalide, expiré ou trop de tentatives.",
-                    "email": user.email,
-                    "is_admin": False,
-                    "email_otp": True,
-                },
-                status_code=400,
-            )
-    elif not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
-        return templates.TemplateResponse(
-            request,
-            "auth/verify_2fa.html",
-            {"error": "Code TOTP invalide ou expiré.", "email": user.email, "is_admin": False, "email_otp": False},
-            status_code=400,
-        )
-
-    return _finish_login(user, request)
-
-
-@router.post("/login/resend-otp", dependencies=[Depends(verify_csrf)])
-def resend_otp(
-    request: Request,
-    session: Session = Depends(get_session),
-):
-    user = _pending_user(request, session)
-    if user is None:
-        return RedirectResponse(url="/login", status_code=303)
-    if not _email_otp_enabled():
-        return RedirectResponse(url="/login/verify?error=La+validation+email+est+d%C3%A9sactiv%C3%A9e", status_code=303)
-    try:
-        issue_email_otp(session, user)
-    except ValueError as exc:
-        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
-        return RedirectResponse(f"{target}?error={quote_plus(str(exc))}", status_code=303)
-    except Exception:
-        target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
-        return RedirectResponse(f"{target}?error={quote_plus(_otp_configuration_error())}", status_code=303)
-
-    target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
-    return RedirectResponse(f"{target}?resent=1", status_code=303)
-
-
-@router.get("/login/verify")
-def verify_2fa_form(request: Request, session: Session = Depends(get_session)):
-    pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
-    user_id = read_pending_2fa_token(pending_token) if pending_token else None
-    if user_id is None:
-        return RedirectResponse(url="/login", status_code=303)
-
-    user = session.get(User, user_id)
-    if user is None or not user.is_active:
-        return RedirectResponse(url="/login", status_code=303)
-    if user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login/admin-security", status_code=303)
-    if not user.totp_secret:
-        return RedirectResponse(url="/login/setup-2fa", status_code=303)
-
-    return templates.TemplateResponse(
-        request,
-        "auth/verify_2fa.html",
-        {"error": None, "email": user.email, "is_admin": False},
-    )
-
-
-@router.post("/login/verify", dependencies=[Depends(verify_csrf)])
-def verify_2fa_submit(
-    request: Request,
-    code: str = Form(...),
-    session: Session = Depends(get_session),
-):
-    pending_token = request.cookies.get(PENDING_2FA_COOKIE_NAME)
-    user_id = read_pending_2fa_token(pending_token) if pending_token else None
-    if user_id is None:
-        return RedirectResponse(url="/login", status_code=303)
-
-    user = session.get(User, user_id)
-    if user is None or not user.is_active or user.role == UserRole.ADMIN:
-        return RedirectResponse(url="/login", status_code=303)
-
-    if not user.totp_secret or not verify_totp_code(user.totp_secret, code.strip()):
-        return templates.TemplateResponse(
-            request,
-            "auth/verify_2fa.html",
-            {"error": "Code invalide ou expiré.", "email": user.email, "is_admin": False},
             status_code=400,
         )
 
