@@ -1,96 +1,201 @@
 {% extends "app_base.html" %}
-{% block title %}Nouveau plan de capacité — WFM Planning & Scheduling{% endblock %}
+{% block title %}Capacity Planning — WFM Planning & Scheduling{% endblock %}
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>Plan de capacité</h1>
-        <p class="page-header__meta">Ré-enregistrer pour la même période/campagne/skill met à jour le plan existant — pas de nouvelle version créée.</p>
+
+<section class="capacity-hero">
+  <div>
+    <div class="panel-kicker">WORKFORCE PLANNING · CAPACITY</div>
+    <h1>Capacity Planning</h1>
+    <p>Transformez le forecast LTF en besoin HC, puis comparez l’effectif actuel et la disponibilité projetée.</p>
+    <div class="capacity-hero__meta">
+      <span><i></i> Référence forecast obligatoire</span>
+      <span>Projection mensuelle</span>
+      <span>Disponibilité séparée de l’effectif</span>
     </div>
+  </div>
+  <div class="capacity-hero__badge">
+    <span>WFM</span>
+    <strong>Capacity</strong>
+    <small>Plan de capacité</small>
+  </div>
+</section>
+
+{% if errors %}
+<div class="capacity-alert capacity-alert--danger">
+  <div class="capacity-alert__icon">!</div>
+  <div><strong>Impossible d’enregistrer le plan</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>
 </div>
+{% endif %}
 
-<div class="form-card">
-    {% include "partials/form_errors.html" %}
+<div class="capacity-layout">
+  <main class="capacity-form-card">
+    <form method="post" action="/capacity/new" id="capacity-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <form method="post" action="/capacity/new">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-        <fieldset>
-            <legend>Période &amp; périmètre</legend>
-            <div class="form-grid">
-                <div class="field">
-                    <label for="period">Mois</label>
-                    <select id="period" name="period" required><option value="">Choisir un mois...</option>{% for m in month_options %}<option value="{{ m.value }}" {% if values.period == m.value %}selected{% endif %}>{{ m.label }}</option>{% endfor %}</select>
-                </div>
-                <div class="field">
-                    <label for="campaign_id">Campagne</label>
-                    <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
-                        <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
-                        {% for c in campaigns %}
-                        <option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="field">
-                    <label for="skill_id">Skill</label>
-                    <select id="skill_id" name="skill_id" required>
-                        <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
-                        {% for s in skills %}
-                        <option value="{{ s.id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <p class="field__hint">Le Required HC est pris sur le LTF mensuel actif. S’il n’existe pas, le moteur utilise le pic des LTF hebdomadaires actifs qui couvrent ce mois.</p>
-        </fieldset>
-
-        <fieldset>
-            <legend>Effectif actuel</legend>
-            <div class="form-grid">
-                <div class="field">
-                    <label for="current_hc">Current HC</label>
-                    <input type="number" id="current_hc" name="current_hc" min="0" step="0.5" value="{{ values.current_hc or '' }}" required>
-                </div>
-            </div>
-        </fieldset>
-
-        <fieldset>
-            <legend>Mouvements prévus (projection)</legend>
-            <div class="form-grid">
-                <div class="field">
-                    <label for="hiring">Recrutements</label>
-                    <input type="number" id="hiring" name="hiring" min="0" step="0.5" value="{{ values.hiring or '0' }}">
-                </div>
-                <div class="field">
-                    <label for="transfers_in">Transferts entrants</label>
-                    <input type="number" id="transfers_in" name="transfers_in" min="0" step="0.5" value="{{ values.transfers_in or '0' }}">
-                </div>
-                <div class="field">
-                    <label for="transfers_out">Transferts sortants</label>
-                    <input type="number" id="transfers_out" name="transfers_out" min="0" step="0.5" value="{{ values.transfers_out or '0' }}">
-                </div>
-                <div class="field">
-                    <label for="attrition_pct">Attrition (%)</label>
-                    <input type="number" id="attrition_pct" name="attrition_pct" min="0" max="100" step="0.1" value="{{ values.attrition_pct or '0' }}">
-                </div>
-                <div class="field">
-                    <label for="absenteeism_pct">Absentéisme (%)</label>
-                    <input type="number" id="absenteeism_pct" name="absenteeism_pct" min="0" max="100" step="0.1" value="{{ values.absenteeism_pct or '0' }}">
-                </div>
-            </div>
-            <p class="field__hint">Projected HC = Current HC + Recrutements + Transferts entrants − Transferts sortants − Attrition. L’absentéisme ne supprime pas des postes : il réduit le Projected Available HC.</p>
-        </fieldset>
-
-        <fieldset>
-            <legend>Notes</legend>
-            <div class="field field--full">
-                <textarea name="notes" placeholder="Contexte RH (departs annonces, campagne de recrutement en cours...)">{{ values.notes or '' }}</textarea>
-            </div>
-        </fieldset>
-
-        <div class="form-actions">
-            <button type="submit" class="btn-primary">Enregistrer</button>
-            <a href="/capacity" class="btn-secondary">Annuler</a>
+      <section class="capacity-section">
+        <div class="capacity-section__title">
+          <span class="capacity-section__number">01</span>
+          <div><span class="panel-kicker">PÉRIODE &amp; PÉRIMÈTRE</span><h2>Quel périmètre planifier ?</h2></div>
         </div>
+        <div class="capacity-fields capacity-fields--three">
+          <div class="field">
+            <label for="period">Mois de planification</label>
+            <select id="period" name="period" required>
+              <option value="">Choisir un mois...</option>
+              {% for m in month_options %}<option value="{{ m.value }}" {% if values.period == m.value %}selected{% endif %}>{{ m.label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="campaign_id">Campagne</label>
+            <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id" required>
+              <option value="" disabled {% if not values.campaign_id %}selected{% endif %}>Choisir...</option>
+              {% for c in campaigns %}<option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }}{% if c.code %} · {{ c.code }}{% endif %}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="skill_id">Skill / canal</label>
+            <select id="skill_id" name="skill_id" required>
+              <option value="" disabled {% if not values.skill_id %}selected{% endif %}>Choisir...</option>
+              {% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="capacity-reference">
+          <div class="capacity-reference__icon">↗</div>
+          <div>
+            <strong>Source du Required HC</strong>
+            <span id="reference-source">{{ reference_source or "Le système recherchera d’abord le LTF mensuel, puis le pic des LTF hebdomadaires couvrant le mois." }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="capacity-section">
+        <div class="capacity-section__title">
+          <span class="capacity-section__number">02</span>
+          <div><span class="panel-kicker">EFFECTIF ACTUEL</span><h2>Quelle est la capacité disponible aujourd’hui ?</h2></div>
+        </div>
+        <div class="capacity-primary-input">
+          <div class="field">
+            <label for="current_hc">Current HC</label>
+            <input type="number" id="current_hc" name="current_hc" min="0" step="0.5" value="{{ values.current_hc or '' }}" placeholder="140" required>
+            <div class="field__hint">Effectif réellement présent dans le périmètre avant projection.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="capacity-section">
+        <div class="capacity-section__title">
+          <span class="capacity-section__number">03</span>
+          <div><span class="panel-kicker">MOUVEMENTS RH</span><h2>Construire l’effectif projeté</h2></div>
+        </div>
+        <div class="capacity-fields capacity-fields--four">
+          <div class="field"><label for="hiring">Recrutements</label><input type="number" id="hiring" name="hiring" min="0" step="0.5" value="{{ values.hiring or '0' }}"></div>
+          <div class="field"><label for="transfers_in">Transferts entrants</label><input type="number" id="transfers_in" name="transfers_in" min="0" step="0.5" value="{{ values.transfers_in or '0' }}"></div>
+          <div class="field"><label for="transfers_out">Transferts sortants</label><input type="number" id="transfers_out" name="transfers_out" min="0" step="0.5" value="{{ values.transfers_out or '0' }}"></div>
+          <div class="field"><label for="attrition_pct">Attrition (%)</label><input type="number" id="attrition_pct" name="attrition_pct" min="0" max="100" step="0.1" value="{{ values.attrition_pct or '0' }}"></div>
+        </div>
+        <div class="capacity-formula">
+          <span>Projected HC</span>
+          <strong id="projected-hc-preview">—</strong>
+          <small>Current HC + recrutements + transferts entrants − transferts sortants − attrition</small>
+        </div>
+      </section>
+
+      <section class="capacity-section">
+        <div class="capacity-section__title">
+          <span class="capacity-section__number">04</span>
+          <div><span class="panel-kicker">DISPONIBILITÉ OPÉRATIONNELLE</span><h2>Convertir le HC en capacité réellement disponible</h2></div>
+        </div>
+        <div class="capacity-fields capacity-fields--two">
+          <div class="field">
+            <label for="absenteeism_pct">Absentéisme prévu (%)</label>
+            <input type="number" id="absenteeism_pct" name="absenteeism_pct" min="0" max="100" step="0.1" value="{{ values.absenteeism_pct or '0' }}">
+            <div class="field__hint">L’absentéisme ne supprime pas des postes : il réduit le HC disponible.</div>
+          </div>
+          <div class="capacity-live-card">
+            <span>Projected Available HC</span>
+            <strong id="available-hc-preview">—</strong>
+            <small>Projected HC × (1 − absentéisme)</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="capacity-section">
+        <div class="capacity-section__title">
+          <span class="capacity-section__number">05</span>
+          <div><span class="panel-kicker">CONTEXTE</span><h2>Notes de planification</h2></div>
+        </div>
+        <div class="field field--full">
+          <textarea name="notes" rows="4" placeholder="Départs annoncés, recrutement en cours, ramp-up, transfert d’activité, contraintes client...">{{ values.notes or '' }}</textarea>
+        </div>
+      </section>
+
+      <div class="capacity-form-actions">
+        <a href="/capacity" class="btn-secondary">Annuler</a>
+        <button type="submit" class="btn-primary">Enregistrer le plan de capacité <span>→</span></button>
+      </div>
     </form>
+  </main>
+
+  <aside class="capacity-summary">
+    <div class="capacity-summary__head">
+      <div><span class="panel-kicker">CAPACITY SNAPSHOT</span><h2>Lecture instantanée</h2></div>
+      <span class="capacity-summary__status">LIVE</span>
+    </div>
+
+    <div class="capacity-summary__metric capacity-summary__metric--accent">
+      <span>Current HC</span><strong id="summary-current">—</strong><small>effectif saisi</small>
+    </div>
+    <div class="capacity-summary__metric">
+      <span>Projected HC</span><strong id="summary-projected">—</strong><small>après mouvements RH</small>
+    </div>
+    <div class="capacity-summary__metric">
+      <span>Available HC</span><strong id="summary-available">—</strong><small>après absentéisme</small>
+    </div>
+
+    <div class="capacity-summary__divider"></div>
+
+    <div class="capacity-summary__check">
+      <span class="capacity-check-dot"></span>
+      <div><strong>Chaîne de calcul</strong><small>LTF → Required HC → Current HC → Projection → Disponibilité</small></div>
+    </div>
+    <div class="capacity-summary__check">
+      <span class="capacity-check-dot capacity-check-dot--blue"></span>
+      <div><strong>Règle WFM</strong><small>Absentéisme ≠ attrition : le premier réduit la disponibilité, le second le headcount.</small></div>
+    </div>
+
+    <div class="capacity-summary__help">
+      <strong>Besoin de référence</strong>
+      <p>Le moteur cherche automatiquement un LTF mensuel courant. À défaut, il prend le pic des LTF hebdomadaires courants qui chevauchent le mois.</p>
+    </div>
+  </aside>
 </div>
+
+<script>
+(() => {
+  const num = (id) => Number(document.getElementById(id)?.value || 0);
+  const money = (value) => Number(value || 0).toLocaleString("fr-FR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+
+  const refresh = () => {
+    const current = num("current_hc");
+    const hiring = num("hiring");
+    const transfersIn = num("transfers_in");
+    const transfersOut = num("transfers_out");
+    const attrition = num("attrition_pct");
+    const absenteeism = num("absenteeism_pct");
+
+    const projected = Math.max(0, current + hiring + transfersIn - transfersOut - (current * attrition / 100));
+    const available = Math.max(0, projected * (1 - absenteeism / 100));
+
+    document.getElementById("projected-hc-preview").textContent = money(projected);
+    document.getElementById("available-hc-preview").textContent = money(available);
+    document.getElementById("summary-current").textContent = money(current);
+    document.getElementById("summary-projected").textContent = money(projected);
+    document.getElementById("summary-available").textContent = money(available);
+  };
+
+  document.querySelectorAll("#capacity-form input[type=number]").forEach((input) => input.addEventListener("input", refresh));
+  refresh();
+})();
+</script>
 {% endblock %}
