@@ -3,9 +3,14 @@
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
 
 
 class CapacityPlan(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "skill_id", "period", name="uq_capacity_campaign_skill_period"),
+    )
+
     __tablename__ = "capacity_plans"
 
     id: Optional[int] = Field(default=None, primary_key=True)
