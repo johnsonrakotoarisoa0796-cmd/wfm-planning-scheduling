@@ -5,6 +5,7 @@ supporté comme mécanisme de compatibilité si le mode auto doit retomber dessu
 Les administrateurs utilisent en plus deux mots-clés secrets.
 """
 import base64
+import os
 from io import BytesIO
 from urllib.parse import quote_plus
 import smtplib
@@ -38,6 +39,26 @@ from app.services.otp_service import issue_email_otp, verify_email_otp
 
 router = APIRouter(tags=["auth"])
 settings = get_settings()
+
+
+def _admin_security_reset_active(user: User) -> bool:
+    reset_email = os.environ.get("RESET_ADMIN_SECURITY_EMAIL", "").strip().lower()
+    return (
+        user.role == UserRole.ADMIN
+        and bool(reset_email)
+        and user.email.strip().lower() == reset_email
+        and not user.admin_keyword1_hash
+        and not user.admin_keyword2_hash
+    )
+
+
+def _email_otp_enabled_for_user(user: User) -> bool:
+    # Pendant une récupération admin explicitement activée par Render,
+    # l'utilisateur utilise le nouveau TOTP imprimé dans les logs afin de
+    # pouvoir recréer ses mots-clés même si l'email OTP est indisponible.
+    if _admin_security_reset_active(user):
+        return False
+    return _email_otp_enabled()
 
 
 def _render_login(
@@ -97,7 +118,7 @@ def _render_admin_setup(
         {
             "error": error,
             "email": user.email,
-            "email_otp": _email_otp_enabled(),
+            "email_otp": _email_otp_enabled_for_user(user),
         },
         status_code=status_code,
     )
@@ -136,7 +157,9 @@ def login_submit(
             status_code=403,
         )
 
-    if _email_otp_enabled():
+    admin_security_reset = _admin_security_reset_active(user)
+
+    if _email_otp_enabled() and not admin_security_reset:
         try:
             issue_email_otp(session, user)
         except (ValueError, RuntimeError, OSError, smtplib.SMTPException) as exc:
@@ -148,6 +171,10 @@ def login_submit(
                 status_code=503,
             )
         next_url = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+    elif admin_security_reset:
+        # La récupération admin utilise volontairement le TOTP nouvellement
+        # généré par le bootstrap, sans dépendre du transport email.
+        next_url = "/login/admin-security"
     else:
         if user.role == UserRole.ADMIN and (
             not user.totp_secret
@@ -256,7 +283,7 @@ def admin_security_form(request: Request, session: Session = Depends(get_session
             "error": request.query_params.get("error"),
             "email": user.email,
             "is_admin": True,
-            "email_otp": _email_otp_enabled(),
+            "email_otp": _email_otp_enabled_for_user(user),
             "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
             "resent": request.query_params.get("resent") == "1",
         },
@@ -278,6 +305,7 @@ def admin_security_submit(
         return RedirectResponse(url="/login", status_code=303)
 
     needs_setup = not user.admin_keyword1_hash or not user.admin_keyword2_hash
+    email_otp = _email_otp_enabled_for_user(user)
 
     if needs_setup:
         key1 = new_keyword1.strip()
@@ -294,7 +322,7 @@ def admin_security_submit(
                 error="Les deux mots-clés doivent être différents.",
                 status_code=400,
             )
-        if _email_otp_enabled():
+        if email_otp:
             if not verify_email_otp(session, user, code):
                 return _render_admin_setup(
                     request, user,
@@ -324,12 +352,12 @@ def admin_security_submit(
                 "error": "Un ou plusieurs mots-clés administrateur sont incorrects.",
                 "email": user.email,
                 "is_admin": True,
-                "email_otp": _email_otp_enabled(),
+                "email_otp": email_otp,
             },
             status_code=400,
         )
 
-    if _email_otp_enabled():
+    if email_otp:
         if not verify_email_otp(session, user, code):
             return templates.TemplateResponse(
                 request,
