@@ -377,14 +377,23 @@ def recalculate_ltf(
 @router.post("/{ltf_id}/delete", dependencies=[Depends(verify_csrf)])
 def delete_ltf(
     ltf_id: int,
+    cascade: bool = Form(False),
     current_user: User = Depends(require_role(*WRITE_ROLES)),
     session: Session = Depends(get_session),
 ):
     try:
-        forecast_service.delete_ltf_forecast(session, ltf_id)
+        _, deleted_stf_count = forecast_service.delete_ltf_forecast(
+            session,
+            ltf_id,
+            cascade=cascade,
+        )
     except ValueError as exc:
         return RedirectResponse(f"/ltf?error={quote_plus(str(exc))}", status_code=303)
-    return RedirectResponse("/ltf?success=LTF+supprimé+ou+version+précédente+restaurée", status_code=303)
+
+    message = "LTF supprimé et version précédente restaurée"
+    if deleted_stf_count:
+        message += f" · {deleted_stf_count} STF dépendant(s) supprimé(s)"
+    return RedirectResponse(f"/ltf?success={quote_plus(message)}", status_code=303)
 
 @router.post("/{ltf_id}/disperse", dependencies=[Depends(verify_csrf)])
 def disperse_ltf(
