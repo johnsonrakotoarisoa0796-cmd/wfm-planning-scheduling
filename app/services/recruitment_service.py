@@ -118,12 +118,25 @@ def list_ramp_weeks(session: Session, plan_id: int) -> list[RecruitmentRampWeek]
     )
 
 
-def project_ramp(plan: RecruitmentPlan, weeks: list[RecruitmentRampWeek]) -> list[RampWeekProjection]:
+def project_ramp(
+    plan: RecruitmentPlan,
+    weeks: list[RecruitmentRampWeek],
+    *,
+    concurrency_factor: float = 1.0,
+) -> list[RampWeekProjection]:
+    if concurrency_factor <= 0:
+        raise ValueError("concurrency_factor doit être strictement positif.")
     result: list[RampWeekProjection] = []
     for row in weeks:
         paid_hours = plan.headcount * plan.weekly_hours_contract
         staffed_capacity_hours = paid_hours * (row.capacity_factor_pct / 100.0) * (row.occupancy_pct / 100.0)
-        capacity_contacts = staffed_capacity_hours * 3600.0 / row.aht_seconds if row.aht_seconds > 0 else 0.0
+        contact_workload_hours = (
+            staffed_capacity_hours * concurrency_factor
+        )
+        capacity_contacts = (
+            contact_workload_hours * 3600.0 / row.aht_seconds
+            if row.aht_seconds > 0 else 0.0
+        )
         result.append(
             RampWeekProjection(
                 week=row,

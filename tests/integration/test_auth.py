@@ -57,6 +57,8 @@ def admin_user(engine):
             role=UserRole.ADMIN,
             is_active=True,
             totp_secret=secret,
+            admin_keyword1_hash=hash_password("admin-key-one"),
+            admin_keyword2_hash=hash_password("admin-key-two"),
         )
         session.add(user)
         session.commit()
@@ -82,7 +84,7 @@ def viewer_user(engine):
 
 
 def _login_flow(client: TestClient, email: str, password: str, totp_secret: str):
-    """Effectue le parcours complet login -> 2FA et retourne la réponse finale."""
+    """Effectue le parcours complet login -> 2FA, y compris la sécurité admin."""
     login_page = client.get("/login")
     assert login_page.status_code == 200
     csrf_token = client.cookies.get("csrf_token")
@@ -94,19 +96,30 @@ def _login_flow(client: TestClient, email: str, password: str, totp_secret: str)
         follow_redirects=False,
     )
     assert step1.status_code == 303
-    assert step1.headers["location"] == "/login/verify"
+    target = step1.headers["location"]
+    assert target in {"/login/verify", "/login/admin-security"}
     assert "pending_2fa" in client.cookies
 
-    verify_page = client.get("/login/verify")
+    verify_page = client.get(target)
     assert verify_page.status_code == 200
     csrf_token_2 = client.cookies.get("csrf_token")
-
-    code = pyotp.TOTP(totp_secret).now()
-    step2 = client.post(
-        "/login/verify",
-        data={"code": code, "csrf_token": csrf_token_2},
-        follow_redirects=False,
-    )
+    if target == "/login/admin-security":
+        step2 = client.post(
+            target,
+            data={
+                "code": pyotp.TOTP(totp_secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf_token_2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        step2 = client.post(
+            target,
+            data={"code": pyotp.TOTP(totp_secret).now(), "csrf_token": csrf_token_2},
+            follow_redirects=False,
+        )
     return step2
 
 
@@ -155,11 +168,16 @@ def test_wrong_totp_code_is_rejected(client: TestClient, admin_user):
         data={"email": admin_user["email"], "password": TEST_PASSWORD, "csrf_token": csrf_token},
         follow_redirects=False,
     )
-    client.get("/login/verify")
+    client.get("/login/admin-security")
     csrf_token_2 = client.cookies.get("csrf_token")
     response = client.post(
-        "/login/verify",
-        data={"code": "000000", "csrf_token": csrf_token_2},
+        "/login/admin-security",
+        data={
+            "code": "000000",
+            "keyword1": "admin-key-one",
+            "keyword2": "admin-key-two",
+            "csrf_token": csrf_token_2,
+        },
         follow_redirects=False,
     )
     assert response.status_code == 400

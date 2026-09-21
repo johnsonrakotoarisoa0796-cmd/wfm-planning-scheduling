@@ -70,6 +70,8 @@ def reference_data(engine):
             session.add(emp)
             session.commit()
             session.refresh(emp)
+            session.add(EmployeeSkill(employee_id=emp.id, skill_id=skill.id, is_primary=(i == 0)))
+            session.commit()
             employee_ids.append(emp.id)
 
         shift = scheduling_service.create_shift(
@@ -85,7 +87,9 @@ def reference_data(engine):
 def _make_user(engine, email: str, role: UserRole) -> dict:
     secret = pyotp.random_base32()
     with Session(engine) as session:
-        user = User(email=email, hashed_password=hash_password(TEST_PASSWORD), role=role, is_active=True, totp_secret=secret)
+        user = User(email=email, hashed_password=hash_password(TEST_PASSWORD), role=role, is_active=True, totp_secret=secret,
+            admin_keyword1_hash=hash_password("admin-key-one") if role == UserRole.ADMIN else None,
+            admin_keyword2_hash=hash_password("admin-key-two") if role == UserRole.ADMIN else None)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -95,13 +99,34 @@ def _make_user(engine, email: str, role: UserRole) -> dict:
 def _login(client: TestClient, email: str, secret: str) -> None:
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post("/login", data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf}, follow_redirects=False)
-    client.get("/login/verify")
-    csrf2 = client.cookies.get("csrf_token")
-    client.post("/login/verify", data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2}, follow_redirects=False)
+    step1 = client.post(
+        "/login",
+        data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert step1.status_code == 303
+    if step1.headers.get("location") == "/login/admin-security":
+        page = client.get("/login/admin-security")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/admin-security",
+            data={
+                "code": pyotp.TOTP(secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        client.get("/login/verify")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/verify",
+            data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2},
+            follow_redirects=False,
+        )
 
-
-# --- Planner ------------------------------------------------------------------------
 
 def test_planner_page_renders_without_template_error(client: TestClient, engine):
     user = _make_user(engine, "admin@wfm.local", UserRole.ADMIN)
@@ -384,16 +409,8 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
     from datetime import timedelta
 
     with Session(engine) as session:
-        for employee_id in reference_data["employee_ids"]:
-            session.add(EmployeeSkill(
-                employee_id=employee_id,
-                skill_id=reference_data["skill_id"],
-                is_primary=(employee_id == reference_data["employee_ids"][0]),
-            ))
-        session.commit()
-
         monday = date(2026, 9, 14)
-        for offset in range(5):
+        for offset in range(7):
             intraday_service.generate_intraday_forecast(
                 session,
                 GenerateIntradayInput(
@@ -421,11 +438,11 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
         assert work_entries
         assert all(entry.break2_start is not None for entry in work_entries)
         assert all(entry.lunch_start is not None for entry in work_entries)
-        assert len(result.coverage) == 5
+        assert len(result.coverage) == 7
 
         entries = session.exec(select(ScheduleEntry)).all()
-        assert len(entries) == 15
-        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(5)}
+        assert len(entries) == 21
+        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(7)}
 
 
 def test_schedule_generator_page_is_available(client: TestClient, engine):

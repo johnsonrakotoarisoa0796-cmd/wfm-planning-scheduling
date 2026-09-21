@@ -83,28 +83,36 @@ def _make_user(engine, email: str, role: UserRole):
         return {"email": email, "secret": secret}
 
 
-def _login(client: TestClient, email: str, secret: str):
+def _login(client: TestClient, email: str, secret: str) -> None:
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post(
+    step1 = client.post(
         "/login",
-        data={
-            "email": email,
-            "password": TEST_PASSWORD,
-            "csrf_token": csrf,
-        },
+        data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
         follow_redirects=False,
     )
-    client.get("/login/verify")
-    csrf2 = client.cookies.get("csrf_token")
-    client.post(
-        "/login/verify",
-        data={
-            "code": pyotp.TOTP(secret).now(),
-            "csrf_token": csrf2,
-        },
-        follow_redirects=False,
-    )
+    assert step1.status_code == 303
+    if step1.headers.get("location") == "/login/admin-security":
+        page = client.get("/login/admin-security")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/admin-security",
+            data={
+                "code": pyotp.TOTP(secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        client.get("/login/verify")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/verify",
+            data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2},
+            follow_redirects=False,
+        )
 
 
 def test_service_computes_available_and_projected_headcount(engine, reference_data):

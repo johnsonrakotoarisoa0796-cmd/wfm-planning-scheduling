@@ -182,18 +182,29 @@ def build_scorecard(
     forecast_for_actuals = [f for f, _ in actual_pairs]
     actual_values = [a for _, a in actual_pairs]
     forecast_total = sum(forecast_values)
+    forecast_actualized_total = sum(forecast_for_actuals)
     actual_total = sum(actual_values) if actual_values else None
+
+    # Intraday: compare only intervals already actualized. When the full
+    # day is closed, this naturally becomes the complete day comparison.
 
     forecast = ForecastScorecard(
         forecast_volume=forecast_total,
         actual_volume=actual_total,
-        variance_contacts=(actual_total - forecast_total) if actual_total is not None else None,
+        variance_contacts=(
+            actual_total - forecast_actualized_total
+            if actual_total is not None else None
+        ),
         variance_pct=(
-            kpi_service.forecast_variance_pct(forecast_total, actual_total)
+            kpi_service.forecast_variance_pct(
+                forecast_actualized_total, actual_total
+            )
             if actual_total is not None else None
         ),
         accuracy_pct=(
-            kpi_service.forecast_accuracy_pct(forecast_total, actual_total)
+            kpi_service.forecast_accuracy_pct(
+                forecast_actualized_total, actual_total
+            )
             if actual_total is not None else None
         ),
         wape_pct=(

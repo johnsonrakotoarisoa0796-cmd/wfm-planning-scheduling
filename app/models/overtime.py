@@ -3,11 +3,19 @@
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
 
 from app.models.enums import PeriodType
 
 
 class OvertimePlan(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id", "skill_id", "period_type", "period_key",
+            name="uq_overtime_campaign_skill_period",
+        ),
+    )
+
     __tablename__ = "overtime_plans"
 
     id: Optional[int] = Field(default=None, primary_key=True)

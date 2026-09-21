@@ -59,8 +59,8 @@
 {% else %}
 <section class="planner-empty">
   <strong>Aucun plan de capacité trouvé</strong>
-  <p style="margin-top:6px">Ajustez les filtres ou créez un nouveau plan à partir d’un LTF mensuel ou hebdomadaire couvrant la période.</p>
-  {% if can_edit %}<div style="margin-top:14px"><a href="/capacity/new" class="btn-primary">Créer un plan</a></div>{% endif %}
+  <p class="capacity-help">Ajustez les filtres ou créez un nouveau plan à partir d’un LTF mensuel ou hebdomadaire couvrant la période.</p>
+  {% if can_edit %}<div class="capacity-actions"><a href="/capacity/new" class="btn-primary">Créer un plan</a></div>{% endif %}
 </section>
 {% endif %}
 {% endblock %}

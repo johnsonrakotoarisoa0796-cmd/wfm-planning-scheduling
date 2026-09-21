@@ -14,10 +14,11 @@ from app.core.database import get_session
 from app.core.security import require_role, verify_csrf
 from app.core.templating import templates
 from app.models.intraday import ActualPerformanceRaw, IntervalForecast
+from app.models.client_stf import ClientSTFPlan, ClientSTFInterval
 from app.models.enums import UserRole
 from app.models.user import User
 from app.models.skill import Skill
-from app.services import channel_service, intraday_service
+from app.services import channel_service, intraday_service, client_stf_service
 
 router = APIRouter(prefix="/imports", tags=["imports"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST, UserRole.TEAM_LEAD)
@@ -27,6 +28,7 @@ REQUIRED_COLUMNS = {
     "offered", "handled", "abandoned", "talk_time_seconds",
     "hold_time_seconds", "acw_seconds", "agents_staffed", "paid_hours",
 }
+OPTIONAL_COLUMNS = {"answered_within_threshold"}
 
 
 def _as_time(value) -> time:
@@ -77,6 +79,7 @@ async def import_actuals(
         batch_id = str(uuid4())
         imported = 0
         matched = 0
+        seen_keys: set[tuple] = set()
 
         for _, raw in frame.iterrows():
             day = pd.to_datetime(raw["date"]).date()
@@ -87,9 +90,27 @@ async def import_actuals(
             acw = float(raw["acw_seconds"] or 0)
             offered = float(raw["offered"] or 0)
             abandoned = float(raw["abandoned"] or 0)
+            answered_raw = raw.get("answered_within_threshold")
+            answered_within_threshold = (
+                float(answered_raw) if pd.notna(answered_raw) and str(answered_raw).strip() else None
+            )
+            if answered_within_threshold is not None and (
+                answered_within_threshold < 0 or answered_within_threshold > offered
+            ):
+                raise ValueError(
+                    f"Ligne {int(getattr(raw, 'name', 0)) + 2}: answered_within_threshold doit être "
+                    "compris entre 0 et offered."
+                )
             agents = float(raw["agents_staffed"] or 0)
             campaign_id = int(raw["campaign_id"])
             skill_id = int(raw["skill_id"])
+            key = (day, interval_start, campaign_id, skill_id)
+            if key in seen_keys:
+                raise ValueError(
+                    f"Doublon détecté dans le fichier pour {day} {interval_start} "
+                    f"(campaign {campaign_id}, skill {skill_id})."
+                )
+            seen_keys.add(key)
 
             session.add(
                 ActualPerformanceRaw(
@@ -100,6 +121,7 @@ async def import_actuals(
                     offered=offered,
                     handled=handled,
                     abandoned=abandoned,
+                    answered_within_threshold=answered_within_threshold,
                     talk_time_seconds=talk,
                     hold_time_seconds=hold,
                     acw_seconds=acw,
@@ -126,6 +148,11 @@ async def import_actuals(
                 interval.abandon_rate_pct = (
                     abandoned / offered * 100.0 if offered > 0 else 0.0
                 )
+                if answered_within_threshold is not None and offered > 0:
+                    eligible = max(0.0, offered)
+                    interval.service_level_pct = (
+                        answered_within_threshold / eligible * 100.0
+                    )
                 if interval.actual_hc and interval.actual_aht_seconds:
                     capacity_hours = interval.actual_hc * intraday_service.interval_duration_hours(interval.interval_start, interval.interval_end)
                     skill = session.get(Skill, skill_id)
@@ -138,7 +165,27 @@ async def import_actuals(
                         concurrency_factor=skill.concurrency_factor,
                     )
                     interval.occupancy_pct = workload_hours / capacity_hours * 100.0 if capacity_hours else 0.0
-                    interval.staffing_gap = interval.actual_hc - interval.required_hc
+                    effective_required_hc = interval.required_hc
+                    client_plan = session.exec(
+                        select(ClientSTFPlan).where(
+                            ClientSTFPlan.week_start_date
+                            == client_stf_service.monday_of_week(interval.date),
+                            ClientSTFPlan.campaign_id == campaign_id,
+                            ClientSTFPlan.skill_id == skill_id,
+                            ClientSTFPlan.is_current == True,  # noqa: E712
+                        )
+                    ).first()
+                    if client_plan is not None:
+                        client_row = session.exec(
+                            select(ClientSTFInterval).where(
+                                ClientSTFInterval.plan_id == client_plan.id,
+                                ClientSTFInterval.date == interval.date,
+                                ClientSTFInterval.interval_start == interval.interval_start,
+                            )
+                        ).first()
+                        if client_row is not None:
+                            effective_required_hc = client_row.required_hc
+                    interval.staffing_gap = interval.actual_hc - effective_required_hc
                 session.add(interval)
                 matched += 1
             imported += 1

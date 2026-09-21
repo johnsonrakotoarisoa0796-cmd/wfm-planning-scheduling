@@ -18,8 +18,10 @@ settings = get_settings()
 
 
 def weekday_volume_weights() -> list[float]:
-    """Répartition de secours sur les 7 jours calendaires si aucun profil explicite n'est fourni."""
-    return [1.0 / 7.0] * 7
+    """Répartition WFM par défaut sur les 7 jours, alignée avec l'UI Daily/STF."""
+    # Mon 13%, Tue 14%, Wed 16%, Thu 17%, Fri 14%, Sat 13%, Sun 13%.
+    # La somme vaut exactement 100%.
+    return [0.13, 0.14, 0.16, 0.17, 0.14, 0.13, 0.13]
 
 
 def _timezone_for_skill(session: Session, skill_id: int) -> str:
@@ -35,19 +37,22 @@ def _timezone_for_skill(session: Session, skill_id: int) -> str:
 
 
 def default_break_15m_profile_pct() -> list[float]:
-    """Profil proposé de pause 15 min par intervalle actif."""
-    # 33 slots : 10:00 -> 02:00.
+    """Profil par défaut représentant 2 x 15 min de pause par agent.
+
+    Pour un profil de taux, l'exposition équivalente est:
+    somme(taux_pct) x 30 min / 100. Le défaut totalise donc 30 minutes.
+    """
     values = [0.0] * 33
-    for idx in (3, 4, 5, 13, 14, 15, 16, 24, 25):
-        values[idx] = 5.0
+    for idx in (3, 4, 5, 13, 14, 23, 24, 25, 26, 27):
+        values[idx] = 10.0
     return values
 
 
 def default_lunch_break_profile_pct() -> list[float]:
-    """Profil proposé de pause déjeuner par intervalle actif."""
+    """Profil par défaut représentant 60 minutes d'indisponibilité déjeuner."""
     values = [0.0] * 33
-    for idx in (4, 5, 6, 7, 8, 9):
-        values[idx] = 10.0
+    for idx in (5, 6, 7, 8, 9):
+        values[idx] = 40.0
     return values
 
 def disperse_week(

@@ -47,12 +47,12 @@
 </section>
 
 {% if compliance_report %}
-<section class="wfm-control" style="margin-top:18px">
+<section class="wfm-control schedule-generate-control">
   <div class="wfm-control__head"><div><span class="panel-kicker">COMPLIANCE CHECK</span><h2>{{ "Planning conforme" if compliance_report.compliant else "Violations détectées" }}</h2><p>{{ compliance_report.violations|length }} signal(s) · politique {{ compliance_report.policy.name }}</p></div><a class="btn-secondary" href="/compliance?week={{ filters.period }}&campaign_id={{ filters.campaign_id }}&skill_id={{ filters.skill_id }}">Détails Compliance ↗</a></div>
   {% if compliance_report.weekly_coverage %}
   <div class="control-grid"><div class="control-card"><span>Weekly Coverage</span><strong>{{ "%.1f"|format(compliance_report.weekly_coverage.coverage_pct) }}%</strong><small>Cible {{ "%.1f"|format(compliance_report.weekly_coverage.target_pct) }}% · {{ "%+.1f"|format(compliance_report.weekly_coverage.gap_to_target_pct) }} pts</small></div><div class="control-card"><span>Shortage</span><strong>{{ "%.1f"|format(compliance_report.weekly_coverage.shortage_hc_hours) }} h</strong><small>HC-hours non couvertes</small></div></div>
   {% endif %}
-  {% if compliance_report.violations %}<table class="data-table" style="margin-top:14px"><thead><tr><th>Agent</th><th>Règle</th><th>Détail</th><th>Gravité</th></tr></thead><tbody>{% for item in compliance_report.violations[:8] %}<tr><td>{{ item.employee_name or "Système" }}</td><td>{{ item.rule }}</td><td>{{ item.detail }}</td><td><span class="status-pill status-pill--{{ item.severity }}">{{ item.severity }}</span></td></tr>{% endfor %}</tbody></table>{% endif %}
+  {% if compliance_report.violations %}<table class="data-table schedule-compliance-table"><thead><tr><th>Agent</th><th>Règle</th><th>Détail</th><th>Gravité</th></tr></thead><tbody>{% for item in compliance_report.violations[:8] %}<tr><td>{{ item.employee_name or "Système" }}</td><td>{{ item.rule }}</td><td>{{ item.detail }}</td><td><span class="status-pill status-pill--{{ item.severity }}">{{ item.severity }}</span></td></tr>{% endfor %}</tbody></table>{% endif %}
 </section>
 {% endif %}
 

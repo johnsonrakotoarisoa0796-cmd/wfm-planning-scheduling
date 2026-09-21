@@ -141,10 +141,14 @@ def build_control_tower(
         )
 
     forecast_volume = sum(row.forecast_volume for row in intervals)
-    actual_points = [(row.actual_volume, 1.0) for row in intervals if row.actual_volume is not None]
-    actual_volume = sum(value for value, _ in actual_points) if actual_points else None
+    actual_points = [(row.forecast_volume, row.actual_volume) for row in intervals if row.actual_volume is not None]
+    actualized_forecast_volume = sum(forecast for forecast, _ in actual_points)
+    actual_volume = sum(actual for _, actual in actual_points) if actual_points else None
     accuracy = (
-        max(0.0, 100.0 - abs(forecast_volume - actual_volume) / actual_volume * 100.0)
+        max(
+            0.0,
+            100.0 - abs(actualized_forecast_volume - actual_volume) / actual_volume * 100.0,
+        )
         if actual_volume and actual_volume > 0
         else None
     )

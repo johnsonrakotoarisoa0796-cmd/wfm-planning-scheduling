@@ -30,7 +30,7 @@
   {% else %}<p class="field__hint">Lecture seule pour votre rôle.</p>{% endif %}
 </section>
 
-<section class="form-card form-card--wide" style="margin-top:18px">
+<section class="form-card form-card--wide form-card--spaced">
   <div class="panel-kicker">2 · CONTRÔLE HEBDOMADAIRE</div>
   <h2>Tester un planning</h2>
   <form class="filter-bar" method="get" action="/compliance">
@@ -40,14 +40,14 @@
     <button type="submit">Analyser la semaine</button>
   </form>
   {% if report %}
-  <div class="control-grid" style="margin-top:18px">
+  <div class="control-grid control-grid--spaced">
     <div class="control-card"><span>Weekly Coverage</span><strong>{{ "%.1f"|format(report.weekly_coverage.coverage_pct) }}%</strong><small>Cible {{ "%.1f"|format(report.weekly_coverage.target_pct) }}% · Écart {{ "%+.1f"|format(report.weekly_coverage.gap_to_target_pct) }} pts</small></div>
     <div class="control-card"><span>Required HC-hours</span><strong>{{ "%.1f"|format(report.weekly_coverage.required_hc_hours) }}</strong><small>Besoin total semaine</small></div>
     <div class="control-card"><span>Shortage</span><strong>{{ "%.1f"|format(report.weekly_coverage.shortage_hc_hours) }} h</strong><small>HC-hours non couvertes</small></div>
     <div class="control-card"><span>Surplus</span><strong>{{ "%.1f"|format(report.weekly_coverage.surplus_hc_hours) }} h</strong><small>HC-hours au-dessus du besoin</small></div>
     <div class="control-card"><span>Conformité</span><strong>{{ "CONFORME" if report.compliant else "VIOLATIONS" }}</strong><small>{{ report.violations|length }} signal(s)</small></div>
   </div>
-  <table class="data-table" style="margin-top:18px"><thead><tr><th>Agent</th><th>Règle</th><th>Détail</th><th>Gravité</th></tr></thead><tbody>
+  <table class="data-table data-table--spaced"><thead><tr><th>Agent</th><th>Règle</th><th>Détail</th><th>Gravité</th></tr></thead><tbody>
   {% for item in report.violations %}<tr><td>{{ item.employee_name or "Système" }}</td><td>{{ item.rule }}</td><td>{{ item.detail }}</td><td><span class="status-pill status-pill--{{ item.severity }}">{{ item.severity }}</span></td></tr>{% else %}<tr><td colspan="4">Aucune violation. Le planning respecte la politique active et la cible de couverture.</td></tr>{% endfor %}
   </tbody></table>
   {% endif %}

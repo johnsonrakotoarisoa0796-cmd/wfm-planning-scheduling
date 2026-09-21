@@ -17,7 +17,9 @@ from sqlmodel import Session, select
 
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
-from app.models.employee import Employee, EmployeeAbsence
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
+from app.models.campaign import Campaign
+from app.models.skill import Skill
 from app.schemas.scheduling import ScheduleEntryInput, ShiftInput
 from app.services import client_stf_service, compliance_service, intraday_service, kpi_service, workforce_service
 
@@ -54,6 +56,69 @@ def list_shifts(session: Session, *, active_only: bool = True) -> list[Shift]:
 # Affectations (ScheduleEntry)
 # ============================================================================
 
+def _time_offset_from_shift_start(shift: Shift, value: time) -> int:
+    """Minute offset depuis le début du shift, y compris les shifts overnight."""
+    start = _time_minutes(shift.start_time)
+    current = _time_minutes(value)
+    if shift.start_time > shift.end_time and current < start:
+        current += 24 * 60
+    if shift.start_time <= shift.end_time and current < start:
+        return -1
+    return current - start
+
+
+def _validate_break_plan(entry: ScheduleEntry, shift: Shift) -> list[str]:
+    """Valide présence, durée, position et chevauchement des pauses."""
+    errors: list[str] = []
+    expected_breaks = max(0, min(shift.break_count, 2))
+    break_pairs = [
+        (entry.break_start, entry.break_end, "Pause 1"),
+        (entry.break2_start, entry.break2_end, "Pause 2"),
+    ]
+    intervals: list[tuple[int, int, str]] = []
+
+    for index, (start, end, label) in enumerate(break_pairs):
+        required = index < expected_breaks and shift.break_minutes > 0
+        if start is None and end is None:
+            continue
+        if start is None or end is None:
+            errors.append(f"{label}: début et fin doivent être renseignés ensemble.")
+            continue
+        start_offset = _time_offset_from_shift_start(shift, start)
+        end_offset = _time_offset_from_shift_start(shift, end)
+        if start_offset < 0 or end_offset < 0 or end_offset <= start_offset:
+            errors.append(f"{label}: plage horaire invalide ou en dehors du shift.")
+            continue
+        if end_offset > int(round(workforce_service.shift_elapsed_hours(shift) * 60)):
+            errors.append(f"{label}: la pause sort du shift.")
+        if end_offset - start_offset != shift.break_minutes:
+            errors.append(f"{label}: durée attendue {shift.break_minutes} minute(s).")
+        intervals.append((start_offset, end_offset, label))
+
+    if shift.lunch_minutes > 0:
+        if entry.lunch_start is None and entry.lunch_end is None:
+            pass
+        elif entry.lunch_start is None or entry.lunch_end is None:
+            errors.append("Déjeuner: début et fin doivent être renseignés ensemble.")
+        else:
+            start_offset = _time_offset_from_shift_start(shift, entry.lunch_start)
+            end_offset = _time_offset_from_shift_start(shift, entry.lunch_end)
+            if start_offset < 0 or end_offset < 0 or end_offset <= start_offset:
+                errors.append("Déjeuner: plage horaire invalide ou en dehors du shift.")
+            elif end_offset > int(round(workforce_service.shift_elapsed_hours(shift) * 60)):
+                errors.append("Déjeuner: le déjeuner sort du shift.")
+            elif end_offset - start_offset != shift.lunch_minutes:
+                errors.append(f"Déjeuner: durée attendue {shift.lunch_minutes} minute(s).")
+            else:
+                intervals.append((start_offset, end_offset, "Déjeuner"))
+
+    intervals.sort(key=lambda item: item[0])
+    for previous, current in zip(intervals, intervals[1:]):
+        if current[0] < previous[1]:
+            errors.append(f"{previous[2]} et {current[2]} se chevauchent.")
+
+    return errors
+
 def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> ScheduleEntry:
     """Crée ou met à jour l'affectation d'un employé pour une date donnée.
 
@@ -82,10 +147,47 @@ def upsert_schedule_entry(session: Session, data: ScheduleEntryInput) -> Schedul
     entry.lunch_end = None if data.is_day_off else data.lunch_end
 
     employee = session.get(Employee, data.employee_id)
+    campaign = session.get(Campaign, data.campaign_id)
+    skill = session.get(Skill, data.skill_id)
     shift = session.get(Shift, data.shift_id) if data.shift_id is not None else None
     if employee is None:
         raise ValueError("Employé introuvable.")
+    if campaign is None or not campaign.is_active:
+        raise ValueError("Campagne introuvable ou inactive.")
+    if skill is None or not skill.is_active or skill.campaign_id != data.campaign_id:
+        raise ValueError("Skill introuvable, inactif ou rattaché à une autre campagne.")
+    if employee.campaign_id != data.campaign_id:
+        raise ValueError("L'employé n'appartient pas à la campagne sélectionnée.")
+    skill_link = session.exec(
+        select(EmployeeSkill).where(
+            EmployeeSkill.employee_id == data.employee_id,
+            EmployeeSkill.skill_id == data.skill_id,
+        )
+    ).first()
+    if skill_link is None:
+        raise ValueError("L'employé ne possède pas le skill sélectionné.")
+    if data.entry_date < employee.hire_date:
+        raise ValueError("La date du planning est antérieure à la date d'embauche.")
+    if employee.termination_date is not None and data.entry_date > employee.termination_date:
+        raise ValueError("La date du planning est postérieure à la date de sortie.")
+    absence = session.exec(
+        select(EmployeeAbsence).where(
+            EmployeeAbsence.employee_id == data.employee_id,
+            EmployeeAbsence.start_date <= data.entry_date,
+            EmployeeAbsence.end_date >= data.entry_date,
+        )
+    ).first()
+    if absence is not None and not data.is_day_off:
+        raise ValueError(
+            f"L'employé est absent ({absence.absence_type}) à cette date."
+        )
+    if not data.is_day_off and shift is None:
+        raise ValueError("Shift introuvable.")
     if not data.is_day_off and shift is not None:
+        break_errors = _validate_break_plan(entry, shift)
+        if break_errors:
+            session.rollback()
+            raise ValueError("Planning: " + " ".join(break_errors))
         policy = compliance_service.get_policy(
             session, campaign_id=data.campaign_id, skill_id=data.skill_id
         )

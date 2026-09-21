@@ -103,7 +103,7 @@
 </tbody></table></section>
 
 {% if current_user.role.value == "admin" %}
-<section id="security" class="form-card form-card--wide settings-card settings-security" style="margin-top:20px">
+<section id="security" class="form-card form-card--wide settings-card settings-security form-card--spaced">
 <div class="settings-card__head"><div class="settings-card__icon">◆</div><div><div class="panel-kicker">SÉCURITÉ ADMIN</div>
 <h2>Deux mots-clés secrets</h2></div></div>
 <p class="field__hint">Pour le compte admin, la connexion exige le mot de passe, le code TOTP du QR code et ces deux mots-clés. Les mots-clés sont stockés uniquement sous forme de hash.</p>
@@ -128,14 +128,14 @@
 </form>
 </section>
 
-<section id="agents" class="form-card form-card--wide settings-card" style="margin-top:20px">
+<section id="agents" class="form-card form-card--wide settings-card form-card--spaced">
 <div class="settings-card__head"><div class="settings-card__icon">♙</div><div><div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2></div></div><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
 <table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Agent lié</th><th>Action</th></tr></thead><tbody>
-{% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
+{% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" class="settings-user-agent-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
 </tbody></table>
 </section>
 
-<section id="users" class="form-card form-card--wide settings-card settings-users-section" style="margin-top:20px">
+<section id="users" class="form-card form-card--wide settings-card settings-users-section form-card--spaced">
 <div class="settings-card__head settings-card__head--users">
   <div class="settings-card__head-left">
     <div class="settings-card__icon">♙</div>

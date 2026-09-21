@@ -15,7 +15,7 @@
 {% endif %}
 
 {% if existing_intervals_count %}
-<div class="error-banner" style="margin-bottom:18px">
+<div class="error-banner daily-stf-error">
     <strong>{{ existing_intervals_count }} intervalles existent déjà</strong> pour cette semaine / campagne / skill.
     Pour régénérer avec les nouvelles hypothèses, cochez <strong>« Remplacer les intervalles existants »</strong>.
     Sans cette confirmation, aucune donnée existante ne sera supprimée.
@@ -66,7 +66,7 @@
         </div>
     </section>
 
-    <section class="form-card form-card--wide" style="margin-top:18px">
+    <section class="form-card form-card--wide daily-stf-section">
         <div class="panel-kicker">HYPOTHÈSES DE STAFFING</div>
         <h2>Handling Time, absentéisme et congés</h2>
         <div class="form-grid">
@@ -100,7 +100,7 @@
         </div>
     </section>
 
-    <section class="form-card form-card--wide" style="margin-top:18px">
+    <section class="form-card form-card--wide daily-stf-section">
         <div class="panel-kicker">DISTRIBUTION INTRADAY</div>
         <h2>Profil des contacts + pauses par tranche</h2>
         <p class="field__hint">
@@ -140,7 +140,7 @@
             </table>
         </div>
 
-        <div class="control-grid" style="margin-top:16px">
+        <div class="control-grid daily-stf-control-grid">
             <div class="control-card">
                 <span>Total profil intraday</span>
                 <strong id="intraday-total">{{ "%.1f"|format(intraday_profile_pct|sum) }}%</strong>
@@ -159,9 +159,9 @@
         </div>
     </section>
 
-    <section class="form-card form-card--wide" style="margin-top:18px">
+    <section class="form-card form-card--wide daily-stf-section">
         <div class="panel-kicker">REMPLACEMENT</div>
-        <label style="display:flex;align-items:center;gap:10px;font-weight:700">
+        <label class="daily-stf-choice-label">
             <input type="checkbox" name="replace_existing" value="true" id="replace_existing" {% if existing_intervals_count == 0 %}disabled{% endif %}>
             Remplacer les intervalles existants
         </label>
@@ -171,7 +171,7 @@
         </p>
     </section>
 
-    <div class="form-actions" style="margin-top:16px">
+    <div class="form-actions daily-stf-actions">
         <button class="btn-primary" id="generate-week-btn" type="submit">⚡ Générer / remplacer les journées Intraday</button>
         <a href="/stf/{{ stf.id }}" class="btn-secondary">Annuler</a>
     </div>

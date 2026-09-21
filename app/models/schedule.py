@@ -10,9 +10,14 @@ from datetime import time
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
 
 
 class ScheduleEntry(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", name="uq_schedule_employee_date"),
+    )
+
     __tablename__ = "schedule_entries"
 
     id: Optional[int] = Field(default=None, primary_key=True)

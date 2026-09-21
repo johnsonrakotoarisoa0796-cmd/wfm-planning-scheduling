@@ -57,7 +57,7 @@
       <strong>{{ "%.0f"|format(p.production_readiness_pct) }}%</strong>
     </div>
     <div class="recruitment-progress-track">
-      <div class="recruitment-progress-fill" style="width:{{ [p.production_readiness_pct, 100]|min }}%"></div>
+      <progress class="recruitment-progress-bar" max="100" value="{{ [p.production_readiness_pct, 100]|min }}">{{ "%.0f"|format([p.production_readiness_pct, 100]|min) }}%</progress>
     </div>
   </div>
 

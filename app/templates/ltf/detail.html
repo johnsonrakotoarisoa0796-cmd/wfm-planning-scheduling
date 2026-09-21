@@ -7,16 +7,16 @@
         <p class="page-header__meta">{{ campaign.name if campaign else "?" }} — {{ skill.name if skill else "?" }}{% if ltf.week_start_date %} · semaine du {{ ltf.week_start_date }}{% endif %}</p>
     </div>
     <a href="/ltf" class="btn-secondary">&larr; Retour à la liste</a>{% if request.query_params.get("success") %}<div class="success-banner">{{ request.query_params.get("success") }}</div>{% endif %}{% if calculation_incoherent %}
-<div class="wfm-alert wfm-alert--warning" style="margin:16px 0;width:100%;box-sizing:border-box">
+<div class="wfm-alert wfm-alert--warning ltf-version-alert">
   <div><strong>⚠️ Cette version LTF doit être recalculée</strong></div>
   <div>Elle a été enregistrée avec une ancienne version du moteur WFM ou présente un écart entre la charge agent et les heures productives.</div>
-  <div style="margin-top:8px">
+  <div class="ltf-detail-note">
     Contact hours : <strong>{{ "%.1f"|format(contact_handling_hours) }} h</strong>
     · Charge agent : <strong>{{ "%.1f"|format(agent_workload_hours) }} h</strong>
     · Productive hours : <strong>{{ "%.1f"|format(ltf.productive_hours) }} h</strong>
     · Moteur : <strong>{{ calculation_engine_version }}</strong>
   </div>
-  <div style="margin-top:10px">Le bouton <strong>Recalculer</strong> crée une nouvelle version sans supprimer l'historique.</div>
+  <div class="ltf-detail-note ltf-detail-note--sm">Le bouton <strong>Recalculer</strong> crée une nouvelle version sans supprimer l'historique.</div>
 </div>
 {% endif %}{% if current_user.role.value in ["admin", "wfm_analyst"] %}<form method="post" action="/ltf/{{ ltf.id }}/recalculate" class="form-actions-inline" onsubmit="return confirm('Recalculer ce LTF avec le moteur WFM actuel ? Une nouvelle version sera créée.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Recalculer</button></form><a class="btn-secondary btn-small" href="/ltf/{{ ltf.id }}/edit">Rectifier</a><form method="post" action="/ltf/{{ ltf.id }}/delete" class="form-actions-inline" onsubmit="return confirm('Supprimer ce LTF ? Si des STF en dépendent, cette action standard sera refusée.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary btn-small" type="submit">Supprimer</button></form><form method="post" action="/ltf/{{ ltf.id }}/delete" class="form-actions-inline" onsubmit="return confirm('ATTENTION : supprimer ce LTF ET ses STF dépendants, ainsi que leur Daily/Intraday. Confirmer ?');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="cascade" value="true"><button class="btn-danger btn-small" type="submit">Supprimer + dépendances</button></form>{% if ltf.iso_week %}<form method="post" action="/ltf/{{ ltf.id }}/disperse" class="form-actions-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-primary btn-small" type="submit">Disperser vers Daily</button></form>{% endif %}{% endif %}
 </div>

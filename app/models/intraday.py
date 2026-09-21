@@ -5,6 +5,7 @@ from datetime import datetime, time
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
 
 from app.core.time_utils import utc_now
 from app.models.enums import Channel
@@ -32,6 +33,13 @@ class DailyForecast(SQLModel, table=True):
 
 
 class IntervalForecast(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "date", "interval_start", "campaign_id", "skill_id",
+            name="uq_interval_forecast_scope",
+        ),
+    )
+
     """Granularité 30 minutes (paramétrable via interval_minutes)."""
 
     __tablename__ = "interval_forecasts"
@@ -85,6 +93,7 @@ class ActualPerformanceRaw(SQLModel, table=True):
     offered: float = Field(default=0)
     handled: float = Field(default=0)
     abandoned: float = Field(default=0)
+    answered_within_threshold: Optional[float] = Field(default=None)
     talk_time_seconds: float = Field(default=0)
     hold_time_seconds: float = Field(default=0)
     acw_seconds: float = Field(default=0)

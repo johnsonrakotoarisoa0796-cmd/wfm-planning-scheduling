@@ -79,24 +79,42 @@ def _make_user(engine, email: str, role: UserRole) -> dict:
 def _login(client: TestClient, email: str, secret: str) -> None:
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post(
+    step1 = client.post(
         "/login",
         data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
         follow_redirects=False,
     )
-    client.get("/login/verify")
-    csrf2 = client.cookies.get("csrf_token")
-    code = pyotp.TOTP(secret).now()
-    client.post("/login/verify", data={"code": code, "csrf_token": csrf2}, follow_redirects=False)
+    assert step1.status_code == 303
+    if step1.headers.get("location") == "/login/admin-security":
+        page = client.get("/login/admin-security")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/admin-security",
+            data={
+                "code": pyotp.TOTP(secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        client.get("/login/verify")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/verify",
+            data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2},
+            follow_redirects=False,
+        )
 
 
 def _ltf_form_payload(reference_data: dict, **overrides) -> dict:
     payload = {
-        "period": "2026-09",
+        "period": "2026-W37",
         "campaign_id": str(reference_data["campaign_id"]),
         "skill_id": str(reference_data["skill_id"]),
         "forecast_volume": "42000",
-        "forecast_aht_seconds": "320",
+        "handling_time_seconds": "320",
         "aht_required_seconds": "310",
         "occupancy_required_pct": "85",
         "service_level_target_pct": "80",
@@ -124,7 +142,7 @@ def test_analyst_can_create_and_view_ltf_forecast(client: TestClient, engine, re
 
     list_page = client.get("/ltf")
     assert list_page.status_code == 200
-    assert "Septembre 2026" in list_page.text
+    assert "2026-W37" in list_page.text
 
     detail_page = client.get("/ltf/1")
     assert detail_page.status_code == 200
@@ -217,10 +235,10 @@ def test_ltf_list_filters_by_campaign(client: TestClient, engine, reference_data
     client.post("/ltf/new", data={**_ltf_form_payload(reference_data), "csrf_token": csrf})
 
     matching = client.get(f"/ltf?campaign_id={reference_data['campaign_id']}")
-    assert "Septembre 2026" in matching.text
+    assert "2026-W37" in matching.text
 
     other_campaign_filter = client.get("/ltf?campaign_id=999999")
-    assert "Septembre 2026" not in other_campaign_filter.text
+    assert "2026-W37" not in other_campaign_filter.text
     assert "Aucun forecast" in other_campaign_filter.text
 
 

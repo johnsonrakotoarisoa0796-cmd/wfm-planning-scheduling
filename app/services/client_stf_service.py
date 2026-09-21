@@ -19,6 +19,7 @@ from app.models.intraday import IntervalForecast
 from app.models.skill import Skill
 from app.services import channel_service, kpi_service
 from app.services.erlang_service import apply_shrinkage, find_required_agents
+from app.services.intraday_service import interval_duration_hours
 from app.services.weekly_parameter_service import get_weekly_parameters
 
 
@@ -311,11 +312,9 @@ def create_plan(
             )
 
             for row in materialized:
-                end_seconds = row.interval_end.hour * 3600 + row.interval_end.minute * 60 + row.interval_end.second
-                start_seconds = row.interval_start.hour * 3600 + row.interval_start.minute * 60 + row.interval_start.second
-                if end_seconds <= start_seconds:
-                    end_seconds += 24 * 3600
-                interval_seconds = end_seconds - start_seconds
+                interval_seconds = interval_duration_hours(
+                    row.interval_start, row.interval_end
+                ) * 3600.0
 
                 if row.volume is not None:
                     if channel_service.is_realtime_channel(skill.channel):
@@ -436,11 +435,7 @@ def effective_intervals_for_range(
 
 
 def _interval_hours(start: time, end: time) -> float:
-    start_seconds = start.hour * 3600 + start.minute * 60 + start.second
-    end_seconds = end.hour * 3600 + end.minute * 60 + end.second
-    if end_seconds <= start_seconds:
-        end_seconds += 24 * 3600
-    return max((end_seconds - start_seconds) / 3600.0, 0.0)
+    return interval_duration_hours(start, end)
 
 def scorecard(
     intervals: list[IntervalForecast | EffectiveInterval],

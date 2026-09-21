@@ -162,8 +162,15 @@ def build_dashboard(
         summary = compute_daily_summary(effective_intervals)
         forecast_volume = summary.forecast_volume
         actual_volume = summary.actual_volume
+        actualized_forecast_volume = sum(
+            interval.forecast_volume
+            for interval in effective_intervals
+            if interval.actual_volume is not None
+        )
         forecast_accuracy = (
-            kpi_service.forecast_accuracy_pct(forecast_volume, actual_volume)
+            kpi_service.forecast_accuracy_pct(
+                actualized_forecast_volume, actual_volume
+            )
             if actual_volume is not None else None
         )
         staffing = StaffingSnapshot(
