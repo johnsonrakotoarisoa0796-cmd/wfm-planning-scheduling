@@ -79,9 +79,10 @@ def _validate_break_plan(entry: ScheduleEntry, shift: Shift) -> list[str]:
 
     for index, (start, end, label) in enumerate(break_pairs):
         required = index < expected_breaks and shift.break_minutes > 0
+        if start is None and end is None:
+            continue
         if start is None or end is None:
-            if required:
-                errors.append(f"{label}: horaires obligatoires pour ce shift.")
+            errors.append(f"{label}: début et fin doivent être renseignés ensemble.")
             continue
         start_offset = _time_offset_from_shift_start(shift, start)
         end_offset = _time_offset_from_shift_start(shift, end)
@@ -95,8 +96,10 @@ def _validate_break_plan(entry: ScheduleEntry, shift: Shift) -> list[str]:
         intervals.append((start_offset, end_offset, label))
 
     if shift.lunch_minutes > 0:
-        if entry.lunch_start is None or entry.lunch_end is None:
-            errors.append("Déjeuner: horaires obligatoires pour ce shift.")
+        if entry.lunch_start is None and entry.lunch_end is None:
+            pass
+        elif entry.lunch_start is None or entry.lunch_end is None:
+            errors.append("Déjeuner: début et fin doivent être renseignés ensemble.")
         else:
             start_offset = _time_offset_from_shift_start(shift, entry.lunch_start)
             end_offset = _time_offset_from_shift_start(shift, entry.lunch_end)
