@@ -145,7 +145,7 @@ def login_submit(
             session.rollback()
             return _render_login(
                 request,
-                error=str(exc) if isinstance(exc, ValueError) else _otp_configuration_error(),
+                error=str(exc) if isinstance(exc, (ValueError, RuntimeError)) else _otp_configuration_error(),
                 email=normalized_email,
                 status_code=503,
             )
@@ -450,7 +450,7 @@ def resend_otp(
     except Exception:
         target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
         return RedirectResponse(
-            f"{target}?error={quote_plus(_otp_configuration_error())}",
+            f"{target}?error={quote_plus(str(exc) if isinstance(exc, RuntimeError) else _otp_configuration_error())}",
             status_code=303,
         )
 
