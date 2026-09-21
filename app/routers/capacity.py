@@ -90,6 +90,7 @@ def new_capacity_form(
             "skills": skills,
             "errors": [],
             "values": {},
+            "reference_source": None,
         },
     )
 
@@ -132,6 +133,7 @@ def create_capacity(
                 "skills": skills,
                 "errors": errors,
                 "values": submitted_values,
+                "reference_source": None,
             },
             status_code=400,
         )
