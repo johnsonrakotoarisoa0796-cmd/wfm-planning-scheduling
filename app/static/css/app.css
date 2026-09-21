@@ -1101,3 +1101,7 @@ table.data-table {
   .teleopti-schedule-card__toolbar { flex-direction: column; }
   .schedule-generator-form { align-items: stretch; }
 }
+
+
+.btn-danger{display:inline-flex;align-items:center;justify-content:center;padding:.45rem .75rem;border:1px solid var(--danger);border-radius:8px;background:var(--danger-soft);color:var(--danger);font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn-danger:hover{filter:brightness(1.08)}
