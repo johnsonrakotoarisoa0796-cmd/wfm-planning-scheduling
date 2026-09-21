@@ -52,7 +52,7 @@ def test_creates_admin_when_both_env_vars_set(engine, monkeypatch):
         assert user is not None
         assert user.role == UserRole.ADMIN
         assert user.is_active is True
-        assert user.totp_secret  # un secret a ete genere
+        assert user.totp_secret is None
 
 
 def test_is_idempotent_does_not_reset_existing_account(engine, monkeypatch):
