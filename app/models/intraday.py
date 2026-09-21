@@ -85,6 +85,7 @@ class ActualPerformanceRaw(SQLModel, table=True):
     offered: float = Field(default=0)
     handled: float = Field(default=0)
     abandoned: float = Field(default=0)
+    answered_within_threshold: Optional[float] = Field(default=None)
     talk_time_seconds: float = Field(default=0)
     hold_time_seconds: float = Field(default=0)
     acw_seconds: float = Field(default=0)
