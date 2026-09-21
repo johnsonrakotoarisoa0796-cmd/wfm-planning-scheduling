@@ -64,8 +64,14 @@ def daily_contract_hours(employee: Employee, working_days_per_week: int | None =
 
 
 def shift_elapsed_hours(shift: Shift) -> float:
+    if shift.start_time == shift.end_time:
+        return 0.0
     start = datetime.combine(date(2000, 1, 1), shift.start_time)
-    end_date = date(2000, 1, 1) if shift.end_time > shift.start_time else date(2000, 1, 2)
+    end_date = (
+        date(2000, 1, 1)
+        if shift.end_time > shift.start_time
+        else date(2000, 1, 2)
+    )
     end = datetime.combine(end_date, shift.end_time)
     return max(0.0, (end - start).total_seconds() / 3600)
 
