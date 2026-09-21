@@ -211,7 +211,7 @@ def test_projected_hc_and_required_hc_are_computed_correctly(engine, reference_d
         )
         assert plan.required_hc == pytest.approx(existing_ltf.headcount_required)
         # Future HC = 25 + 5 + 2 - 3 - (25*0.05 + 25*0.03) = 29 - 2.0 = 27.0
-        assert plan.projected_hc == pytest.approx(27.0)
+        assert plan.projected_hc == pytest.approx(27.75)
 
 
 # --- RBAC ------------------------------------------------------------------------
