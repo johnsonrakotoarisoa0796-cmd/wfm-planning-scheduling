@@ -53,11 +53,17 @@
           </div>
           <div class="field">
             <label for="new_keyword1">Mot-clé 1</label>
-            <input type="password" id="new_keyword1" name="new_keyword1" minlength="4" maxlength="64" autocomplete="new-password" required>
+            <div class="password-field">
+              <input type="password" id="new_keyword1" name="new_keyword1" minlength="4" maxlength="64" autocomplete="new-password" required>
+              <button type="button" class="password-toggle" data-password-toggle="new_keyword1" aria-label="Afficher le mot-clé 1" aria-pressed="false">Afficher</button>
+            </div>
           </div>
           <div class="field">
             <label for="new_keyword2">Mot-clé 2</label>
-            <input type="password" id="new_keyword2" name="new_keyword2" minlength="4" maxlength="64" autocomplete="new-password" required>
+            <div class="password-field">
+              <input type="password" id="new_keyword2" name="new_keyword2" minlength="4" maxlength="64" autocomplete="new-password" required>
+              <button type="button" class="password-toggle" data-password-toggle="new_keyword2" aria-label="Afficher le mot-clé 2" aria-pressed="false">Afficher</button>
+            </div>
           </div>
           <button type="submit" class="btn-primary">Créer ma sécurité admin</button>
         </form>
@@ -70,6 +76,18 @@
         {% endif %}
 
         <p class="auth-form__footer">Les deux mots-clés sont enregistrés sous forme de hash. Ils ne sont jamais visibles dans l’application.</p>
+        <script>
+        (() => {
+          document.querySelectorAll("[data-password-toggle]").forEach((button) => button.addEventListener("click", () => {
+            const input = document.getElementById(button.dataset.passwordToggle);
+            if (!input) return;
+            const visible = input.type === "text";
+            input.type = visible ? "password" : "text";
+            button.textContent = visible ? "Afficher" : "Masquer";
+            button.setAttribute("aria-pressed", String(!visible));
+          }));
+        })();
+        </script>
       </div>
     </div>
   </section>
