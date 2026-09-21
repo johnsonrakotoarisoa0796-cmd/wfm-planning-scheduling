@@ -447,7 +447,7 @@ def resend_otp(
     except ValueError as exc:
         target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
         return RedirectResponse(f"{target}?error={quote_plus(str(exc))}", status_code=303)
-    except Exception:
+    except Exception as exc:
         target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
         return RedirectResponse(
             f"{target}?error={quote_plus(str(exc) if isinstance(exc, RuntimeError) else _otp_configuration_error())}",
