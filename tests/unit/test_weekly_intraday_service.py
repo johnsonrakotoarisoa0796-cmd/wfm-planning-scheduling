@@ -13,7 +13,7 @@ from app.models.skill import Skill
 from app.services.weekly_intraday_service import disperse_stf, disperse_week
 
 
-def test_weekly_volume_is_distributed_to_five_days_and_30_minute_intervals():
+def test_weekly_volume_is_distributed_to_seven_days_and_30_minute_intervals():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
@@ -41,9 +41,9 @@ def test_weekly_volume_is_distributed_to_five_days_and_30_minute_intervals():
             answer_time_target_seconds=20,
             shrinkage_pct=10,
         )
-        assert len(rows) == 240
+        assert len(rows) == 336
         assert sum(row.forecast_volume for row in rows) == 5000
-        assert len({row.date for row in rows}) == 5
+        assert len({row.date for row in rows}) == 7
         assert session.exec(
             select(IntervalForecast).where(
                 IntervalForecast.campaign_id == campaign.id,
