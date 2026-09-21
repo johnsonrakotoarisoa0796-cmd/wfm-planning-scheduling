@@ -1,43 +1,66 @@
 {% extends "base.html" %}
-{% block title %}Vérification — WFM Planning & Scheduling{% endblock %}
+{% block title %}Code de vérification — WFM Planning & Scheduling{% endblock %}
 {% block extra_head %}<link rel="stylesheet" href="/static/css/auth.css">{% endblock %}
 {% block content %}
 <div class="auth-shell">
-    <section class="auth-brand" aria-labelledby="auth-title">
-        <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
-        <div class="auth-brand__pitch">
-            <h1 id="auth-title">{{ "Sécurité renforcée administrateur." if is_admin else "Vérification en deux étapes." }}</h1>
-            <p>{% if is_admin %}Pour un administrateur, la connexion nécessite le code TOTP de l'authenticator et les deux mots-clés secrets définis par l'administrateur.{% else %}Ouvrez votre application d’authentification et saisissez le code à 6 chiffres généré pour ce compte.{% endif %}</p>
-            {% include "partials/interval_strip.html" %}
+  <section class="auth-brand" aria-labelledby="auth-title">
+    <div class="auth-brand__mark">WFM Planning &amp; Scheduling</div>
+    <div class="auth-brand__pitch">
+      <h1 id="auth-title">{{ "Sécurité renforcée administrateur." if is_admin else "Votre code arrive par email." }}</h1>
+      <p>
+        {% if email_otp %}
+          Nous avons envoyé un code à 6 chiffres à <strong>{{ email }}</strong>.
+          Ouvrez votre Gmail et saisissez le code pour continuer.
+        {% else %}
+          Saisissez le code TOTP de votre application d’authentification.
+        {% endif %}
+      </p>
+      {% include "partials/interval_strip.html" %}
+    </div>
+    <div></div>
+  </section>
+
+  <section class="auth-form-pane">
+    <div>
+      <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
+      <form class="auth-form" method="post" action="{{ '/login/admin-security' if is_admin else '/login/verify' }}">
+        <h2>{{ "Validation administrateur" if is_admin else "Code de vérification" }}</h2>
+        <p class="subtitle">{{ email }}</p>
+        {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+        {% if resent %}<div class="success-banner">Un nouveau code vient d’être envoyé.</div>{% endif %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="field">
+          <label for="code">{{ "Code reçu par email" if email_otp else "Code TOTP à 6 chiffres" }}</label>
+          <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+          {% if email_otp %}<small class="field__hint">Valable {{ 10 if not otp_ttl_minutes else otp_ttl_minutes }} minutes. 5 tentatives maximum.</small>{% endif %}
         </div>
-        <div></div>
-    </section>
-    <section class="auth-form-pane">
-        <div>
-            <div class="auth-pane-header">{% include "partials/theme_toggle.html" %}</div>
-            <form class="auth-form" method="post" action="{{ '/login/admin-security' if is_admin else '/login/verify' }}">
-                <h2>{{ "Validation administrateur" if is_admin else "Code de vérification" }}</h2>
-                <p class="subtitle">{{ email or "" }}</p>
-                {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <div class="field">
-                    <label for="code">Code TOTP à 6 chiffres</label>
-                    <input type="text" id="code" name="code" class="totp-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
-                </div>
-                {% if is_admin %}
-                <div class="field">
-                    <label for="keyword1">Mot-clé 1</label>
-                    <input type="password" id="keyword1" name="keyword1" autocomplete="off" required>
-                </div>
-                <div class="field">
-                    <label for="keyword2">Mot-clé 2</label>
-                    <input type="password" id="keyword2" name="keyword2" autocomplete="off" required>
-                </div>
-                {% endif %}
-                <button type="submit" class="btn-primary">Valider et accéder</button>
-                <p class="auth-form__footer">{% if is_admin %}Les deux mots-clés sont secrets et ne sont jamais affichés dans l’application.{% else %}Le code TOTP est valable environ 30 secondes.{% endif %}</p>
-            </form>
+
+        {% if is_admin %}
+        <div class="auth-security-divider"><span>+</span><span>Deux mots-clés administrateur</span></div>
+        <div class="field">
+          <label for="keyword1">Mot-clé 1</label>
+          <input type="password" id="keyword1" name="keyword1" autocomplete="off" required>
         </div>
-    </section>
+        <div class="field">
+          <label for="keyword2">Mot-clé 2</label>
+          <input type="password" id="keyword2" name="keyword2" autocomplete="off" required>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn-primary">Valider et accéder</button>
+      </form>
+
+      {% if email_otp %}
+      <form method="post" action="/login/resend-otp" class="otp-resend-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn-secondary">Renvoyer le code par email</button>
+      </form>
+      <p class="auth-form__footer">Le code est à usage unique. Pour Gmail, vérifiez aussi les dossiers Promotions, Spam ou Courrier indésirable.</p>
+      {% else %}
+      <p class="auth-form__footer">Le mode TOTP est utilisé uniquement lorsque l’envoi email n’est pas configuré.</p>
+      {% endif %}
+    </div>
+  </section>
 </div>
 {% endblock %}
