@@ -40,7 +40,7 @@ services:
       # OTP email : pour Gmail/Google Workspace, utilisez un mot de passe d'application
       # plutôt que le mot de passe principal du compte.
       - key: OTP_DELIVERY_MODE
-        value: "email"
+        value: "auto"
       - key: EMAIL_OTP_TTL_SECONDS
         value: "600"
       - key: EMAIL_OTP_RESEND_COOLDOWN_SECONDS
