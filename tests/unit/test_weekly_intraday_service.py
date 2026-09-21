@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -42,7 +44,7 @@ def test_weekly_volume_is_distributed_to_seven_days_and_30_minute_intervals():
             shrinkage_pct=10,
         )
         assert len(rows) == 336
-        assert sum(row.forecast_volume for row in rows) == 5000
+        assert sum(row.forecast_volume for row in rows) == pytest.approx(5000)
         assert len({row.date for row in rows}) == 7
         assert session.exec(
             select(IntervalForecast).where(
