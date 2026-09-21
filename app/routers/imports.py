@@ -79,6 +79,7 @@ async def import_actuals(
         batch_id = str(uuid4())
         imported = 0
         matched = 0
+        seen_keys: set[tuple] = set()
 
         for _, raw in frame.iterrows():
             day = pd.to_datetime(raw["date"]).date()
@@ -103,6 +104,13 @@ async def import_actuals(
             agents = float(raw["agents_staffed"] or 0)
             campaign_id = int(raw["campaign_id"])
             skill_id = int(raw["skill_id"])
+            key = (day, interval_start, campaign_id, skill_id)
+            if key in seen_keys:
+                raise ValueError(
+                    f"Doublon détecté dans le fichier pour {day} {interval_start} "
+                    f"(campaign {campaign_id}, skill {skill_id})."
+                )
+            seen_keys.add(key)
 
             session.add(
                 ActualPerformanceRaw(
