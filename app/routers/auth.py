@@ -33,7 +33,7 @@ from app.core.security import (
 from app.core.templating import templates
 from app.models.enums import UserRole
 from app.models.user import User
-from app.services.email_service import smtp_configured
+from app.services.email_service import smtp_configured, smtp_configuration_error
 from app.services.otp_service import issue_email_otp, verify_email_otp
 
 router = APIRouter(tags=["auth"])
@@ -68,11 +68,9 @@ def _email_otp_enabled() -> bool:
 
 
 def _otp_configuration_error() -> str:
-    if settings.otp_delivery_mode.lower().strip() == "email" and not smtp_configured():
-        return (
-            "La validation par email est activée mais Gmail/SMTP n'est pas configuré. "
-            "Renseignez SMTP_USERNAME, SMTP_PASSWORD et SMTP_FROM_EMAIL dans Render."
-        )
+    config_error = smtp_configuration_error()
+    if settings.otp_delivery_mode.lower().strip() == "email" and config_error:
+        return f"{config_error} Vérifiez les variables Gmail/SMTP dans Render."
     return "Impossible d'envoyer le code de vérification par email. Vérifiez la configuration Gmail/SMTP."
 
 
