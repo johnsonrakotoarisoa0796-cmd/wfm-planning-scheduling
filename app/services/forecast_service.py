@@ -635,30 +635,61 @@ def _delete_forecast_version_rows(
     session: Session,
     version_ids: set[int],
 ) -> int:
-    """Supprime les lignes LTF/STF attachées à des versions données."""
+    """Supprime les lignes forecast puis les versions enfants avant leurs parents."""
     if not version_ids:
         return 0
 
     deleted = 0
-    for row in session.exec(
-        select(STFForecast).where(STFForecast.forecast_version_id.in_(version_ids))
-    ).all():
-        session.delete(row)
-        deleted += 1
-    for row in session.exec(
-        select(LTFForecast).where(LTFForecast.forecast_version_id.in_(version_ids))
-    ).all():
-        session.delete(row)
-        deleted += 1
+    ids = set(version_ids)
 
-    # Les lignes métier doivent disparaître avant leurs ForecastVersion FK.
+    # D'abord les lignes métier qui portent les FK vers ForecastVersion.
+    stf_rows = list(
+        session.exec(
+            select(STFForecast).where(STFForecast.forecast_version_id.in_(ids))
+        ).all()
+    )
+    ltf_rows = list(
+        session.exec(
+            select(LTFForecast).where(LTFForecast.forecast_version_id.in_(ids))
+        ).all()
+    )
+    for row in stf_rows:
+        session.delete(row)
+        deleted += 1
+    for row in ltf_rows:
+        session.delete(row)
+        deleted += 1
     session.flush()
 
-    for version_id in version_ids:
-        version = session.get(ForecastVersion, version_id)
-        if version is not None:
+    # Puis les ForecastVersion, feuilles d'abord, pour respecter
+    # parent_version_id (FK auto-référente).
+    remaining = {
+        v.id: v
+        for v in session.exec(
+            select(ForecastVersion).where(ForecastVersion.id.in_(ids))
+        ).all()
+        if v.id is not None
+    }
+    while remaining:
+        parent_ids = {
+            v.parent_version_id
+            for v in remaining.values()
+            if v.parent_version_id in remaining
+        }
+        leaves = [
+            version
+            for version in remaining.values()
+            if version.id not in parent_ids
+        ]
+        if not leaves:
+            raise ValueError(
+                "Impossible de supprimer l'historique : dépendance de versions circulaire."
+            )
+        for version in leaves:
             session.delete(version)
-    session.flush()
+            del remaining[version.id]
+        session.flush()
+
     return deleted
 
 
