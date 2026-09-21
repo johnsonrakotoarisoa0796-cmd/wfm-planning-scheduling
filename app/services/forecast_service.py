@@ -602,23 +602,64 @@ def _promote_previous_ltf_version(session: Session, current: ForecastVersion) ->
         session.add(previous)
 
 
-def _stf_children(session: Session, ltf_version_id: int) -> list[STFForecast]:
-    versions = list(
-        session.exec(
-            select(ForecastVersion).where(
-                ForecastVersion.parent_version_id == ltf_version_id,
-                ForecastVersion.version_type == ForecastVersionType.STF,
-            )
-        ).all()
-    )
-    if not versions:
-        return []
-    version_ids = {v.id for v in versions if v.id is not None}
-    return list(
-        session.exec(
-            select(STFForecast).where(STFForecast.forecast_version_id.in_(version_ids))
-        ).all()
-    )
+def _forecast_version_descendants(
+    session: Session,
+    root_version_id: int,
+) -> list[ForecastVersion]:
+    """Retourne tous les descendants directs/indirects d'une version."""
+    found: list[ForecastVersion] = []
+    frontier = {root_version_id}
+    seen = {root_version_id}
+
+    while frontier:
+        children = list(
+            session.exec(
+                select(ForecastVersion).where(
+                    ForecastVersion.parent_version_id.in_(frontier)
+                )
+            ).all()
+        )
+        next_frontier: set[int] = set()
+        for child in children:
+            if child.id is None or child.id in seen:
+                continue
+            seen.add(child.id)
+            found.append(child)
+            next_frontier.add(child.id)
+        frontier = next_frontier
+
+    return found
+
+
+def _delete_forecast_version_rows(
+    session: Session,
+    version_ids: set[int],
+) -> int:
+    """Supprime les lignes LTF/STF attachées à des versions données."""
+    if not version_ids:
+        return 0
+
+    deleted = 0
+    for row in session.exec(
+        select(STFForecast).where(STFForecast.forecast_version_id.in_(version_ids))
+    ).all():
+        session.delete(row)
+        deleted += 1
+    for row in session.exec(
+        select(LTFForecast).where(LTFForecast.forecast_version_id.in_(version_ids))
+    ).all():
+        session.delete(row)
+        deleted += 1
+
+    # Les lignes métier doivent disparaître avant leurs ForecastVersion FK.
+    session.flush()
+
+    for version_id in version_ids:
+        version = session.get(ForecastVersion, version_id)
+        if version is not None:
+            session.delete(version)
+    session.flush()
+    return deleted
 
 
 def _delete_stf_dependencies(
@@ -649,6 +690,8 @@ def _delete_stf_dependencies(
     ).all():
         session.delete(row)
 
+    session.flush()
+
 
 def delete_ltf_forecast(
     session: Session,
@@ -656,13 +699,7 @@ def delete_ltf_forecast(
     *,
     cascade: bool = False,
 ) -> tuple[bool, int]:
-    """Supprime un LTF courant.
-
-    Sans cascade, une suppression est refusée si des STF en dépendent.
-    Avec cascade, les STF enfants et leur Daily/Intraday de la semaine sont
-    supprimés avant le LTF. La version LTF précédente est restaurée si elle
-    existe.
-    """
+    """Supprime un LTF courant avec gestion fiable des dépendances."""
     ltf = session.get(LTFForecast, ltf_id)
     if ltf is None:
         raise ValueError("Forecast LTF introuvable.")
@@ -671,63 +708,66 @@ def delete_ltf_forecast(
     if version is None:
         raise ValueError("Version LTF introuvable.")
 
-    children = _stf_children(session, version.id)
-    if children and not cascade:
+    descendants = _forecast_version_descendants(session, version.id)
+    child_stfs = [
+        row
+        for row in session.exec(
+            select(STFForecast).where(
+                STFForecast.forecast_version_id.in_(
+                    {v.id for v in descendants if v.id is not None}
+                )
+            )
+        ).all()
+    ] if descendants else []
+
+    if child_stfs and not cascade:
         raise ValueError(
-            f"Impossible de supprimer ce LTF : {len(children)} STF en dépendent. "
-            "Utilisez « Supprimer avec dépendances » si vous voulez supprimer aussi "
-            "ces STF et leur Daily/Intraday."
+            f"Impossible de supprimer ce LTF : {len(child_stfs)} STF dépendent de cette version. "
+            "Utilisez « Supprimer + dépendances » pour les supprimer avec leur Daily/Intraday."
         )
 
-    deleted_stf_count = 0
     try:
-        if children:
-            child_version_ids = {child.forecast_version_id for child in children}
-            for child in children:
+        if cascade:
+            # Supprime d'abord le Daily/Intraday de chaque STF descendant.
+            for child in child_stfs:
                 _delete_stf_dependencies(session, child)
-                child_version = session.get(ForecastVersion, child.forecast_version_id)
-                session.delete(child)
-                if child_version is not None:
-                    session.delete(child_version)
-                deleted_stf_count += 1
 
-            # Nettoie d'éventuelles versions STF sans ligne métier résiduelle.
-            for child_version_id in child_version_ids:
-                stale = session.get(ForecastVersion, child_version_id)
-                if stale is not None:
-                    session.delete(stale)
+            descendant_ids = {v.id for v in descendants if v.id is not None}
+            _delete_forecast_version_rows(session, descendant_ids)
 
-        _promote_previous_ltf_version(session, version)
+        # Réactive l'ancienne version LTF seulement après avoir retiré tous
+        # les descendants de la version supprimée.
+        previous = session.exec(
+            select(ForecastVersion)
+            .where(
+                ForecastVersion.version_type == ForecastVersionType.LTF,
+                ForecastVersion.campaign_id == version.campaign_id,
+                ForecastVersion.skill_id == version.skill_id,
+                ForecastVersion.period_start == version.period_start,
+                ForecastVersion.period_end == version.period_end,
+                ForecastVersion.id != version.id,
+                ForecastVersion.is_current == False,  # noqa: E712
+            )
+            .order_by(ForecastVersion.created_at.desc())
+        ).first()
+        if previous is not None:
+            previous.is_current = True
+            session.add(previous)
+
         session.delete(ltf)
+        # Forcer d'abord la suppression de la ligne métier LTF.
+        session.flush()
         session.delete(version)
+        session.flush()
         session.commit()
     except IntegrityError as exc:
         session.rollback()
         raise ValueError(
-            "Suppression impossible : des données dépendent encore de cette version. "
-            "Vérifiez les dépendances puis réessayez."
+            "Suppression impossible : des dépendances de cette version existent encore. "
+            "Utilisez « Supprimer + dépendances » ou supprimez d'abord les dépendances."
         ) from exc
 
-    return True, deleted_stf_count
-
-
-def _promote_previous_stf_version(session: Session, current: ForecastVersion) -> None:
-    previous = session.exec(
-        select(ForecastVersion)
-        .where(
-            ForecastVersion.version_type == ForecastVersionType.STF,
-            ForecastVersion.campaign_id == current.campaign_id,
-            ForecastVersion.skill_id == current.skill_id,
-            ForecastVersion.period_start == current.period_start,
-            ForecastVersion.period_end == current.period_end,
-            ForecastVersion.id != current.id,
-            ForecastVersion.is_current == False,  # noqa: E712
-        )
-        .order_by(ForecastVersion.created_at.desc())
-    ).first()
-    if previous is not None:
-        previous.is_current = True
-        session.add(previous)
+    return True, len(child_stfs)
 
 
 def delete_stf_forecast(
@@ -736,19 +776,35 @@ def delete_stf_forecast(
     *,
     cascade: bool = False,
 ) -> bool:
-    """Supprime un STF courant, avec option de supprimer son Daily/Intraday."""
+    """Supprime un STF courant avec ses dépendances optionnelles."""
     stf = session.get(STFForecast, stf_id)
     if stf is None:
         raise ValueError("Forecast STF introuvable.")
 
-    from app.models.intraday import DailyForecast, IntervalForecast
+    version = session.get(ForecastVersion, stf.forecast_version_id)
+    if version is None:
+        raise ValueError("Version STF introuvable.")
 
+    descendants = _forecast_version_descendants(session, version.id)
+    descendant_stfs = [
+        row
+        for row in session.exec(
+            select(STFForecast).where(
+                STFForecast.forecast_version_id.in_(
+                    {v.id for v in descendants if v.id is not None}
+                )
+            )
+        ).all()
+    ] if descendants else []
+
+    from app.models.intraday import DailyForecast, IntervalForecast
+    week_end = stf.week_start_date + timedelta(days=6)
     existing_daily = session.exec(
         select(IntervalForecast).where(
             IntervalForecast.campaign_id == stf.campaign_id,
             IntervalForecast.skill_id == stf.skill_id,
             IntervalForecast.date >= stf.week_start_date,
-            IntervalForecast.date <= stf.week_start_date + timedelta(days=6),
+            IntervalForecast.date <= week_end,
         )
     ).first()
     existing_daily_daily = session.exec(
@@ -756,36 +812,61 @@ def delete_stf_forecast(
             DailyForecast.campaign_id == stf.campaign_id,
             DailyForecast.skill_id == stf.skill_id,
             DailyForecast.date >= stf.week_start_date,
-            DailyForecast.date <= stf.week_start_date + timedelta(days=6),
+            DailyForecast.date <= week_end,
         )
     ).first()
 
-    has_dependencies = existing_daily is not None or existing_daily_daily is not None
-    if has_dependencies and not cascade:
+    if (existing_daily is not None or existing_daily_daily is not None) and not cascade:
         raise ValueError(
-            "Impossible de supprimer ce STF : des données Daily/Intraday existent déjà "
-            "pour cette semaine. Utilisez « Supprimer avec dépendances » pour les supprimer aussi."
+            "Impossible de supprimer ce STF : Daily/Intraday existe encore pour cette semaine. "
+            "Utilisez « Supprimer + Daily/Intraday »."
         )
 
-    version = session.get(ForecastVersion, stf.forecast_version_id)
-    if version is None:
-        raise ValueError("Version STF introuvable.")
+    if descendant_stfs and not cascade:
+        raise ValueError(
+            f"Impossible de supprimer ce STF : {len(descendant_stfs)} version(s) descendante(s) existe(nt). "
+            "Supprimez la version courante avec ses dépendances."
+        )
 
     try:
         if cascade:
             _delete_stf_dependencies(session, stf)
+            for child in descendant_stfs:
+                _delete_stf_dependencies(session, child)
 
-        _promote_previous_stf_version(session, version)
+            descendant_ids = {v.id for v in descendants if v.id is not None}
+            _delete_forecast_version_rows(session, descendant_ids)
+
+        previous = session.exec(
+            select(ForecastVersion)
+            .where(
+                ForecastVersion.version_type == ForecastVersionType.STF,
+                ForecastVersion.campaign_id == version.campaign_id,
+                ForecastVersion.skill_id == version.skill_id,
+                ForecastVersion.period_start == version.period_start,
+                ForecastVersion.period_end == version.period_end,
+                ForecastVersion.id != version.id,
+                ForecastVersion.is_current == False,  # noqa: E712
+            )
+            .order_by(ForecastVersion.created_at.desc())
+        ).first()
+        if previous is not None:
+            previous.is_current = True
+            session.add(previous)
+
         session.delete(stf)
+        session.flush()
         session.delete(version)
+        session.flush()
         session.commit()
     except IntegrityError as exc:
         session.rollback()
         raise ValueError(
-            "Suppression impossible : des données dépendent encore de ce STF."
+            "Suppression impossible : des dépendances de cette version existent encore."
         ) from exc
 
     return True
+
 
 def recalculate_ltf_forecast(
     session: Session,
