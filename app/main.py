@@ -77,6 +77,55 @@ def bootstrap_admin_if_configured(*, db_engine=None) -> None:
     print("=" * 70)
 
 
+def bootstrap_reset_admin_security_if_configured(*, db_engine=None) -> None:
+    """Efface les deux mots-clés admin et génère un nouveau secret TOTP.
+
+    Utilisé uniquement pour une récupération d'accès déclenchée explicitement
+    par la variable RESET_ADMIN_SECURITY_EMAIL. Tant que cette variable reste
+    définie, chaque démarrage réinitialise à nouveau les mots-clés : retirez-la
+    immédiatement après avoir créé les deux nouveaux mots-clés.
+    """
+    email = os.environ.get("RESET_ADMIN_SECURITY_EMAIL", "").strip().lower()
+    if not email:
+        return
+
+    db_engine = db_engine or engine
+
+    from app.core.security import generate_totp_secret
+
+    with Session(db_engine) as session:
+        user = session.exec(
+            select(User).where(User.email == email, User.role == UserRole.ADMIN)
+        ).first()
+        if user is None:
+            print(
+                f"[bootstrap] RESET_ADMIN_SECURITY_EMAIL={email} : "
+                "aucun compte admin trouvé, rien à faire."
+            )
+            return
+
+        user.admin_keyword1_hash = None
+        user.admin_keyword2_hash = None
+        user.totp_secret = generate_totp_secret()
+        user.email_otp_hash = None
+        user.email_otp_expires_at = None
+        user.email_otp_requested_at = None
+        user.email_otp_attempts = 0
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        totp_secret = user.totp_secret
+
+    print("=" * 70)
+    print(f"[bootstrap] Sécurité admin réinitialisée pour : {email}")
+    print(f"[bootstrap] Nouveau secret TOTP : {totp_secret}")
+    print("[bootstrap] Pendant cette récupération, connectez-vous puis créez")
+    print("[bootstrap] deux nouveaux mots-clés admin avec le code TOTP.")
+    print("[bootstrap] RETIREZ RESET_ADMIN_SECURITY_EMAIL après la création.")
+    print("=" * 70)
+
+
 def bootstrap_reset_totp_if_configured(*, db_engine=None) -> None:
     """Régénère le secret TOTP d'un utilisateur existant au démarrage si
     RESET_TOTP_EMAIL est défini en variable d'environnement.
@@ -336,6 +385,7 @@ def bootstrap_shrinkage_categories(*, db_engine=None) -> None:
 async def lifespan(app: FastAPI):
     bootstrap_admin_if_configured()
     bootstrap_reset_totp_if_configured()
+    bootstrap_reset_admin_security_if_configured()
     bootstrap_demo_data_if_configured()
     bootstrap_markets()
     bootstrap_operational_configuration()
