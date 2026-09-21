@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     # Email / OTP
     otp_delivery_mode: str = "auto"  # email, totp, auto
+    email_provider: str = "brevo"  # brevo, smtp
+    brevo_api_key: str = ""
+    brevo_from_email: str = ""
+    brevo_from_name: str = "WFM Planning & Scheduling"
     email_otp_ttl_seconds: int = 10 * 60
     email_otp_resend_cooldown_seconds: int = 60
     email_otp_max_attempts: int = 5
