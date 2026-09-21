@@ -416,7 +416,7 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
         session.commit()
 
         monday = date(2026, 9, 14)
-        for offset in range(5):
+        for offset in range(7):
             intraday_service.generate_intraday_forecast(
                 session,
                 GenerateIntradayInput(
@@ -444,11 +444,11 @@ def test_auto_scheduler_generates_week_with_breaks_and_days_off(engine, referenc
         assert work_entries
         assert all(entry.break2_start is not None for entry in work_entries)
         assert all(entry.lunch_start is not None for entry in work_entries)
-        assert len(result.coverage) == 5
+        assert len(result.coverage) == 7
 
         entries = session.exec(select(ScheduleEntry)).all()
-        assert len(entries) == 15
-        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(5)}
+        assert len(entries) == 21
+        assert {entry.date for entry in entries} == {monday + timedelta(days=i) for i in range(7)}
 
 
 def test_schedule_generator_page_is_available(client: TestClient, engine):
