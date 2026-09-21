@@ -79,15 +79,33 @@ def _make_user(engine, email: str, role: UserRole) -> dict:
 def _login(client: TestClient, email: str, secret: str) -> None:
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post(
+    step1 = client.post(
         "/login",
         data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
         follow_redirects=False,
     )
-    client.get("/login/verify")
-    csrf2 = client.cookies.get("csrf_token")
-    code = pyotp.TOTP(secret).now()
-    client.post("/login/verify", data={"code": code, "csrf_token": csrf2}, follow_redirects=False)
+    assert step1.status_code == 303
+    if step1.headers.get("location") == "/login/admin-security":
+        page = client.get("/login/admin-security")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/admin-security",
+            data={
+                "code": pyotp.TOTP(secret).now(),
+                "keyword1": "admin-key-one",
+                "keyword2": "admin-key-two",
+                "csrf_token": csrf2,
+            },
+            follow_redirects=False,
+        )
+    else:
+        client.get("/login/verify")
+        csrf2 = client.cookies.get("csrf_token")
+        client.post(
+            "/login/verify",
+            data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2},
+            follow_redirects=False,
+        )
 
 
 def _ltf_form_payload(reference_data: dict, **overrides) -> dict:
