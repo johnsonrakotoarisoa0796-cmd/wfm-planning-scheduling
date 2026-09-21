@@ -25,6 +25,8 @@ def _make_user(engine):
             role=UserRole.ADMIN,
             is_active=True,
             totp_secret=secret,
+            admin_keyword1_hash=hash_password("admin-key-one"),
+            admin_keyword2_hash=hash_password("admin-key-two"),
         )
         session.add(user)
         session.commit()
@@ -35,10 +37,27 @@ def _make_user(engine):
 def _login(client: TestClient, email: str, secret: str):
     client.get("/login")
     csrf = client.cookies.get("csrf_token")
-    client.post("/login", data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf}, follow_redirects=False)
-    client.get("/login/verify")
+    step1 = client.post(
+        "/login",
+        data={"email": email, "password": TEST_PASSWORD, "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert step1.status_code == 303
+    assert step1.headers.get("location") == "/login/admin-security"
+    client.get("/login/admin-security")
     csrf2 = client.cookies.get("csrf_token")
-    client.post("/login/verify", data={"code": pyotp.TOTP(secret).now(), "csrf_token": csrf2}, follow_redirects=False)
+    client.post(
+        "/login/admin-security",
+        data={
+            "code": pyotp.TOTP(secret).now(),
+            "keyword1": "admin-key-one",
+            "keyword2": "admin-key-two",
+            "csrf_token": csrf2,
+        },
+        follow_redirects=False,
+    )
+
+
 
 
 def _setup():
