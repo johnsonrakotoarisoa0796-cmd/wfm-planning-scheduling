@@ -340,6 +340,7 @@ def admin_security_submit(
                     "is_admin": True,
                     "email_otp": True,
                     "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
+                    "warning": request.query_params.get("warning"),
                 },
                 status_code=400,
             )
@@ -371,6 +372,7 @@ def verify_2fa_form(request: Request, session: Session = Depends(get_session)):
                 "email_otp": True,
                 "otp_ttl_minutes": max(1, settings.email_otp_ttl_seconds // 60),
                 "resent": request.query_params.get("resent") == "1",
+                "warning": request.query_params.get("warning"),
             },
         )
 
@@ -444,11 +446,15 @@ def resend_otp(
         issue_email_otp(session, user)
     except ValueError as exc:
         target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
-        return RedirectResponse(f"{target}?error={quote_plus(str(exc))}", status_code=303)
+        return RedirectResponse(
+            f"{target}?warning={quote_plus('Le dernier code OTP déjà reçu reste utilisable. Renvoi impossible pour le moment : ' + str(exc))}",
+            status_code=303,
+        )
     except Exception as exc:
         target = "/login/admin-security" if user.role == UserRole.ADMIN else "/login/verify"
+        detail = str(exc) if isinstance(exc, RuntimeError) else _otp_configuration_error()
         return RedirectResponse(
-            f"{target}?error={quote_plus(str(exc) if isinstance(exc, RuntimeError) else _otp_configuration_error())}",
+            f"{target}?warning={quote_plus('Le dernier code OTP déjà reçu reste utilisable. Le renvoi a échoué : ' + detail)}",
             status_code=303,
         )
 
