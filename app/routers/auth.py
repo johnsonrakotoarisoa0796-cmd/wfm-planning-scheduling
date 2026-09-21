@@ -176,12 +176,13 @@ def login_submit(
         # généré par le bootstrap, sans dépendre du transport email.
         next_url = "/login/admin-security"
     else:
-        if user.role == UserRole.ADMIN and (
-            not user.totp_secret
-            or not user.admin_keyword1_hash
-            or not user.admin_keyword2_hash
-        ):
-            next_url = "/login/admin-security"
+        if user.role == UserRole.ADMIN:
+            # Tous les admins passent par le contrôle combiné TOTP/OTP + deux
+            # mots-clés. La route /login/verify est réservée aux non-admins.
+            if user.totp_secret:
+                next_url = "/login/admin-security"
+            else:
+                next_url = "/login/setup-2fa"
         elif user.totp_secret:
             next_url = "/login/verify"
         else:
