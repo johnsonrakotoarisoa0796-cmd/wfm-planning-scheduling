@@ -299,6 +299,23 @@ Deux options :
   Idempotent — les variables peuvent rester en place ou être retirées après
   coup, sans risque de recréer/réinitialiser le compte à chaque redémarrage.
 
+### Réinitialiser les deux mots-clés admin sans accès shell
+
+Si les deux mots-clés administrateur ont été oubliés et que l'OTP email n'arrive
+plus, définir temporairement `RESET_ADMIN_SECURITY_EMAIL` avec l'email du compte
+admin dans Render puis redéployer.
+
+Au démarrage, l'application :
+1. efface les deux hash de mots-clés du compte admin ;
+2. génère un nouveau secret TOTP et l'affiche une seule fois dans les logs Render ;
+3. permet la connexion avec le mot de passe habituel puis l'écran de création de
+   sécurité admin, où le code TOTP sert à créer deux nouveaux mots-clés.
+
+Après la création des nouveaux mots-clés, **supprimer immédiatement**
+`RESET_ADMIN_SECURITY_EMAIL` des variables Render et redéployer. La variable est
+volontairement non idempotente : tant qu'elle reste présente, chaque redémarrage
+réinitialise à nouveau les mots-clés.
+
 ### Créer une campagne/skill de démo sans accès shell
 
 Même principe : définir `BOOTSTRAP_DEMO_DATA=true` dans les variables
