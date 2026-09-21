@@ -2,10 +2,29 @@
 {% block title %}Configuration — WFM{% endblock %}
 {% block content %}
 
-<div class="page-header"><div><h1>Configuration WFM</h1><p class="page-header__meta">Gérez les campagnes, leurs skills, canaux et marchés utilisés par les forecasts et le planning.</p></div>
-{% if can_edit %}<form method="post" action="/settings/demo"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-secondary" type="submit">Charger le pack démo multi-marché</button></form>{% endif %}</div>
+<section class="settings-hero">
+  <div class="settings-hero__copy">
+    <div class="panel-kicker">ADMINISTRATION · WFM CONTROL CENTER</div>
+    <h1>Configuration &amp; Gouvernance</h1>
+    <p>Centralisez campagnes, skills, hypothèses de forecast, workforce, sécurité et comptes utilisateurs dans un espace de configuration unique.</p>
+    <div class="settings-hero__meta">
+      <span><i></i> Système opérationnel</span>
+      <span>{{ current_user.email }}</span>
+    </div>
+  </div>
+  <div class="settings-hero__actions">
+    {% if can_edit %}<form method="post" action="/settings/demo"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn-hero-secondary" type="submit">✦ Charger le pack démo</button></form>{% endif %}
+    <a class="btn-hero-primary" href="#users">Gérer les utilisateurs <span>→</span></a>
+  </div>
+</section>
+<nav class="settings-tabs" aria-label="Sections de configuration">
+  <a href="#overview">Vue d’ensemble</a>
+  <a href="#weekly">Hypothèses WFM</a>
+  <a href="#campaigns">Campagnes &amp; Skills</a>
+  {% if current_user.role.value == "admin" %}<a href="#security">Sécurité</a><a href="#agents">Liaison agents</a><a href="#users">Utilisateurs</a>{% endif %}
+</nav>
 {% if request.query_params.get("error") %}<div class="error-banner">{{ request.query_params.get("error") }}</div>{% endif %}
-<div class="settings-grid">
+<div id="overview" class="settings-kpi-grid"><div class="settings-kpi"><div class="settings-kpi__icon">◎</div><div><span>Campagnes</span><strong>{{ campaigns|length }}</strong><small>périmètres WFM</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">◇</div><div><span>Skills</span><strong>{{ skill_rows|length }}</strong><small>canaux configurés</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">♙</div><div><span>Utilisateurs actifs</span><strong>{{ users|selectattr("is_active")|list|length }}</strong><small>accès autorisés</small></div></div><div class="settings-kpi"><div class="settings-kpi__icon">!</div><div><span>En attente</span><strong>{{ users|rejectattr("is_active")|list|length }}</strong><small>à valider</small></div></div></div><div id="campaigns" class="settings-grid">
 <section class="form-card"><div class="panel-kicker">CAMPAGNES</div><h2>Nouvelle campagne</h2>
 {% if can_edit %}<form method="post" action="/settings/campaigns"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 <div class="field"><label for="campaign_name">Nom</label><input id="campaign_name" name="name" placeholder="Support Client UK" required></div>
@@ -24,9 +43,9 @@
 </div>
 <div class="form-actions"><button class="btn-primary" type="submit">Créer le skill</button></div></form>
 {% else %}<p class="field__hint">Réservé aux rôles WFM autorisés.</p>{% endif %}</section></div>
-<section class="form-card">
-<div class="panel-kicker">PARAMÈTRES HEBDOMADAIRES</div>
-<h2>Hypothèses WFM par semaine</h2>
+<section id="weekly" class="form-card settings-card settings-weekly">
+<div class="settings-card__head"><div class="settings-card__icon">◷</div><div><div class="panel-kicker">PARAMÈTRES HEBDOMADAIRES</div>
+<h2>Hypothèses WFM par semaine</h2></div></div>
 <p class="field__hint">Ces paramètres alimentent le calcul automatique du HC requis du STF client : le client transmet uniquement volume + intervalle.</p>
 {% if can_edit %}
 <form method="post" action="/settings/weekly-parameters">
@@ -84,9 +103,9 @@
 </tbody></table></section>
 
 {% if current_user.role.value == "admin" %}
-<section class="form-card form-card--wide" style="margin-top:20px">
-<div class="panel-kicker">SÉCURITÉ ADMIN</div>
-<h2>Deux mots-clés secrets</h2>
+<section id="security" class="form-card form-card--wide settings-card settings-security" style="margin-top:20px">
+<div class="settings-card__head"><div class="settings-card__icon">◆</div><div><div class="panel-kicker">SÉCURITÉ ADMIN</div>
+<h2>Deux mots-clés secrets</h2></div></div>
 <p class="field__hint">Pour le compte admin, la connexion exige le mot de passe, le code TOTP du QR code et ces deux mots-clés. Les mots-clés sont stockés uniquement sous forme de hash.</p>
 <form method="post" action="/settings/admin-security">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -98,8 +117,8 @@
 </form>
 </section>
 
-<section class="form-card form-card--wide" style="margin-top:20px">
-<div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
+<section id="agents" class="form-card form-card--wide settings-card" style="margin-top:20px">
+<div class="settings-card__head"><div class="settings-card__icon">♙</div><div><div class="panel-kicker">AGENT HUB</div><h2>Liaison comptes ↔ agents</h2></div></div><p class="field__hint">Une fois lié, l'utilisateur voit uniquement son planning personnel sur /agent.</p>
 <table class="data-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Agent lié</th><th>Action</th></tr></thead><tbody>
 {% for user in users %}<tr><td>{{ user.email }}</td><td>{{ user.role.value }}</td><td><form method="post" action="/settings/user-agent-link" style="display:flex;gap:8px;align-items:center"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="user_id" value="{{ user.id }}"><select name="employee_id"><option value="">— Aucun lien —</option>{% for employee in employees %}<option value="{{ employee.id }}" {% if user.employee_id == employee.id %}selected{% endif %}>{{ employee.employee_code }} · {{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select><button class="btn-secondary btn-small" type="submit">Lier</button></form></td><td><a class="btn-secondary btn-small" href="/agent{% if user.employee_id %}?employee_id={{ user.employee_id }}{% endif %}">Ouvrir</a></td></tr>{% endfor %}
 </tbody></table>
