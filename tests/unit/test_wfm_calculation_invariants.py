@@ -4,6 +4,7 @@ import pytest
 
 from app.models.enums import PeriodType
 from app.schemas.overtime import OvertimePlanInput
+from app.schemas.scheduling import ShiftInput
 from app.services import kpi_service, weekly_intraday_service
 from app.services.intraday_service import interval_duration_hours
 
@@ -76,3 +77,8 @@ def test_overtime_periods_match_selected_granularity():
             skill_id=1,
             period_type=PeriodType.WEEKLY,
         )
+
+
+def test_zero_length_shift_is_rejected():
+    with pytest.raises(ValueError):
+        ShiftInput(name="Invalid", start_time="09:00", end_time="09:00")
