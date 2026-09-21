@@ -17,7 +17,7 @@ from app.models.skill import Skill
 from app.models.user import User
 from app.models.weekly_parameters import WeeklyWFMParameter
 from app.services.weekly_parameter_service import upsert_weekly_parameters
-from app.services.email_service import test_smtp_connection
+from app.services.email_service import test_email_delivery
 from app.services.campaign_workforce_service import calculate_metrics
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -299,7 +299,7 @@ def test_email_delivery(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     try:
-        test_smtp_connection(send_test_email_to=current_user.email)
+        test_email_delivery(send_test_email_to=current_user.email)
     except RuntimeError as exc:
         return RedirectResponse(
             f"/settings?error={quote_plus(str(exc))}#security",
