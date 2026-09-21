@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
+from urllib.parse import quote_plus
 from sqlmodel import Session, select
 
 from app.core.database import get_session
@@ -16,6 +17,7 @@ from app.models.skill import Skill
 from app.models.user import User
 from app.models.weekly_parameters import WeeklyWFMParameter
 from app.services.weekly_parameter_service import upsert_weekly_parameters
+from app.services.email_service import test_smtp_connection
 from app.services.campaign_workforce_service import calculate_metrics
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -288,6 +290,25 @@ def link_user_to_employee(
     return RedirectResponse("/settings", status_code=303)
 
 
+
+
+
+@router.post("/test-email", dependencies=[Depends(verify_csrf)])
+def test_email_delivery(
+    request: Request,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    try:
+        test_smtp_connection(send_test_email_to=current_user.email)
+    except RuntimeError as exc:
+        return RedirectResponse(
+            f"/settings?error={quote_plus(str(exc))}#security",
+            status_code=303,
+        )
+    return RedirectResponse(
+        "/settings?success=Test+email+envoyé+à+votre+adresse+administrateur.#security",
+        status_code=303,
+    )
 
 
 @router.post("/admin-security", dependencies=[Depends(verify_csrf)])
