@@ -28,7 +28,7 @@ def test_ai_instruction_keeps_human_control():
         "Analyse la couverture de lundi.",
         {"staffing": {"required_hc_hours": 80, "scheduled_hc_hours": 70}},
     )
-    assert "ne prétends jamais avoir modifié la base" in system
+    assert "Ne prétends jamais avoir modifié la base" in system
     assert "Analyse la couverture de lundi." in user
 
 
