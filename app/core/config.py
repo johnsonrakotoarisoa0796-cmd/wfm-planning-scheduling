@@ -45,7 +45,6 @@ class Settings(BaseSettings):
     brevo_api_key: str = ""
     brevo_from_email: str = ""
     brevo_from_name: str = "WFM Planning & Scheduling"
-    brevo_reply_to_email: str = ""
     email_otp_ttl_seconds: int = 10 * 60
     email_otp_resend_cooldown_seconds: int = 60
     email_otp_max_attempts: int = 5
