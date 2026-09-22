@@ -1,0 +1,18 @@
+{% extends "app_base.html" %}
+{% block title %}Agent {{ employee.employee_code }} — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>{{ employee.first_name }} {{ employee.last_name }}</h1><p class="page-header__meta">{{ employee.employee_code }} · {{ campaign.name if campaign else 'Campagne inconnue' }}</p></div><a class="btn-secondary" href="/workforce">Retour aux agents</a></div>
+<div class="kpi-grid">
+<div class="kpi-card"><span>Statut</span><strong>{{ employee.status.value }}</strong></div>
+<div class="kpi-card"><span>Contrat</span><strong>{{ "%.1f"|format(employee.weekly_hours_contract) }} h</strong></div>
+<div class="kpi-card"><span>Fuseau</span><strong>{{ employee.timezone_name }}</strong></div>
+<div class="kpi-card"><span>Source</span><strong>{{ "Fictif" if employee.data_source == "synthetic" else "Réel" }}</strong></div>
+</div>
+<div class="card-grid card-grid--2">
+<section class="form-card"><h2>Profil WFM</h2><div class="data-table-wrapper"><table class="data-table"><tbody>
+<tr><th>Employee code</th><td>{{ employee.employee_code }}</td></tr><tr><th>Nom</th><td>{{ employee.first_name }} {{ employee.last_name }}</td></tr><tr><th>Embauche</th><td>{{ employee.hire_date }}</td></tr><tr><th>Sortie</th><td>{{ employee.termination_date or "—" }}</td></tr><tr><th>Campagne</th><td>{{ campaign.name if campaign else "—" }}</td></tr>
+</tbody></table></div></section>
+<section class="form-card"><h2>Skills</h2>{% for skill in skills %}<span class="status-pill status-pill--balanced">{{ skill.name }}{% if skill.channel %} · {{ skill.channel.value }}{% endif %}</span>{% else %}<p class="field__hint">Aucun skill rattaché.</p>{% endfor %}<div class="form-actions"><a class="btn-secondary" href="/scheduling?campaign_id={{ employee.campaign_id }}">Voir le planning</a><a class="btn-secondary" href="/scheduling/absences">Absences / congés</a></div></section>
+</div>
+<section class="form-card form-card--wide"><h2>Historique des absences</h2><div class="data-table-wrapper"><table class="data-table"><thead><tr><th>Type</th><th>Début</th><th>Fin</th><th>Paie</th><th>Notes</th></tr></thead><tbody>{% for absence in absences %}<tr><td>{{ absence.absence_type }}</td><td>{{ absence.start_date }}</td><td>{{ absence.end_date }}</td><td>{{ "Oui" if absence.paid else "Non" }}</td><td>{{ absence.notes or "—" }}</td></tr>{% else %}<tr><td colspan="5">Aucune absence enregistrée.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}
