@@ -86,6 +86,7 @@ def create_employee(
     data: WorkforceEmployeeInput,
     *,
     replace_existing: bool = False,
+    commit: bool = True,
 ) -> Employee:
     _, skill = _validate_scope(session, campaign_id=data.campaign_id, skill_id=data.skill_id)
 
@@ -106,8 +107,7 @@ def create_employee(
     employee.timezone_name = data.timezone_name
     employee.data_source = data.data_source
     session.add(employee)
-    session.commit()
-    session.refresh(employee)
+    session.flush()
 
     link = session.exec(
         select(EmployeeSkill).where(
@@ -167,12 +167,12 @@ def generate_synthetic_employees(
             data_source="synthetic",
         )
         session.add(employee)
-        session.commit()
-        session.refresh(employee)
+        session.flush()
         session.add(EmployeeSkill(employee_id=employee.id, skill_id=skill.id, is_primary=True))
-        session.commit()
-        session.refresh(employee)
         created.append(employee)
+    session.commit()
+    for employee in created:
+        session.refresh(employee)
     return created
 
 
@@ -271,12 +271,18 @@ def import_real_employees(
             skipped += 1
             continue
 
-        create_employee(session, payload, replace_existing=existing is not None)
+        create_employee(
+            session,
+            payload,
+            replace_existing=existing is not None,
+            commit=False,
+        )
         if existing is not None:
             updated += 1
         else:
             imported += 1
 
+    session.commit()
     return ImportResult(imported=imported, updated=updated, skipped=skipped)
 
 
@@ -291,13 +297,19 @@ def employee_skill_rows(session: Session, employee_ids: Iterable[int]) -> dict[i
         skill.id: skill
         for skill in session.exec(select(Skill).where(Skill.id.in_({link.skill_id for link in links}))).all()
     }
+    primary_by_employee = {
+        link.employee_id: link.skill_id
+        for link in links
+        if link.is_primary
+    }
     rows: dict[int, list[Skill]] = {employee_id: [] for employee_id in ids}
     for link in links:
         skill = skills.get(link.skill_id)
         if skill is not None:
             rows[link.employee_id].append(skill)
-    for values in rows.values():
-        values.sort(key=lambda item: (not next((link.is_primary for link in links if link.skill_id == item.id), False), item.name))
+    for employee_id, values in rows.items():
+        primary_id = primary_by_employee.get(employee_id)
+        values.sort(key=lambda item: (item.id != primary_id, item.name))
     return rows
 
 
