@@ -173,7 +173,7 @@
   {% if answer %}
   <article class="ai-answer">
     <div class="ai-answer__label">COPILOT</div>
-    <div class="ai-answer__content">{{ answer | replace("\n", "<br>") | safe }}</div>
+    <div class="ai-answer__content">{{ answer }}</div>
   </article>
   {% endif %}
 </section>
