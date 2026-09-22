@@ -1,0 +1,25 @@
+{% extends "app_base.html" %}
+{% block title %}Nouvel agent — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Créer un agent réel</h1><p class="page-header__meta">Pour des données RH/OPS réelles. Ne saisissez ici que les informations nécessaires au WFM.</p></div></div>
+<div class="form-card form-card--wide">
+{% if errors %}<div class="error-banner">{% for e in errors %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+<form method="post" action="/workforce/new">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<fieldset><legend>Identité WFM</legend><div class="form-grid">
+<div class="field"><label>Employee code</label><input name="employee_code" value="{{ values.employee_code or '' }}" required></div>
+<div class="field"><label>Prénom</label><input name="first_name" value="{{ values.first_name or '' }}" required></div>
+<div class="field"><label>Nom</label><input name="last_name" value="{{ values.last_name or '' }}" required></div>
+<div class="field"><label>Date d'embauche</label><input type="date" name="hire_date" value="{{ values.hire_date or '' }}" required></div>
+<div class="field"><label>Date de sortie</label><input type="date" name="termination_date" value="{{ values.termination_date or '' }}"></div>
+<div class="field"><label>Heures / semaine</label><input type="number" name="weekly_hours_contract" min="1" max="168" step="0.5" value="{{ values.weekly_hours_contract or 40 }}" required></div>
+<div class="field"><label>Fuseau IANA</label><input name="timezone_name" value="{{ values.timezone_name or 'Europe/London' }}" required></div>
+<div class="field"><label>Statut</label><select name="status"><option value="active">Actif</option><option value="leave">Leave</option><option value="terminated">Terminé</option></select></div>
+</div></fieldset>
+<fieldset><legend>Affectation WFM</legend><div class="form-grid">
+<div class="field"><label>Campagne</label><select name="campaign_id" required>{% for c in campaigns %}<option value="{{ c.id }}" {% if values.campaign_id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>{% endfor %}</select></div>
+<div class="field"><label>Skill principal</label><select name="skill_id" required>{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}" {% if values.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+</div></fieldset>
+<div class="form-actions"><button class="btn-primary" type="submit">Créer l'agent réel</button><a class="btn-secondary" href="/workforce">Annuler</a></div>
+</form></div>
+{% endblock %}
