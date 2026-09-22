@@ -15,11 +15,11 @@
   </div>
   <div class="ai-status-card">
     <span>Provider</span>
-    <strong>{{ ai_status.provider }}</strong>
+    <strong>WFM local + IA optionnelle</strong>
     {% if ai_status.enabled %}
-      <small class="ai-status-ok">IA configurée · {{ ai_status.model }}</small>
+      <small class="ai-status-ok">IA avancée disponible · {{ ai_status.model }}</small>
     {% else %}
-      <small class="ai-status-warning">IA à configurer</small>
+      <small class="ai-status-warning">Mode gratuit disponible · aucune clé requise</small>
     {% endif %}
   </div>
 </section>
@@ -73,21 +73,31 @@
     </div>
 
     <form method="post" action="/ai/ask" class="ai-form">
-      <div class="ai-form__mode">
-        <label for="mode">Mode d'analyse</label>
-        <select id="mode" name="mode">
-          <option value="copilot" {% if mode == "copilot" %}selected{% endif %}>Copilot général</option>
-          <option value="report" {% if mode == "report" %}selected{% endif %}>Report WFM</option>
-          <option value="planning" {% if mode == "planning" %}selected{% endif %}>Planning / Capacity</option>
-          <option value="scheduling" {% if mode == "scheduling" %}selected{% endif %}>Scheduling</option>
-        </select>
-      </div>
-
-      <div class="ai-form__grid">
+      <div class="ai-form__grid ai-form__grid--top">
+        <div class="field">
+          <label for="engine">Moteur d'analyse</label>
+          <select id="engine" name="engine">
+            <option value="free" {% if engine == "free" %}selected{% endif %}>Gratuit · moteur WFM local</option>
+            {% if ai_status.enabled %}<option value="ai" {% if engine == "ai" %}selected{% endif %}>IA avancée · API externe</option>{% endif %}
+          </select>
+          <div class="field__hint">Le mode gratuit ne consomme aucune API IA.</div>
+        </div>
+        <div class="field">
+          <label for="mode">Type d'analyse</label>
+          <select id="mode" name="mode">
+            <option value="report" {% if mode == "report" %}selected{% endif %}>Report WFM</option>
+            <option value="planning" {% if mode == "planning" %}selected{% endif %}>Planning / Capacity</option>
+            <option value="scheduling" {% if mode == "scheduling" %}selected{% endif %}>Scheduling</option>
+            <option value="copilot" {% if mode == "copilot" %}selected{% endif %}>Copilot général</option>
+          </select>
+        </div>
         <div class="field">
           <label for="target_date">Date de référence</label>
           <input id="target_date" type="date" name="target_date" value="{{ filters.target_date }}" required>
         </div>
+      </div>
+
+      <div class="ai-form__grid">
         <div class="field">
           <label for="campaign_id">Campagne</label>
           <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
@@ -111,7 +121,7 @@
       <div class="field ai-request-field">
         <label for="user_request">Votre demande</label>
         <textarea id="user_request" name="user_request" rows="6" placeholder="Ex. Explique pourquoi le staffing est insuffisant cette semaine et propose trois scénarios réalistes.">{{ user_request }}</textarea>
-        <div class="field__hint">L'IA utilise le snapshot WFM calculé par l'application. Elle ne modifie pas directement les données.</div>
+        <div class="field__hint">Le snapshot WFM est calculé par l'application. Le moteur gratuit ne fait aucun appel externe ; le moteur IA avancé appelle le provider uniquement lorsqu'il est sélectionné.</div>
       </div>
 
       <div class="ai-examples">
@@ -125,7 +135,7 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn-primary" type="submit">✦ Lancer l'analyse IA</button>
+        <button class="btn-primary" type="submit"><span id="ai-submit-label">{% if engine == "ai" %}✦ Lancer l'analyse IA{% else %}✓ Lancer l'analyse gratuite{% endif %}</span></button>
         <a class="btn-secondary" href="/scheduling/generate">Ouvrir Generate Schedule</a>
       </div>
     </form>
@@ -137,6 +147,7 @@
       <h2>Ce que le Copilot voit</h2>
     </div>
     <div class="ai-side-list">
+      <div><span>Mode gratuit</span><strong>KPI + règles WFM locales</strong></div>
       <div><span>Forecast</span><strong>Volume + AHT + actuals</strong></div>
       <div><span>Staffing</span><strong>Required / Scheduled / Actual</strong></div>
       <div><span>Service</span><strong>SL + ASA + Occupancy</strong></div>
@@ -145,7 +156,7 @@
     </div>
     <div class="ai-safety-note">
       <strong>Contrôle humain</strong>
-      <p>L'IA formule des recommandations. Les modifications de forecast, capacity, planning ou schedule restent exécutées par les modules WFM existants et nécessitent une action explicite.</p>
+      <p>Le moteur gratuit calcule localement les diagnostics. Le moteur IA ajoute seulement une couche de génération de texte. Dans les deux cas, les modifications de forecast, capacity, planning ou schedule restent sous contrôle utilisateur.</p>
     </div>
   </aside>
 </div>
@@ -191,3 +202,18 @@
 })();
 </script>
 {% endblock %}
+
+<script>
+(() => {
+  const engine = document.getElementById("engine");
+  const label = document.getElementById("ai-submit-label");
+  const update = () => {
+    if (!engine || !label) return;
+    label.textContent = engine.value === "ai"
+      ? "✦ Lancer l'analyse IA"
+      : "✓ Lancer l'analyse gratuite";
+  };
+  engine?.addEventListener("change", update);
+  update();
+})();
+</script>

@@ -242,3 +242,141 @@ Snapshot WFM déterministe :
 
 Réponse exploitable pour un planificateur WFM."""
     return system_prompt, user_prompt
+
+
+def _pct_delta(actual: float | None, forecast: float | None) -> float | None:
+    if actual is None or forecast in (None, 0):
+        return None
+    return round((actual - forecast) / forecast * 100.0, 1)
+
+
+def build_free_analysis(
+    *,
+    mode: str,
+    user_request: str,
+    snapshot: dict[str, Any],
+) -> str:
+    """Analyse WFM localement sans appel externe ni coût API."""
+    forecast = snapshot["forecast"]
+    staffing = snapshot["staffing"]
+    workforce = snapshot["workforce"]
+    recruitment = snapshot["recruitment"]
+
+    volume_delta_pct = _pct_delta(
+        forecast.get("actual_volume"),
+        forecast.get("forecast_volume"),
+    )
+    service_level = forecast.get("service_level_pct")
+    occupancy = forecast.get("occupancy_pct")
+    scheduled_gap = staffing.get("scheduled_gap_hours") or 0.0
+    actual_gap = staffing.get("actual_gap_hours") or 0.0
+
+    priorities: list[str] = []
+    risks: list[str] = []
+    actions: list[str] = []
+
+    if volume_delta_pct is not None:
+        if volume_delta_pct >= 10:
+            priorities.append(
+                f"Volume actual supérieur au forecast de {volume_delta_pct:.1f}%."
+            )
+            risks.append("Risque de sous-capacité si l'écart volume persiste.")
+        elif volume_delta_pct <= -10:
+            priorities.append(
+                f"Volume actual inférieur au forecast de {abs(volume_delta_pct):.1f}%."
+            )
+            risks.append("Capacité potentiellement surdimensionnée.")
+        else:
+            priorities.append(
+                f"Volume actual proche du forecast ({volume_delta_pct:+.1f}%)."
+            )
+
+    if scheduled_gap < -1:
+        priorities.append(
+            f"Sous-planification de {abs(scheduled_gap):.1f} heures HC sur le périmètre."
+        )
+        risks.append("Créneaux sous-couverts à traiter avant publication.")
+        actions.append("Revoir les shifts et la capacité sur les intervalles en déficit.")
+    elif scheduled_gap > 1:
+        priorities.append(
+            f"Sur-planification de {scheduled_gap:.1f} heures HC."
+        )
+        risks.append("Risque de surstaffing et de coût inutile.")
+        actions.append("Réaffecter une partie des heures vers les créneaux déficitaires.")
+    else:
+        priorities.append("Le volume d'heures planifiées est proche du besoin calculé.")
+
+    if actual_gap > 1:
+        risks.append(
+            f"Écart staffing actual de {actual_gap:.1f} heures HC sur les intervalles actualisés."
+        )
+        actions.append("Examiner les absences, retards et écarts de présence sur les périodes concernées.")
+
+    if service_level is not None:
+        if service_level < 80:
+            risks.append(f"Service Level moyen sous 80% ({service_level:.1f}%).")
+            actions.append("Prioriser les créneaux à faible Service Level avant les arbitrages de confort.")
+        else:
+            priorities.append(f"Service Level moyen à {service_level:.1f}%.")
+
+    if occupancy is not None:
+        if occupancy > 90:
+            risks.append(f"Occupancy moyenne élevée ({occupancy:.1f}%).")
+            actions.append("Vérifier le risque de surcharge avant d'augmenter la production.")
+        elif occupancy < 70:
+            priorities.append(f"Occupancy moyenne basse ({occupancy:.1f}%).")
+
+    if workforce["absence_records"]:
+        risks.append(f"{workforce['absence_records']} enregistrement(s) d'absence sur la période.")
+        actions.append("Contrôler l'impact des absences sur la couverture des créneaux critiques.")
+
+    if recruitment["training_hc"] or recruitment["nesting_hc"]:
+        actions.append(
+            f"Intégrer les cohortes en formation/nesting ({recruitment['training_hc']} / "
+            f"{recruitment['nesting_hc']} HC) dans la capacité réellement productive."
+        )
+
+    if not actions:
+        actions.append("Aucun écart majeur détecté par les règles déterministes actuelles.")
+
+    mode_label = {
+        "copilot": "Copilot WFM gratuit",
+        "report": "Report WFM gratuit",
+        "planning": "Analyse Planning / Capacity gratuite",
+        "scheduling": "Analyse Scheduling gratuite",
+    }.get(mode, "Analyse WFM gratuite")
+
+    request_line = user_request.strip()
+    lines = [
+        f"## {mode_label}",
+        f"Période : {snapshot['period']['start']} → {snapshot['period']['end']}",
+        f"Périmètre : {snapshot['scope']['campaign']} · {snapshot['scope']['skill']}",
+        "",
+        "### KPI calculés localement",
+        f"- Forecast volume : {forecast['forecast_volume']:.1f}",
+        f"- Actual volume : {forecast['actual_volume']:.1f}",
+        f"- Écart volume : {forecast.get('volume_delta') if forecast.get('volume_delta') is not None else 'donnée non disponible'}",
+        f"- Required : {staffing['required_hc_hours']:.1f} h",
+        f"- Scheduled : {staffing['scheduled_hc_hours']:.1f} h",
+        f"- Actual : {staffing['actual_hc_hours']:.1f} h",
+        f"- Agents actifs : {workforce['active_agents']}",
+        f"- Absences : {workforce['absence_records']}",
+        "",
+        "### Priorités",
+    ]
+    lines.extend(f"- {item}" for item in priorities[:5])
+    lines.extend(["", "### Risques"])
+    lines.extend(f"- {item}" for item in risks[:5] or ["- Aucun risque majeur détecté par les règles actuelles."])
+    lines.extend(["", "### Actions proposées"])
+    lines.extend(f"- {item}" for item in actions[:6])
+
+    if request_line:
+        lines.extend([
+            "",
+            "### Demande utilisateur",
+            f"Votre demande : {request_line}",
+            "Cette version gratuite répond à partir des KPI et règles WFM calculés localement ; "
+            "la génération libre de texte reste réservée au mode IA avancée.",
+        ])
+
+    return "\n".join(lines)
