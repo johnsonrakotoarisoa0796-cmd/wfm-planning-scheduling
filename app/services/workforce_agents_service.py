@@ -120,8 +120,9 @@ def create_employee(
     else:
         link.is_primary = True
         session.add(link)
-    session.commit()
-    session.refresh(employee)
+    if commit:
+        session.commit()
+        session.refresh(employee)
     return employee
 
 
