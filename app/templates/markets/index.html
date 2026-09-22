@@ -1,52 +1,202 @@
 {% extends "app_base.html" %}
 {% block title %}Marchés — WFM{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <h1>Marchés</h1>
-    <p class="page-header__meta">FR, UK, DE, IN, ES, JP, NL… Chaque marché possède sa langue et son fuseau IANA.</p>
+{% set active_markets = markets | selectattr("is_active") | list %}
+{% set language_count = markets | map(attribute="language_code") | unique | list | length %}
+{% set timezone_count = markets | map(attribute="timezone_name") | unique | list | length %}
+
+<section class="market-hero">
+  <div class="market-hero__copy">
+    <div class="panel-kicker">WORKFORCE CONFIGURATION</div>
+    <h1>Market Management</h1>
+    <p>Centralisez les marchés WFM, leurs langues et leurs fuseaux IANA. Ces paramètres servent de référence pour les campagnes, le forecasting et le scheduling.</p>
+    <div class="market-hero__meta">
+      <span><i></i> Référentiel opérationnel</span>
+      <span>Langues &amp; fuseaux normalisés</span>
+    </div>
   </div>
-</div>
+  <div class="market-hero__badge">
+    <span>Marchés actifs</span>
+    <strong>{{ active_markets|length }}</strong>
+    <small>sur {{ markets|length }} configurés</small>
+  </div>
+</section>
 
 {% if errors %}
-<div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+<div class="error-banner market-error">
+  <strong>Impossible d'enregistrer le marché</strong>
+  {% for error in errors %}<div>{{ error }}</div>{% endfor %}
+</div>
 {% endif %}
 
-<div class="market-grid">
-<section class="form-card">
-<div class="panel-kicker">NOUVEAU MARCHÉ</div>
-<h2>Ajouter un marché</h2>
-{% if can_edit %}
-<form method="post" action="/markets/new">
-<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-<div class="form-grid">
-<div class="field"><label>Code</label><input name="code" placeholder="FR" maxlength="10" required></div>
-<div class="field"><label>Nom</label><input name="name" placeholder="France" required></div>
-<div class="field"><label>Langue</label><input name="language_code" placeholder="fr" maxlength="10" required></div>
-<div class="field"><label>Fuseau IANA</label><select name="timezone_name" required>{% for tz in timezone_options %}<option value="{{ tz }}">{{ tz }}</option>{% endfor %}</select></div>
-</div>
-<div class="form-actions"><button class="btn-primary" type="submit">Créer le marché</button></div>
-</form>
-{% else %}<p class="field__hint">La gestion des marchés est réservée aux rôles WFM autorisés.</p>{% endif %}
+<section class="market-kpi-grid">
+  <article class="market-kpi">
+    <span>Total marchés</span>
+    <strong>{{ markets|length }}</strong>
+    <small>Référentiels disponibles</small>
+  </article>
+  <article class="market-kpi market-kpi--success">
+    <span>Marchés actifs</span>
+    <strong>{{ active_markets|length }}</strong>
+    <small>Utilisables dans WFM</small>
+  </article>
+  <article class="market-kpi market-kpi--accent">
+    <span>Langues</span>
+    <strong>{{ language_count }}</strong>
+    <small>Codes langue uniques</small>
+  </article>
+  <article class="market-kpi market-kpi--neutral">
+    <span>Fuseaux IANA</span>
+    <strong>{{ timezone_count }}</strong>
+    <small>Références temporelles</small>
+  </article>
 </section>
 
-<section>
-<div class="data-table-wrapper">
-<table class="data-table">
-<thead><tr><th>Code</th><th>Marché</th><th>Langue</th><th>Fuseau</th><th>Statut</th></tr></thead>
-<tbody>
-{% for market in markets %}
-<tr>
-<td><strong>{{ market.code }}</strong></td>
-<td>{{ market.name }}</td>
-<td>{{ market.language_code }}</td>
-<td>{{ market.timezone_name }}</td>
-<td>{% if market.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
+<div class="market-layout">
+  <section class="form-card market-form-card">
+    <div class="market-section-head">
+      <div class="market-section-head__identity">
+        <span class="market-section-icon">＋</span>
+        <div>
+          <div class="panel-kicker">NOUVEAU MARCHÉ</div>
+          <h2>Ajouter un marché</h2>
+        </div>
+      </div>
+      {% if can_edit %}<span class="status-pill status-pill--balanced">Écriture autorisée</span>{% endif %}
+    </div>
+
+    {% if can_edit %}
+    <form method="post" action="/markets/new" class="market-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="market-form__grid">
+        <div class="field">
+          <label for="market-code">Code marché</label>
+          <input id="market-code" name="code" placeholder="FR" maxlength="10" autocomplete="off" required>
+          <div class="field__hint">Ex. FR, UK, DE, IN</div>
+        </div>
+        <div class="field">
+          <label for="market-name">Nom du marché</label>
+          <input id="market-name" name="name" placeholder="France" autocomplete="organization" required>
+        </div>
+        <div class="field">
+          <label for="market-language">Langue</label>
+          <input id="market-language" name="language_code" placeholder="fr" maxlength="10" autocomplete="language" required>
+          <div class="field__hint">Code langue court, ex. fr / en / de</div>
+        </div>
+        <div class="field">
+          <label for="market-timezone">Fuseau IANA</label>
+          <select id="market-timezone" name="timezone_name" required>
+            {% for tz in timezone_options %}<option value="{{ tz }}">{{ tz }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="market-form__preview">
+        <span class="market-preview__icon">◎</span>
+        <div>
+          <strong>Référence temporelle</strong>
+          <small>Le fuseau IANA sera utilisé comme référence locale du marché pour les opérations WFM.</small>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">Créer le marché</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="market-readonly">
+      <span class="market-readonly__icon">🔒</span>
+      <strong>Mode lecture seule</strong>
+      <p>La gestion des marchés est réservée aux rôles WFM autorisés.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="market-directory">
+    <div class="market-directory__head">
+      <div>
+        <div class="panel-kicker">RÉFÉRENTIEL</div>
+        <h2>Marchés configurés</h2>
+        <p><span id="market-visible-count">{{ markets|length }}</span> résultat(s) affiché(s)</p>
+      </div>
+      <span class="market-directory__count">{{ markets|length }}</span>
+    </div>
+
+    <div class="market-toolbar">
+      <label class="market-search">
+        <span>⌕</span>
+        <input id="market-search" type="search" placeholder="Rechercher un code, marché, langue ou fuseau..." autocomplete="off">
+      </label>
+      <select id="market-status-filter" class="market-status-filter" aria-label="Filtrer par statut">
+        <option value="">Tous les statuts</option>
+        <option value="active">Actifs</option>
+        <option value="inactive">Inactifs</option>
+      </select>
+    </div>
+
+    <div class="market-table-wrap">
+      <table class="data-table market-table">
+        <thead>
+          <tr>
+            <th>Marché</th>
+            <th>Langue</th>
+            <th>Fuseau IANA</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="market-table-body">
+        {% for market in markets %}
+          <tr data-market-row data-search="{{ (market.code ~ ' ' ~ market.name ~ ' ' ~ market.language_code ~ ' ' ~ market.timezone_name)|lower }}" data-status="{{ 'active' if market.is_active else 'inactive' }}">
+            <td>
+              <div class="market-row-identity">
+                <span class="market-code-badge">{{ market.code }}</span>
+                <div>
+                  <strong>{{ market.name }}</strong>
+                  <small>Market code · {{ market.code }}</small>
+                </div>
+              </div>
+            </td>
+            <td><span class="market-language-tag">{{ market.language_code }}</span></td>
+            <td><span class="market-timezone">{{ market.timezone_name }}</span></td>
+            <td>{% if market.is_active %}<span class="status-pill status-pill--balanced">Actif</span>{% else %}<span class="status-pill">Inactif</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div id="market-empty-filtered" class="market-empty market-empty--hidden">
+        <span class="market-empty__icon">⌕</span>
+        <strong>Aucun marché trouvé</strong>
+        <p>Modifiez la recherche ou le filtre de statut.</p>
+      </div>
+    </div>
+  </section>
 </div>
-</section>
-</div>
+
+<script>
+(() => {
+  const rows = [...document.querySelectorAll("[data-market-row]")];
+  const search = document.getElementById("market-search");
+  const status = document.getElementById("market-status-filter");
+  const count = document.getElementById("market-visible-count");
+  const empty = document.getElementById("market-empty-filtered");
+
+  const refresh = () => {
+    const q = (search?.value || "").trim().toLowerCase();
+    const statusValue = status?.value || "";
+    let visible = 0;
+
+    rows.forEach((row) => {
+      const matchesText = !q || row.dataset.search.includes(q);
+      const matchesStatus = !statusValue || row.dataset.status === statusValue;
+      const show = matchesText && matchesStatus;
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+
+    if (count) count.textContent = String(visible);
+    if (empty) empty.classList.toggle("market-empty--hidden", visible > 0 || rows.length === 0);
+  };
+
+  search?.addEventListener("input", refresh);
+  status?.addEventListener("change", refresh);
+})();
+</script>
 {% endblock %}
