@@ -1,0 +1,104 @@
+{% extends "app_base.html" %}
+{% block title %}Workforce / Agents — WFM Planning & Scheduling{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Workforce / Agents</h1>
+        <p class="page-header__meta">Référentiel des agents utilisé directement par Capacity, Scheduling, Absences et le moteur de planning.</p>
+    </div>
+    {% if can_edit %}
+    <div class="page-actions">
+        <a class="btn-secondary" href="/workforce/new">+ Données réelles</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if request.query_params.get("generated") %}
+<div class="success-banner">{{ request.query_params.get("generated") }} agent(s) fictif(s) créé(s).</div>
+{% endif %}
+{% if request.query_params.get("imported") or request.query_params.get("updated") %}
+<div class="success-banner">
+    Import terminé : {{ request.query_params.get("imported", 0) }} créé(s),
+    {{ request.query_params.get("updated", 0) }} mis à jour,
+    {{ request.query_params.get("skipped", 0) }} ignoré(s).
+</div>
+{% endif %}
+{% if errors %}<div class="error-banner">{% for error in errors %}{{ error }}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+
+<div class="kpi-grid">
+    <div class="kpi-card"><span>Total agents</span><strong>{{ metrics.total }}</strong></div>
+    <div class="kpi-card"><span>Actifs</span><strong>{{ metrics.active }}</strong></div>
+    <div class="kpi-card"><span>Congé / Leave</span><strong>{{ metrics.leave }}</strong></div>
+    <div class="kpi-card"><span>Données réelles</span><strong>{{ metrics.real }}</strong></div>
+    <div class="kpi-card"><span>Fictifs</span><strong>{{ metrics.synthetic }}</strong></div>
+</div>
+
+<div class="card-grid card-grid--3">
+    {% if can_edit %}
+    <section class="form-card">
+        <div class="section-heading">
+            <div><span class="eyebrow">OPTION 1</span><h2>Créer des agents fictifs</h2></div>
+        </div>
+        <p class="field__hint">Pour tester un scénario comme 140 agents UK / Message Us sans stocker de données personnelles réelles.</p>
+        <form method="post" action="/workforce/generate">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-grid">
+                <div class="field"><label>Campagne</label><select name="campaign_id" required>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+                <div class="field"><label>Skill</label><select name="skill_id" required>{% for s in skills %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div>
+                <div class="field"><label>Nombre</label><input type="number" name="count" min="1" max="500" value="10" required></div>
+                <div class="field"><label>Date d'embauche</label><input type="date" name="hire_date" value="{{ request.query_params.get('date', '') }}" required></div>
+                <div class="field"><label>Heures / semaine</label><input type="number" name="weekly_hours_contract" min="1" max="168" step="0.5" value="40" required></div>
+                <div class="field"><label>Fuseau IANA</label><input type="text" name="timezone_name" value="Europe/London" required></div>
+            </div>
+            <div class="form-actions"><button class="btn-primary" type="submit">Générer les agents fictifs</button></div>
+        </form>
+    </section>
+
+    <section class="form-card">
+        <div class="section-heading"><div><span class="eyebrow">OPTION 2</span><h2>Importer des données réelles</h2></div></div>
+        <p class="field__hint">CSV ou Excel. Les données sont validées avant enregistrement. Les nouveaux agents sont créés et les employee_code existants peuvent être mis à jour.</p>
+        <form method="post" action="/workforce/import" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="field"><label>Fichier agents</label><input type="file" name="file" accept=".csv,.xlsx,.xls" required></div>
+            <label class="checkbox-label"><input class="checkbox-input" type="checkbox" name="update_existing" value="true" checked> Mettre à jour les agents existants</label>
+            <p class="field__hint">Colonnes: employee_code, first_name, last_name, campaign_code, skill_name, hire_date, termination_date?, weekly_hours_contract?, timezone_name?, status?</p>
+            <div class="form-actions"><button class="btn-primary" type="submit">Importer</button></div>
+        </form>
+    </section>
+
+    <section class="form-card">
+        <div class="section-heading"><div><span class="eyebrow">WORKFLOW</span><h2>Du référentiel au planning</h2></div></div>
+        <p class="field__hint">Un agent est ensuite utilisé comme source de vérité par Scheduling et les absences. Le skill est contrôlé sur la campagne et le planning conserve un seul shift par agent et par jour.</p>
+        <div class="form-actions"><a class="btn-secondary" href="/scheduling/generate">Ouvrir Generate Schedule</a><a class="btn-secondary" href="/scheduling/absences">Gérer les absences</a></div>
+    </section>
+    {% endif %}
+</div>
+
+<form class="form-card form-card--wide" method="get" action="/workforce">
+    <div class="form-grid">
+        <div class="field"><label>Recherche</label><input type="search" name="search" value="{{ filters.search }}" placeholder="Code, prénom, nom"></div>
+        <div class="field"><label>Campagne</label><select name="campaign_id"><option value="">Toutes</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if filters.campaign_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Skill</label><select name="skill_id"><option value="">Tous</option>{% for s in skills %}<option value="{{ s.id }}" {% if filters.skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Statut</label><select name="status"><option value="">Tous</option><option value="active" {% if filters.status == 'active' %}selected{% endif %}>Actif</option><option value="leave" {% if filters.status == 'leave' %}selected{% endif %}>Leave</option><option value="terminated" {% if filters.status == 'terminated' %}selected{% endif %}>Terminé</option></select></div>
+        <div class="field"><label>Source</label><select name="data_source"><option value="">Toutes</option><option value="real" {% if filters.data_source == 'real' %}selected{% endif %}>Réelle</option><option value="synthetic" {% if filters.data_source == 'synthetic' %}selected{% endif %}>Fictive</option></select></div>
+        <div class="form-actions"><button class="btn-primary" type="submit">Filtrer</button></div>
+    </div>
+</form>
+
+<div class="data-table-wrapper"><table class="data-table"><thead><tr><th>Agent</th><th>Campagne</th><th>Skills</th><th>Contrat</th><th>Fuseau</th><th>Statut</th><th>Source</th><th></th></tr></thead><tbody>
+{% for e in employees %}
+<tr>
+<td><strong>{{ e.first_name }} {{ e.last_name }}</strong><br><small>{{ e.employee_code }}</small></td>
+<td>{% set campaign = campaigns | selectattr('id', 'equalto', e.campaign_id) | list | first %}{{ campaign.name if campaign else '—' }}</td>
+<td>{% for s in skill_rows.get(e.id, []) %}<span class="status-pill status-pill--balanced">{{ s.name }}{% if loop.first %} ★{% endif %}</span>{% else %}—{% endfor %}</td>
+<td>{{ "%.1f"|format(e.weekly_hours_contract) }} h</td>
+<td>{{ e.timezone_name }}</td>
+<td>{% if e.status.value == 'active' %}<span class="status-pill status-pill--balanced">Actif</span>{% elif e.status.value == 'leave' %}<span class="status-pill status-pill--warning">Leave</span>{% else %}<span class="status-pill status-pill--danger">Terminé</span>{% endif %}</td>
+<td>{% if e.data_source == 'synthetic' %}<span class="status-pill">Fictif</span>{% else %}<span class="status-pill">Réel</span>{% endif %}</td>
+<td><a class="btn-secondary btn-small" href="/workforce/{{ e.id }}">Voir</a>{% if can_edit %}<form method="post" action="/workforce/{{ e.id }}/status" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="new_status" value="{% if e.status.value == 'active' %}leave{% else %}active{% endif %}"><button class="btn-secondary btn-small" type="submit">{% if e.status.value == 'active' %}Mettre en leave{% else %}Réactiver{% endif %}</button></form>{% endif %}</td>
+</tr>
+{% else %}
+<tr><td colspan="8"><div class="empty-state">Aucun agent ne correspond aux filtres.</div></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endblock %}
