@@ -1,0 +1,193 @@
+{% extends "app_base.html" %}
+{% block title %}WFM AI Copilot — WFM{% endblock %}
+{% block content %}
+
+<section class="ai-hero">
+  <div>
+    <div class="panel-kicker">WFM INTELLIGENCE</div>
+    <h1>AI Copilot</h1>
+    <p>Analysez les KPI, construisez des scénarios de planning et obtenez des recommandations de scheduling à partir des données WFM réelles.</p>
+    <div class="ai-hero__meta">
+      <span><i></i> Lecture des données WFM</span>
+      <span>Report · Planning · Scheduling</span>
+      <span>Actions réelles toujours sous contrôle utilisateur</span>
+    </div>
+  </div>
+  <div class="ai-status-card">
+    <span>Provider</span>
+    <strong>{{ ai_status.provider }}</strong>
+    {% if ai_status.enabled %}
+      <small class="ai-status-ok">IA configurée · {{ ai_status.model }}</small>
+    {% else %}
+      <small class="ai-status-warning">IA à configurer</small>
+    {% endif %}
+  </div>
+</section>
+
+{% if error %}
+<div class="error-banner ai-error">
+  <strong>Copilot indisponible</strong>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+<section class="ai-mode-grid">
+  <article class="ai-mode-card {% if mode == 'report' %}is-active{% endif %}">
+    <span class="ai-mode-card__icon">▤</span>
+    <div>
+      <strong>Report</strong>
+      <p>Synthèse KPI, risques, écarts et actions.</p>
+    </div>
+  </article>
+  <article class="ai-mode-card {% if mode == 'planning' %}is-active{% endif %}">
+    <span class="ai-mode-card__icon">◫</span>
+    <div>
+      <strong>Planning</strong>
+      <p>Forecast, capacité, staffing et scénarios.</p>
+    </div>
+  </article>
+  <article class="ai-mode-card {% if mode == 'scheduling' %}is-active{% endif %}">
+    <span class="ai-mode-card__icon">▦</span>
+    <div>
+      <strong>Scheduling</strong>
+      <p>Couverture, shifts, pauses et contraintes.</p>
+    </div>
+  </article>
+  <article class="ai-mode-card {% if mode == 'copilot' %}is-active{% endif %}">
+    <span class="ai-mode-card__icon">✦</span>
+    <div>
+      <strong>Copilot</strong>
+      <p>Questions WFM transverses sur le périmètre choisi.</p>
+    </div>
+  </article>
+</section>
+
+<div class="ai-layout">
+  <section class="form-card ai-command-card">
+    <div class="ai-section-head">
+      <div>
+        <div class="panel-kicker">ASK WFM AI</div>
+        <h2>Demander une analyse</h2>
+      </div>
+      <span class="status-pill status-pill--info">7 jours de contexte</span>
+    </div>
+
+    <form method="post" action="/ai/ask" class="ai-form">
+      <div class="ai-form__mode">
+        <label for="mode">Mode d'analyse</label>
+        <select id="mode" name="mode">
+          <option value="copilot" {% if mode == "copilot" %}selected{% endif %}>Copilot général</option>
+          <option value="report" {% if mode == "report" %}selected{% endif %}>Report WFM</option>
+          <option value="planning" {% if mode == "planning" %}selected{% endif %}>Planning / Capacity</option>
+          <option value="scheduling" {% if mode == "scheduling" %}selected{% endif %}>Scheduling</option>
+        </select>
+      </div>
+
+      <div class="ai-form__grid">
+        <div class="field">
+          <label for="target_date">Date de référence</label>
+          <input id="target_date" type="date" name="target_date" value="{{ filters.target_date }}" required>
+        </div>
+        <div class="field">
+          <label for="campaign_id">Campagne</label>
+          <select id="campaign_id" name="campaign_id" data-skill-filter="#skill_id">
+            <option value="">Toutes les campagnes</option>
+            {% for campaign in campaigns %}
+            <option value="{{ campaign.id }}" {% if filters.campaign_id == campaign.id %}selected{% endif %}>{{ campaign.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="skill_id">Skill</label>
+          <select id="skill_id" name="skill_id">
+            <option value="">Tous les skills</option>
+            {% for skill in skills %}
+            <option value="{{ skill.id }}" data-campaign-id="{{ skill.campaign_id }}" {% if filters.skill_id == skill.id %}selected{% endif %}>{{ skill.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field ai-request-field">
+        <label for="user_request">Votre demande</label>
+        <textarea id="user_request" name="user_request" rows="6" placeholder="Ex. Explique pourquoi le staffing est insuffisant cette semaine et propose trois scénarios réalistes.">{{ user_request }}</textarea>
+        <div class="field__hint">L'IA utilise le snapshot WFM calculé par l'application. Elle ne modifie pas directement les données.</div>
+      </div>
+
+      <div class="ai-examples">
+        <span class="panel-kicker">EXEMPLES</span>
+        <div class="ai-example-chips">
+          <button type="button" class="ai-example-chip" data-ai-example="Fais un report exécutif de la semaine : KPI, risques et 5 actions prioritaires.">Report exécutif</button>
+          <button type="button" class="ai-example-chip" data-ai-example="Explique l'écart forecast vs actual et son impact sur la capacité.">Forecast vs Actual</button>
+          <button type="button" class="ai-example-chip" data-ai-example="Analyse le staffing et propose des scénarios de couverture sans dépasser les contraintes de planning.">Scénarios staffing</button>
+          <button type="button" class="ai-example-chip" data-ai-example="Analyse le planning de la semaine et identifie les risques de sous-couverture, pauses et absences.">Audit scheduling</button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" type="submit">✦ Lancer l'analyse IA</button>
+        <a class="btn-secondary" href="/scheduling/generate">Ouvrir Generate Schedule</a>
+      </div>
+    </form>
+  </section>
+
+  <aside class="ai-side-panel">
+    <div class="ai-side-panel__head">
+      <span class="panel-kicker">WFM DATA</span>
+      <h2>Ce que le Copilot voit</h2>
+    </div>
+    <div class="ai-side-list">
+      <div><span>Forecast</span><strong>Volume + AHT + actuals</strong></div>
+      <div><span>Staffing</span><strong>Required / Scheduled / Actual</strong></div>
+      <div><span>Service</span><strong>SL + ASA + Occupancy</strong></div>
+      <div><span>Workforce</span><strong>Agents + absences + planning</strong></div>
+      <div><span>Recruitment</span><strong>Training + Nesting + Production</strong></div>
+    </div>
+    <div class="ai-safety-note">
+      <strong>Contrôle humain</strong>
+      <p>L'IA formule des recommandations. Les modifications de forecast, capacity, planning ou schedule restent exécutées par les modules WFM existants et nécessitent une action explicite.</p>
+    </div>
+  </aside>
+</div>
+
+{% if snapshot %}
+<section class="ai-result-shell">
+  <div class="ai-result-head">
+    <div>
+      <div class="panel-kicker">ANALYSE IA</div>
+      <h2>Résultat pour {{ snapshot.scope.campaign }} · {{ snapshot.scope.skill }}</h2>
+      <p>{{ snapshot.period.start }} → {{ snapshot.period.end }}</p>
+    </div>
+    <span class="status-pill status-pill--balanced">Snapshot WFM vérifié</span>
+  </div>
+
+  <div class="ai-snapshot-grid">
+    <div><span>Forecast volume</span><strong>{{ snapshot.forecast.forecast_volume }}</strong></div>
+    <div><span>Actual volume</span><strong>{{ snapshot.forecast.actual_volume }}</strong></div>
+    <div><span>Required hours</span><strong>{{ snapshot.staffing.required_hc_hours }} h</strong></div>
+    <div><span>Scheduled hours</span><strong>{{ snapshot.staffing.scheduled_hc_hours }} h</strong></div>
+    <div><span>Active agents</span><strong>{{ snapshot.workforce.active_agents }}</strong></div>
+    <div><span>Absences</span><strong>{{ snapshot.workforce.absence_records }}</strong></div>
+  </div>
+
+  {% if answer %}
+  <article class="ai-answer">
+    <div class="ai-answer__label">COPILOT</div>
+    <div class="ai-answer__content">{{ answer | replace("\n", "<br>") | safe }}</div>
+  </article>
+  {% endif %}
+</section>
+{% endif %}
+
+<script>
+(() => {
+  const request = document.getElementById("user_request");
+  document.querySelectorAll("[data-ai-example]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (request) request.value = button.dataset.aiExample || "";
+      request?.focus();
+    });
+  });
+})();
+</script>
+{% endblock %}
