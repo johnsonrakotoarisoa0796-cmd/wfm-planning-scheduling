@@ -31,7 +31,7 @@ AI_PROVIDER=openai-compatible
 
 `AI_API_BASE_URL` doit exposer un endpoint compatible `/chat/completions`.
 
-Sans clé ou modèle, la page reste disponible mais indique que l'IA n'est pas configurée.
+Le mode gratuit reste disponible sans clé API. Une clé et un modèle sont nécessaires uniquement pour le moteur « IA avancée ».
 
 ## Données transmises
 
@@ -46,3 +46,28 @@ Le snapshot contient uniquement les agrégats nécessaires :
 - cohortes Recruitment / Training / Nesting / Production
 
 Aucun secret de l'application n'est envoyé au provider.
+
+
+## Mode gratuit
+
+Le moteur **Gratuit · moteur WFM local** est le mode par défaut.
+
+Il ne contacte aucun provider externe. Il calcule localement :
+
+- écart forecast vs actual et son pourcentage
+- heures Required / Scheduled / Actual
+- sous-staffing / surstaffing
+- alertes Service Level et Occupancy
+- impact des absences
+- situation Training / Nesting / Production
+- actions WFM déterministes à examiner
+
+Ce mode ne génère pas de texte libre avec un LLM : il produit un report opérationnel basé sur les règles et KPI calculés par l'application.
+
+## Mode IA avancée
+
+Le moteur **IA avancée** n'est proposé que lorsqu'un provider est configuré.
+
+Il sert à reformuler et développer les analyses, répondre aux demandes ouvertes et produire des scénarios textuels plus riches.
+
+Ainsi, l'application peut fonctionner sans coût d'API IA au quotidien et n'utiliser l'IA externe que lorsque l'utilisateur le décide.
