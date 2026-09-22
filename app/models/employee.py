@@ -19,6 +19,8 @@ class Employee(SQLModel, table=True):
     hire_date: date = Field(nullable=False)
     termination_date: Optional[date] = Field(default=None)
     status: EmployeeStatus = Field(default=EmployeeStatus.ACTIVE, nullable=False)
+    # real = données RH/OPS réelles ; synthetic = données fictives générées par WFM
+    data_source: str = Field(default="real", nullable=False, index=True)
     # Base contractuelle en heures/semaine, ne doit jamais être codée en dur
     # ailleurs (voir Settings et core/config.py pour le défaut global).
     weekly_hours_contract: float = Field(default=40.0, nullable=False)
