@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     smtp_from_name: str = "WFM Planning & Scheduling"
     smtp_use_tls: bool = True
 
+    # IA / WFM Copilot
+    # Provider compatible avec l'API Chat Completions (ou passerelle interne).
+    ai_provider: str = "openai-compatible"
+    ai_api_base_url: str = "https://api.openai.com/v1"
+    ai_api_key: str = ""
+    ai_model: str = ""
+    ai_timeout_seconds: float = 45.0
+
     # Sécurité / sessions
     session_max_age_seconds: int = 60 * 60 * 12  # 12h
     pending_2fa_max_age_seconds: int = 60 * 5  # 5 min, cf. §8
