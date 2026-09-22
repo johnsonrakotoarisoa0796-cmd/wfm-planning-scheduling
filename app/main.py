@@ -32,7 +32,7 @@ from app.models.enums import Channel, EmployeeStatus, ShrinkageType, UserRole
 from app.models.shrinkage import ShrinkageCategory
 from app.models.skill import Skill
 from app.models.user import User
-from app.routers import agent_portal, auth, capacity, campaign_workforce, client_stf, compliance, control_tower, daily, dashboard, forecast_lab, guide, imports, ltf, markets, overtime, recruitment, schedule_board, scheduling, settings as settings_router, stf, shrinkage
+from app.routers import agent_portal, ai, auth, capacity, campaign_workforce, client_stf, compliance, control_tower, daily, dashboard, forecast_lab, guide, imports, ltf, markets, overtime, recruitment, schedule_board, scheduling, settings as settings_router, stf, shrinkage
 
 settings = get_settings()
 
@@ -406,6 +406,7 @@ app.add_middleware(CSRFCookieMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(auth.router)
+app.include_router(ai.router)
 app.include_router(dashboard.router)
 app.include_router(ltf.router)
 app.include_router(stf.router)
