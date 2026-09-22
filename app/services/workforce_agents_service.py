@@ -148,6 +148,10 @@ def generate_synthetic_employees(
 ) -> list[Employee]:
     if count < 1 or count > 500:
         raise ValueError("La génération fictive doit être comprise entre 1 et 500 agents.")
+    if weekly_hours_contract <= 0 or weekly_hours_contract > 168:
+        raise ValueError("Les heures contractuelles doivent être comprises entre 0 et 168.")
+    from app.services.workforce_service import validate_timezone_name
+    validate_timezone_name(timezone_name)
     _, skill = _validate_scope(session, campaign_id=campaign_id, skill_id=skill_id)
 
     prefix = f"{campaign_id}{skill_id}"
