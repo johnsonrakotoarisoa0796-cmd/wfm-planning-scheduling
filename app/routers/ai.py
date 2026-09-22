@@ -51,7 +51,8 @@ def ai_page(
                 "campaign_id": campaign_id,
                 "skill_id": skill_id,
             },
-            "mode": "copilot",
+            "mode": "report",
+            "engine": "free",
             "user_request": "",
             "answer": None,
             "snapshot": None,
@@ -64,7 +65,8 @@ def ai_page(
 @router.post("/ask")
 def ask_ai(
     request: Request,
-    mode: str = Form("copilot"),
+    mode: str = Form("report"),
+    engine: str = Form("free"),
     target_date: date = Form(...),
     campaign_id: Optional[int] = Form(None),
     skill_id: Optional[int] = Form(None),
@@ -73,8 +75,13 @@ def ask_ai(
     session: Session = Depends(get_session),
 ):
     allowed_modes = {"copilot", "report", "planning", "scheduling"}
+    allowed_engines = {"free", "ai"}
     if mode not in allowed_modes:
-        mode = "copilot"
+        mode = "report"
+    if engine not in allowed_engines:
+        engine = "free"
+    if engine == "ai" and not ai_service.ai_enabled():
+        engine = "free"
 
     campaigns = list(
         session.exec(
@@ -100,15 +107,22 @@ def ask_ai(
                 skill_id=skill_id,
                 days=7,
             )
-            system_prompt, user_prompt = ai_service.build_ai_instruction(
-                mode,
-                user_request,
-                snapshot,
-            )
-            answer = ai_service.ask_ai(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-            )
+            if engine == "free":
+                answer = ai_service.build_free_analysis(
+                    mode=mode,
+                    user_request=user_request,
+                    snapshot=snapshot,
+                )
+            else:
+                system_prompt, user_prompt = ai_service.build_ai_instruction(
+                    mode,
+                    user_request,
+                    snapshot,
+                )
+                answer = ai_service.ask_ai(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                )
         except ai_service.AIError as exc:
             error = str(exc)
         except Exception as exc:
@@ -128,6 +142,7 @@ def ask_ai(
                 "skill_id": skill_id,
             },
             "mode": mode,
+            "engine": engine,
             "user_request": user_request,
             "answer": answer,
             "snapshot": snapshot,
