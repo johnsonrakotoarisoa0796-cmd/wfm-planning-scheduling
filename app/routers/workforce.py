@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import date
-from io import BytesIO
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
@@ -14,7 +13,7 @@ from app.core.database import get_session
 from app.core.security import require_login, require_role, verify_csrf
 from app.core.templating import templates
 from app.models.campaign import Campaign
-from app.models.employee import Employee, EmployeeSkill
+from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import EmployeeStatus, UserRole
 from app.models.skill import Skill
 from app.models.user import User
@@ -23,8 +22,6 @@ from app.services import workforce_agents_service
 
 router = APIRouter(prefix="/workforce", tags=["workforce"])
 WRITE_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST)
-READ_ROLES = (UserRole.ADMIN, UserRole.WFM_ANALYST, UserRole.TEAM_LEAD, UserRole.VIEWER)
-
 
 def _reference_data(session: Session):
     campaigns = list(
@@ -287,9 +284,9 @@ def workforce_detail(
     skills = {skill.id: skill for skill in session.exec(select(Skill).where(Skill.id.in_({link.skill_id for link in links}))).all()}
     absences = list(
         session.exec(
-            select(__import__("app.models.employee", fromlist=["EmployeeAbsence"]).EmployeeAbsence)
-            .where(__import__("app.models.employee", fromlist=["EmployeeAbsence"]).EmployeeAbsence.employee_id == employee.id)
-            .order_by(__import__("app.models.employee", fromlist=["EmployeeAbsence"]).EmployeeAbsence.start_date.desc())
+            select(EmployeeAbsence)
+            .where(EmployeeAbsence.employee_id == employee.id)
+            .order_by(EmployeeAbsence.start_date.desc())
         ).all()
     )
     return templates.TemplateResponse(
