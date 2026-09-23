@@ -45,6 +45,10 @@ def test_generate_synthetic_employees_is_bulk_and_marked_synthetic():
             timezone_name="Europe/London",
         )
         assert len(employees) == 140
+        codes = [employee.employee_code for employee in employees]
+        assert len(set(codes)) == 140
+        assert codes[0].endswith("0001")
+        assert codes[-1].endswith("0140")
         assert session.exec(select(Employee)).all()
         assert all(employee.data_source == "synthetic" for employee in employees)
         assert all(employee.status == EmployeeStatus.ACTIVE for employee in employees)
@@ -106,3 +110,32 @@ def test_generate_synthetic_employees_recovers_stale_homonymous_skill_from_anoth
         assert len(employees) == 1
         link = session.exec(select(EmployeeSkill).where(EmployeeSkill.employee_id == employees[0].id)).one()
         assert link.skill_id == second_skill.id
+
+
+def test_generate_synthetic_employees_continues_existing_code_sequence_without_per_agent_queries():
+    engine = _db()
+    with Session(engine) as session:
+        campaign, skill = _scope(session)
+        session.add(Employee(
+            employee_code="SYN-11-0042",
+            first_name="Existing",
+            last_name="Agent",
+            campaign_id=campaign.id,
+            hire_date=date(2026, 1, 1),
+            status=EmployeeStatus.ACTIVE,
+            weekly_hours_contract=40,
+            timezone_name="Europe/London",
+            data_source="synthetic",
+        ))
+        session.commit()
+
+        employees = generate_synthetic_employees(
+            session,
+            campaign_id=campaign.id,
+            skill_id=skill.id,
+            count=2,
+            hire_date=date(2026, 1, 5),
+            weekly_hours_contract=40,
+            timezone_name="Europe/London",
+        )
+        assert [employee.employee_code for employee in employees] == ["SYN-11-0043", "SYN-11-0044"]
