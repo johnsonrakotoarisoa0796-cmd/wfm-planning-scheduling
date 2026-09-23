@@ -338,7 +338,7 @@ def generate_schedule(
                     productive_slots_by_day_and_shift[day],
                     paid_hours_by_shift,
                 )
-                paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
+                paid = paid_hours_by_shift.get(shift.id, 0.0)
                 if compliance_policy is not None:
                     compliance_errors = compliance_service.validate_schedule_candidate(
                         session,
@@ -362,7 +362,11 @@ def generate_schedule(
                     )
                     if compliance_errors:
                         continue
-                gain, penalty = _shift_gain(shift, intervals, current_hc)
+                gain, penalty = _shift_gain(
+                    intervals,
+                    current_hc,
+                    productive_slots_by_day_and_shift[day].get(shift.id, set()),
+                )
                 balance = 1.0 / (1 + len(assigned_days[employee.id]))
                 fairness = remaining / max(targets[employee.id], 1.0)
                 score = gain * 10 - penalty + balance + fairness * 2 - max(paid - remaining, 0) * 0.5
