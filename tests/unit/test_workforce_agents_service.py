@@ -117,7 +117,7 @@ def test_generate_synthetic_employees_continues_existing_code_sequence_without_p
     with Session(engine) as session:
         campaign, skill = _scope(session)
         session.add(Employee(
-            employee_code="SYN-123-0042",
+            employee_code="SYN-11-0042",
             first_name="Existing",
             last_name="Agent",
             campaign_id=campaign.id,
@@ -138,4 +138,4 @@ def test_generate_synthetic_employees_continues_existing_code_sequence_without_p
             weekly_hours_contract=40,
             timezone_name="Europe/London",
         )
-        assert [employee.employee_code for employee in employees] == ["SYN-123-0043", "SYN-123-0044"]
+        assert [employee.employee_code for employee in employees] == ["SYN-11-0043", "SYN-11-0044"]
