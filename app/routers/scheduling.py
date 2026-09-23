@@ -434,18 +434,33 @@ def _render_schedule_generator(
         except ValueError:
             compliance_report = None
 
-    shifts_by_id = {shift.id: shift for shift in scheduling_service.list_shifts(session, active_only=False)}
+    shifts_by_id = {
+        shift.id: shift
+        for shift in scheduling_service.list_shifts(session, active_only=False)
+    }
     week_days = [week_start + timedelta(days=i) for i in range(7)]
-    week_rows = []
+    entry_by_key = {(item.employee_id, item.date): item for item in entries}
 
+    # Une seule requête d'absences pour toute la semaine au lieu d'une requête
+    # par agent et par jour.
+    absence_rows = scheduling_service.list_absences(
+        session,
+        start_date=week_start,
+        end_date=week_start + timedelta(days=6),
+    )
+    absence_by_key = {}
+    for absence in absence_rows:
+        absence_by_key.setdefault((absence.employee_id, absence.start_date), absence)
+        for day in week_days:
+            if absence.start_date <= day <= absence.end_date:
+                absence_by_key.setdefault((absence.employee_id, day), absence)
+
+    week_rows = []
     for employee in employees:
         cells = []
         for day in week_days:
-            entry = next((item for item in entries if item.employee_id == employee.id and item.date == day), None)
-            absences = scheduling_service.list_absences(
-                session, employee_id=employee.id, start_date=day, end_date=day
-            )
-            absence = absences[0] if absences else None
+            entry = entry_by_key.get((employee.id, day))
+            absence = absence_by_key.get((employee.id, day))
             shift = shifts_by_id.get(entry.shift_id) if entry and entry.shift_id else None
             cells.append({"date": day, "entry": entry, "shift": shift, "absence": absence})
         week_rows.append({"employee": employee, "days": cells})
