@@ -162,7 +162,7 @@ def _next_synthetic_code_number(session: Session, prefix: str) -> int:
     ).all()
 
     max_number = 0
-    pattern = re.compile(rf"^{re.escape(code_prefix)}(\\d+)$")
+    pattern = re.compile(rf"^{re.escape(code_prefix)}(\d+)$")
     for code in rows:
         match = pattern.match(code)
         if match:
