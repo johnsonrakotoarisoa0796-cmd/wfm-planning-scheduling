@@ -6,14 +6,11 @@ from datetime import date, datetime, time, timedelta
 
 from sqlmodel import Session, select
 
-from app.core.config import get_settings
 from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import EmployeeStatus
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
 from app.services import client_stf_service, compliance_service, intraday_service, scheduling_service, workforce_service
-
-settings = get_settings()
 
 
 @dataclass(frozen=True)
@@ -150,24 +147,41 @@ def _shift_productive_in_interval(shift: Shift, interval, entry_date: date) -> b
     )
 
 
-def _shift_gain(shift: Shift, intervals, current_hc: dict[time, float]) -> tuple[float, float]:
+def _shift_gain(
+    intervals,
+    current_hc: dict[time, float],
+    productive_slots: set[time],
+) -> tuple[float, float]:
     gain = 0.0
     surplus_penalty = 0.0
     for row in intervals:
-        if _shift_productive_in_interval(shift, row, row.date):
-            shortage = max(row.required_hc - current_hc.get(row.interval_start, 0.0), 0.0)
-            gain += min(shortage, 1.0)
-            surplus_penalty += max(current_hc.get(row.interval_start, 0.0) - row.required_hc, 0.0) * 0.15
+        if row.interval_start not in productive_slots:
+            continue
+        current = current_hc.get(row.interval_start, 0.0)
+        gain += min(max(row.required_hc - current, 0.0), 1.0)
+        surplus_penalty += max(current - row.required_hc, 0.0) * 0.15
     return gain, surplus_penalty
 
 
-def _choose_shift(shifts: list[Shift], intervals, current_hc: dict[time, float], remaining_hours: float, employee: Employee) -> Shift:
+def _choose_shift(
+    shifts: list[Shift],
+    intervals,
+    current_hc: dict[time, float],
+    remaining_hours: float,
+    employee: Employee,
+    productive_slots_by_shift: dict[int, set[time]],
+    paid_hours_by_shift: dict[int, float],
+) -> Shift:
     ranked = []
     for shift in shifts:
-        paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
+        paid = paid_hours_by_shift.get(shift.id, 0.0)
         if paid <= 0:
             continue
-        gain, penalty = _shift_gain(shift, intervals, current_hc)
+        gain, penalty = _shift_gain(
+            intervals,
+            current_hc,
+            productive_slots_by_shift.get(shift.id, set()),
+        )
         fit = abs(remaining_hours - paid)
         ranked.append((gain * 10.0 - penalty - fit * 0.05, gain, -fit, shift))
     if not ranked:
@@ -233,6 +247,29 @@ def generate_schedule(
             + ", ".join(day.isoformat() for day in missing)
         )
 
+    # Les mêmes shifts sont évalués des centaines de fois pendant une semaine.
+    # Pré-calculer leur durée payée et les tranches couvertes permet d'éviter
+    # de recalculer pauses/durations à chaque candidat.
+    paid_hours_by_shift = {
+        shift.id: max(0.0, (
+            workforce_service.shift_elapsed_hours(shift)
+            - (0.0 if shift.break_paid else shift.break_count * shift.break_minutes / 60)
+            - (0.0 if shift.lunch_paid else shift.lunch_minutes / 60)
+        ))
+        for shift in shifts
+    }
+
+    productive_slots_by_day_and_shift: dict[date, dict[int, set[time]]] = {}
+    for day, rows in intervals_by_day.items():
+        productive_slots_by_day_and_shift[day] = {
+            shift.id: {
+                row.interval_start
+                for row in rows
+                if _shift_productive_in_interval(shift, row, day)
+            }
+            for shift in shifts
+        }
+
     existing = list(
         session.exec(
             select(ScheduleEntry)
@@ -267,11 +304,17 @@ def generate_schedule(
         employee.id: [] for employee in employees
     }
 
+    # Couverture productive maintenue en mémoire pour chaque jour.
+    # Elle est réutilisée par la phase de remplissage des contrats et le
+    # récapitulatif final, sans rescanner tous les agents à chaque cellule.
+    coverage_hc_by_day: dict[date, dict[time, float]] = {}
+
     # Teleopti-style priority: cover the forecast deficit first, while
     # rotating agents so contract hours are distributed across the week.
     for day in days:
         intervals = intervals_by_day[day]
         current_hc = {row.interval_start: 0.0 for row in intervals}
+        coverage_hc_by_day[day] = current_hc
         for _ in range(len(employees)):
             shortage = sum(
                 max(row.required_hc - current_hc.get(row.interval_start, 0.0), 0.0)
@@ -286,8 +329,16 @@ def generate_schedule(
                 remaining = targets[employee.id] - scheduled_hours[employee.id]
                 if remaining <= 0.1:
                     continue
-                shift = _choose_shift(shifts, intervals, current_hc, remaining, employee)
-                paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
+                shift = _choose_shift(
+                    shifts,
+                    intervals,
+                    current_hc,
+                    remaining,
+                    employee,
+                    productive_slots_by_day_and_shift[day],
+                    paid_hours_by_shift,
+                )
+                paid = paid_hours_by_shift.get(shift.id, 0.0)
                 if compliance_policy is not None:
                     compliance_errors = compliance_service.validate_schedule_candidate(
                         session,
@@ -311,7 +362,11 @@ def generate_schedule(
                     )
                     if compliance_errors:
                         continue
-                gain, penalty = _shift_gain(shift, intervals, current_hc)
+                gain, penalty = _shift_gain(
+                    intervals,
+                    current_hc,
+                    productive_slots_by_day_and_shift[day].get(shift.id, set()),
+                )
                 balance = 1.0 / (1 + len(assigned_days[employee.id]))
                 fairness = remaining / max(targets[employee.id], 1.0)
                 score = gain * 10 - penalty + balance + fairness * 2 - max(paid - remaining, 0) * 0.5
@@ -330,7 +385,8 @@ def generate_schedule(
                     candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
                     candidate_end = datetime.combine(candidate_end_date, shift.end_time)
                     assigned_intervals[employee.id].append((candidate_start, candidate_end))
-                _apply_coverage(entry, shift, intervals, current_hc)
+                for slot in productive_slots_by_day_and_shift[day].get(shift.id, ()):
+                    current_hc[slot] = current_hc.get(slot, 0.0) + 1.0
             else:
                 break
 
@@ -353,18 +409,16 @@ def generate_schedule(
             if workforce_service.is_employee_absent(absences.get(employee.id, []), day):
                 continue
             intervals = intervals_by_day[day]
-            current_hc = {
-                row.interval_start: sum(
-                    1
-                    for item in generated
-                    if item.entry.date == day
-                    and scheduling_service._shift_covers_interval(
-                        item.shift, row.interval_start, row.interval_end
-                    )
-                )
-                for row in intervals
-            }
-            shift = _choose_shift(shifts, intervals, current_hc, remaining, employee)
+            current_hc = coverage_hc_by_day[day]
+            shift = _choose_shift(
+                shifts,
+                intervals,
+                current_hc,
+                remaining,
+                employee,
+                productive_slots_by_day_and_shift[day],
+                paid_hours_by_shift,
+            )
             paid = workforce_service.shift_hours(shift, contract_daily_hours=workforce_service.daily_contract_hours(employee)).paid_hours
             if paid > remaining + 1.0 and remaining < 4.0:
                 continue
@@ -395,6 +449,8 @@ def generate_schedule(
             generated.append(GeneratedEntry(employee, entry, shift))
             assigned_days[employee.id].add(day)
             scheduled_hours[employee.id] += paid
+            for slot in productive_slots_by_day_and_shift[day].get(shift.id, ()):
+                current_hc[slot] = current_hc.get(slot, 0.0) + 1.0
             if compliance_policy is not None:
                 candidate_start = datetime.combine(day, shift.start_time)
                 candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
@@ -442,30 +498,20 @@ def generate_schedule(
     coverage: list[CoverageSummary] = []
     for day in days:
         intervals = intervals_by_day[day]
+        current_hc = coverage_hc_by_day[day]
         required_h = sum(
             max(row.required_hc, 0.0)
             * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
             for row in intervals
         )
         scheduled_h = sum(
-            settings.interval_minutes / 60
-            for item in generated
-            if item.entry.date == day
+            max(current_hc.get(row.interval_start, 0.0), 0.0)
+            * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
             for row in intervals
-            if not item.entry.is_day_off
-            and _shift_productive_in_interval(item.shift, row, day)
         )
         covered_h = sum(
-            min(
-                max(row.required_hc, 0.0),
-                sum(
-                    1
-                    for item in generated
-                    if item.entry.date == day
-                    and not item.entry.is_day_off
-                    and _shift_productive_in_interval(item.shift, row, day)
-                ),
-            ) * settings.interval_minutes / 60
+            min(max(row.required_hc, 0.0), max(current_hc.get(row.interval_start, 0.0), 0.0))
+            * intraday_service.interval_duration_hours(row.interval_start, row.interval_end)
             for row in intervals
         )
         coverage.append(
