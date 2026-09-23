@@ -76,8 +76,30 @@ def _validate_scope(session: Session, *, campaign_id: int, skill_id: int) -> tup
     if campaign is None or not campaign.is_active:
         raise ValueError("La campagne sélectionnée est introuvable ou inactive.")
     skill = session.get(Skill, skill_id)
-    if skill is None or not skill.is_active or skill.campaign_id != campaign_id:
-        raise ValueError("Le skill sélectionné est introuvable, inactif ou rattaché à une autre campagne.")
+    if skill is None:
+        raise ValueError(f"Le skill sélectionné (ID {skill_id}) est introuvable.")
+
+    # Tolérance aux anciens formulaires/caches : si l'ancien formulaire a envoyé
+    # l'ID d'un skill homonyme d'une autre campagne, on récupère le skill actif
+    # de la campagne choisie portant le même nom. Cela évite un 400 après un
+    # déploiement tout en conservant la validation métier côté serveur.
+    if skill.campaign_id != campaign_id or not skill.is_active:
+        replacement = session.exec(
+            select(Skill).where(
+                Skill.campaign_id == campaign_id,
+                Skill.name == skill.name,
+                Skill.is_active == True,  # noqa: E712
+            )
+        ).first()
+        if replacement is not None:
+            skill = replacement
+        elif not skill.is_active:
+            raise ValueError(f"Le skill « {skill.name} » (ID {skill_id}) est inactif.")
+        else:
+            raise ValueError(
+                f"Le skill « {skill.name} » (ID {skill_id}) appartient à une autre campagne "
+                f"et aucun skill équivalent n'est configuré pour « {campaign.name} »."
+            )
     return campaign, skill
 
 

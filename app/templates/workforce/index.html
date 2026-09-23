@@ -54,13 +54,8 @@
                 </div>
                 <div class="field">
                     <label for="synthetic_skill_id">Skill</label>
-                    <select id="synthetic_skill_id" name="skill_id" required disabled>
-                        <option value="">Choisir d'abord une campagne...</option>
-                        {% for s in skills %}
-                        <option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}">{{ s.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div id="synthetic-skill-help" class="field__hint">Les skills affichés appartiennent uniquement à la campagne sélectionnée.</div>
+                    <select id="synthetic_skill_id" name="skill_id" required disabled><option value="">Choisir une campagne...</option></select>
+                    <template id="synthetic_skill_options">{% for s in skills %}<option value="{{ s.id }}" data-campaign-id="{{ s.campaign_id }}">{{ s.name }}</option>{% endfor %}</template><div id="synthetic-skill-help" class="field__hint">Les skills affichés appartiennent uniquement à la campagne sélectionnée.</div>
                 </div>
                 <div class="field"><label for="synthetic_count">Nombre</label><input id="synthetic_count" type="number" name="count" min="1" max="500" value="10" required></div>
                 <div class="field"><label for="synthetic_hire_date">Date d'embauche</label><input id="synthetic_hire_date" type="date" name="hire_date" value="" required></div>
@@ -95,53 +90,47 @@
 (() => {
     const campaign = document.getElementById("synthetic_campaign_id");
     const skill = document.getElementById("synthetic_skill_id");
+    const source = document.getElementById("synthetic_skill_options");
     const help = document.getElementById("synthetic-skill-help");
-    if (!campaign || !skill) return;
+    if (!campaign || !skill || !source) return;
+
+    const allOptions = Array.from(source.content.querySelectorAll("option"));
 
     const syncSkills = () => {
         const campaignId = campaign.value;
-        let firstVisible = null;
-        let visibleCount = 0;
+        const previousValue = skill.value;
+        skill.innerHTML = "";
 
-        [...skill.options].forEach((option) => {
-            if (!option.value) return;
-            const matches = option.dataset.campaignId === campaignId;
-            option.hidden = !matches;
-            option.disabled = !matches;
-            if (matches) {
-                visibleCount += 1;
-                if (!firstVisible) firstVisible = option;
-            }
-        });
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = campaignId ? "Choisir un skill..." : "Choisir une campagne...";
+        skill.appendChild(placeholder);
 
-        skill.disabled = !campaignId || visibleCount === 0;
+        const matching = allOptions.filter((option) => option.dataset.campaignId === campaignId);
+        matching.forEach((option) => skill.appendChild(option.cloneNode(true)));
+        skill.disabled = !campaignId || matching.length === 0;
 
         if (!campaignId) {
-            skill.value = "";
-            help.textContent = "Les skills seront filtrés selon la campagne.";
+            help.textContent = "Sélectionnez une campagne pour afficher ses skills.";
             return;
         }
-
-        if (visibleCount === 0) {
-            skill.value = "";
+        if (matching.length === 0) {
             help.textContent = "Aucun skill actif pour cette campagne. Créez-le d'abord dans Configuration.";
             return;
         }
 
-        const current = skill.options[skill.selectedIndex];
-        if (!current || current.disabled || current.hidden) {
-            skill.value = firstVisible.value;
-        }
-        help.textContent = visibleCount === 1
+        const keepPrevious = matching.some((option) => option.value === previousValue);
+        skill.value = keepPrevious ? previousValue : matching[0].value;
+        help.textContent = matching.length === 1
             ? "1 skill actif disponible pour cette campagne."
-            : visibleCount + " skills actifs disponibles pour cette campagne.";
+            : matching.length + " skills actifs disponibles pour cette campagne.";
     };
 
     campaign.addEventListener("change", syncSkills);
     syncSkills();
 
     const hireDate = document.getElementById("synthetic_hire_date");
-    if (hireDate) {
+    if (hireDate && !hireDate.value) {
         const now = new Date();
         const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
             .toISOString()

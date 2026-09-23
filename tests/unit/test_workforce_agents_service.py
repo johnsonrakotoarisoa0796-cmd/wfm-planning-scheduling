@@ -74,3 +74,35 @@ def test_import_real_employees_creates_and_updates_by_employee_code():
         assert result.updated == 1
         employee = session.exec(select(Employee).where(Employee.employee_code == "UKMSG001")).one()
         assert employee.weekly_hours_contract == 37.5
+
+
+def test_generate_synthetic_employees_recovers_stale_homonymous_skill_from_another_campaign():
+    engine = _db()
+    with Session(engine) as session:
+        first_campaign, first_skill = _scope(session)
+        second_campaign = Campaign(name="Support DE", code="SUP-DE", is_active=True)
+        session.add(second_campaign)
+        session.commit()
+        second_skill = Skill(
+            campaign_id=second_campaign.id,
+            name="Message Us",
+            channel=Channel.CHAT,
+            concurrency_factor=2.0,
+            is_active=True,
+        )
+        session.add(second_skill)
+        session.commit()
+
+        employees = generate_synthetic_employees(
+            session,
+            campaign_id=second_campaign.id,
+            skill_id=first_skill.id,
+            count=1,
+            hire_date=date(2026, 1, 5),
+            weekly_hours_contract=40,
+            timezone_name="Europe/Berlin",
+        )
+
+        assert len(employees) == 1
+        link = session.exec(select(EmployeeSkill).where(EmployeeSkill.employee_id == employees[0].id)).one()
+        assert link.skill_id == second_skill.id
