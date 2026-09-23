@@ -96,6 +96,7 @@ def _render(
             "can_edit": current_user.role in WRITE_ROLES,
         },
         status_code=status_code,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
     )
 
 
@@ -267,6 +268,15 @@ def workforce_status(
         return RedirectResponse(url="/workforce?error=Agent+introuvable", status_code=303)
     workforce_agents_service.set_employee_status(session, employee, status)
     return RedirectResponse(url="/workforce", status_code=303)
+
+
+@router.get("/generate")
+def workforce_generate_get():
+    """Évite qu'un ancien formulaire en cache ne tombe sur /{employee_id}."""
+    return RedirectResponse(
+        url="/workforce?error=Le formulaire de génération doit être envoyé en POST. Rechargez la page Workforce puis relancez la génération.",
+        status_code=303,
+    )
 
 
 @router.get("/{employee_id}")
