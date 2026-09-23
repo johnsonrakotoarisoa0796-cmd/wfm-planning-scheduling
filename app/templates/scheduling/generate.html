@@ -62,7 +62,7 @@
     <div>
       <span class="panel-kicker">TEAM SCHEDULE · 7 DAYS</span>
       <h2>Semaine {{ filters.period }}</h2>
-      <p class="page-header__meta">Vue hebdomadaire compacte · agent fixe à gauche · 7 jours alignés</p>
+      <p class="schedule-board-subtitle">Vue hebdomadaire lisible · agent fixe à gauche · les 7 jours restent alignés · toutes les lignes sont accessibles par défilement vertical.</p>
     </div>
     <div class="schedule-toolbar-legend">
       <span><i class="schedule-dot schedule-dot--work"></i>Work</span>
@@ -72,11 +72,17 @@
     </div>
   </div>
 
-  <div class="teleopti-grid">
-    <div class="teleopti-grid__corner">AGENT</div>
-    {% for day in week_days %}<div class="teleopti-grid__day">{{ day.strftime("%a")|upper }}<strong>{{ day.strftime("%d/%m") }}</strong></div>{% endfor %}
+  <div class="schedule-board-meta">
+    <span>👥 {{ week_rows|length }} agents</span>
+    <span>↕ Défilement vertical</span>
+    <span>↔ 7 jours visibles sur écran large</span>
+  </div>
+  <div class="teleopti-grid-wrap">
+    <div class="teleopti-grid">
+      <div class="teleopti-grid__corner">AGENT</div>
+      {% for day in week_days %}<div class="teleopti-grid__day">{{ day.strftime("%a")|upper }}<strong>{{ day.strftime("%d/%m") }}</strong></div>{% endfor %}
 
-    {% for row in week_rows %}
+      {% for row in week_rows %}
       <div class="teleopti-agent">
         <strong>{{ row.employee.first_name }} {{ row.employee.last_name }}</strong>
         <small>{{ row.employee.employee_code }}</small>
@@ -100,7 +106,8 @@
         {% endif %}
       </div>
       {% endfor %}
-    {% endfor %}
+      {% endfor %}
+    </div>
   </div>
 </section>
 {% endif %}
