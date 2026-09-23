@@ -148,14 +148,26 @@ def create_employee(
     return employee
 
 
-def _next_synthetic_code(session: Session, prefix: str) -> str:
+def _synthetic_code_prefix(prefix: str) -> str:
     normalized = re.sub(r"[^A-Z0-9]+", "", prefix.upper()) or "SYN"
-    counter = 1
-    while True:
-        candidate = f"SYN-{normalized}-{counter:04d}"
-        if session.exec(select(Employee).where(Employee.employee_code == candidate)).first() is None:
-            return candidate
-        counter += 1
+    return f"SYN-{normalized}-"
+
+
+def _next_synthetic_code_number(session: Session, prefix: str) -> int:
+    code_prefix = _synthetic_code_prefix(prefix)
+    rows = session.exec(
+        select(Employee.employee_code).where(
+            Employee.employee_code.startswith(code_prefix)
+        )
+    ).all()
+
+    max_number = 0
+    pattern = re.compile(rf"^{re.escape(code_prefix)}(\\d+)$")
+    for code in rows:
+        match = pattern.match(code)
+        if match:
+            max_number = max(max_number, int(match.group(1)))
+    return max_number + 1
 
 
 def generate_synthetic_employees(
@@ -177,26 +189,41 @@ def generate_synthetic_employees(
     _, skill = _validate_scope(session, campaign_id=campaign_id, skill_id=skill_id)
 
     prefix = f"{campaign_id}{skill_id}"
+    next_number = _next_synthetic_code_number(session, prefix)
+    code_prefix = _synthetic_code_prefix(prefix)
+
     created: list[Employee] = []
     for index in range(count):
         first_name = FICTIONAL_FIRST_NAMES[index % len(FICTIONAL_FIRST_NAMES)]
         last_name = FICTIONAL_LAST_NAMES[(index // len(FICTIONAL_FIRST_NAMES)) % len(FICTIONAL_LAST_NAMES)]
-        code = _next_synthetic_code(session, prefix)
-        employee = Employee(
-            employee_code=code,
-            first_name=first_name,
-            last_name=last_name,
-            campaign_id=campaign_id,
-            hire_date=hire_date,
-            status=EmployeeStatus.ACTIVE,
-            weekly_hours_contract=weekly_hours_contract,
-            timezone_name=timezone_name,
-            data_source="synthetic",
+        code = f"{code_prefix}{next_number + index:04d}"
+        created.append(
+            Employee(
+                employee_code=code,
+                first_name=first_name,
+                last_name=last_name,
+                campaign_id=campaign_id,
+                hire_date=hire_date,
+                status=EmployeeStatus.ACTIVE,
+                weekly_hours_contract=weekly_hours_contract,
+                timezone_name=timezone_name,
+                data_source="synthetic",
+            )
         )
-        session.add(employee)
-        session.flush()
-        session.add(EmployeeSkill(employee_id=employee.id, skill_id=skill.id, is_primary=True))
-        created.append(employee)
+
+    # Un seul flush pour obtenir les IDs, puis une seule opération de commit.
+    # L'ancienne implémentation faisait une requête DB pour chaque code et un
+    # flush par agent : pour 140 agents, cela provoquait des milliers d'allers-
+    # retours PostgreSQL sur Render et donnait l'impression que la génération
+    # était bloquée.
+    session.add_all(created)
+    session.flush()
+    session.add_all(
+        [
+            EmployeeSkill(employee_id=employee.id, skill_id=skill.id, is_primary=True)
+            for employee in created
+        ]
+    )
     session.commit()
     for employee in created:
         session.refresh(employee)
