@@ -1008,7 +1008,7 @@ table.data-table {
 
 .schedule-generator-panel__head p {
   margin-top: 5px;
-  font-size: 11px;
+  font-size: 9px;
 }
 
 .schedule-generator-badge {
@@ -1079,7 +1079,7 @@ table.data-table {
 .schedule-board-subtitle {
   margin-top: 5px;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: 8px;
 }
 
 .schedule-board-meta {
@@ -1148,9 +1148,9 @@ table.data-table {
 
 .teleopti-grid {
   display: grid;
-  grid-template-columns: 205px repeat(7, minmax(105px, 1fr));
+  grid-template-columns: 170px repeat(7, minmax(82px, 1fr));
   width: 100%;
-  min-width: 940px;
+  min-width: 744px;
   background: var(--surface);
 }
 
@@ -1175,13 +1175,13 @@ table.data-table {
 }
 
 .teleopti-grid__day {
-  min-height: 61px;
+  min-height: 48px;
 }
 
 .teleopti-grid__day strong {
   display: block;
-  margin-top: 4px;
-  font-size: 14px;
+  margin-top: 3px;
+  font-size: 12px;
   letter-spacing: 0;
 }
 
@@ -1189,8 +1189,8 @@ table.data-table {
   position: sticky;
   left: 0;
   z-index: 6;
-  min-height: 88px;
-  padding: 12px 13px;
+  min-height: 58px;
+  padding: 7px 9px;
   border-top: 1px solid var(--border);
   border-right: 1px solid var(--border);
   background: linear-gradient(180deg,var(--surface),var(--panel));
@@ -1199,7 +1199,7 @@ table.data-table {
 
 .teleopti-agent strong {
   display: block;
-  max-width: 180px;
+  max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1209,16 +1209,16 @@ table.data-table {
 
 .teleopti-agent small {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--text-soft);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 7px;
 }
 
 .teleopti-cell {
   min-width: 0;
-  min-height: 88px;
-  padding: 6px;
+  min-height: 58px;
+  padding: 3px;
   border-top: 1px solid var(--border);
   border-right: 1px solid var(--border);
   background: var(--panel);
@@ -1229,11 +1229,11 @@ table.data-table {
 }
 
 .schedule-block {
-  min-height: 74px;
-  padding: 8px;
+  min-height: 48px;
+  padding: 5px;
   border: 1px solid transparent;
-  border-radius: 9px;
-  font-size: 9px;
+  border-radius: 6px;
+  font-size: 8px;
   overflow: hidden;
 }
 
@@ -1262,7 +1262,7 @@ table.data-table {
 }
 
 .schedule-block--off {
-  min-height: 74px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1289,10 +1289,10 @@ table.data-table {
 
 .schedule-activity {
   display: block;
-  margin-top: 5px;
-  padding: 3px 5px;
-  border-radius: 5px;
-  font-size: 8px;
+  margin-top: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 7px;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
@@ -1311,7 +1311,7 @@ table.data-table {
 
 @media (max-width: 1150px) {
   .teleopti-grid {
-    min-width: 930px;
+    min-width: 744px;
   }
 }
 
@@ -1326,8 +1326,8 @@ table.data-table {
   }
 
   .teleopti-grid {
-    min-width: 900px;
-    grid-template-columns: 175px repeat(7, minmax(103px, 1fr));
+    min-width: 720px;
+    grid-template-columns: 160px repeat(7, minmax(80px, 1fr));
   }
 
   .teleopti-grid__corner,
@@ -1341,6 +1341,30 @@ table.data-table {
   }
 }
 
+
+/* Ultra-compact WFM board: dense enough for large workforces. */
+.teleopti-schedule-card {
+  padding: 14px;
+}
+.teleopti-schedule-card__toolbar h2 {
+  font-size: 18px;
+}
+.schedule-board-subtitle {
+  font-size: 9px;
+}
+.schedule-board-meta {
+  margin-top: 6px;
+  padding: 4px 7px;
+  font-size: 8px;
+}
+.schedule-toolbar-legend {
+  gap: 6px;
+  padding: 5px 7px;
+  font-size: 8px;
+}
+.schedule-toolbar-legend > span {
+  padding-right: 6px;
+}
 /* ─────────────────────────────────────────────────────────────
    Settings / Administration console
    ───────────────────────────────────────────────────────────── */
