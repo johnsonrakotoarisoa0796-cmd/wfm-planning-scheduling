@@ -1042,68 +1042,171 @@ table.data-table {
 .schedule-dot--break { background: #ef7ac7; }
 .schedule-dot--lunch { background: #c9bb2f; }
 .schedule-dot--off { background: #aab2bd; }
-.teleopti-grid {
-  display: grid;
-  grid-template-columns: 190px repeat(5, minmax(170px, 1fr));
-  min-width: 1040px;
-  margin-top: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+.teleopti-schedule-card {
   overflow: hidden;
 }
+
+.teleopti-grid {
+  display: grid;
+  grid-template-columns: 220px repeat(7, minmax(154px, 1fr));
+  min-width: 1300px;
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: auto;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+}
+
 .teleopti-grid__corner,
 .teleopti-grid__day {
-  padding: 11px 12px;
-  background: #0799db;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 12px 13px;
+  background: linear-gradient(180deg,#0d8fcf,#0a7fba);
   color: #fff;
-  border-right: 1px solid rgba(255,255,255,.18);
+  border-right: 1px solid rgba(255,255,255,.12);
+  border-bottom: 1px solid rgba(255,255,255,.16);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .08em;
+  box-shadow: 0 4px 14px rgba(4,18,34,.14);
 }
-.teleopti-grid__day strong { display: block; margin-top: 3px; font-size: 13px; letter-spacing: 0; }
+
+.teleopti-grid__corner {
+  left: 0;
+  z-index: 8;
+}
+
+.teleopti-grid__day strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
 .teleopti-agent {
-  min-height: 116px;
-  padding: 12px;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  min-height: 92px;
+  padding: 11px 13px;
   border-top: 1px solid var(--border);
   border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: linear-gradient(180deg,var(--surface),var(--panel));
+  box-shadow: 8px 0 16px rgba(4,9,18,.05);
 }
+
 .teleopti-agent strong,
-.teleopti-agent small { display: block; }
-.teleopti-agent small { margin-top: 3px; color: var(--text-soft); font-family: var(--font-mono); font-size: 9px; }
+.teleopti-agent small {
+  display: block;
+}
+
+.teleopti-agent strong {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.teleopti-agent small {
+  margin-top: 4px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+
 .teleopti-cell {
-  min-height: 116px;
-  padding: 7px;
+  min-height: 92px;
+  padding: 6px;
   border-top: 1px solid var(--border);
   border-right: 1px solid var(--border);
   background: var(--panel);
 }
+
+.teleopti-cell:hover {
+  background: var(--surface-hover);
+}
+
 .schedule-block {
-  min-height: 101px;
-  padding: 10px;
-  border-radius: 8px;
+  min-height: 78px;
+  padding: 9px;
+  border: 1px solid rgba(0,0,0,.05);
+  border-radius: 10px;
+  font-size: 9px;
+  overflow: hidden;
+}
+
+.schedule-block strong,
+.schedule-block small {
+  display: block;
+}
+
+.schedule-block strong {
   font-size: 10px;
 }
-.schedule-block strong,
-.schedule-block small { display: block; }
-.schedule-block strong { font-size: 11px; }
-.schedule-block small { margin-top: 3px; opacity: .76; }
-.schedule-block--work { background: #55dc7f; color: #114328; }
-.schedule-block--off { background: #eef1f4; color: #667085; }
-.schedule-block--absence { background: #f8d2d2; color: #7a2222; }
-.schedule-block--empty { background: #f6f8fa; color: #8a94a3; }
+
+.schedule-block small {
+  margin-top: 3px;
+  opacity: .78;
+  font-family: var(--font-mono);
+}
+
+.schedule-block--work {
+  background: linear-gradient(135deg,#49d77f,#72e99c);
+  color: #123a26;
+  border-color: rgba(23,130,71,.18);
+}
+
+.schedule-block--off {
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf1f5;
+  color: #6f7c8c;
+  border-color: #d9e0e7;
+  font-weight: 800;
+}
+
+.schedule-block--absence {
+  background: linear-gradient(135deg,#f7c5c5,#f4dbdb);
+  color: #782b2b;
+  border-color: rgba(155,42,42,.14);
+}
+
+.schedule-block--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #8390a0;
+  border: 1px dashed var(--border-strong);
+}
+
 .schedule-activity {
   display: block;
-  margin-top: 8px;
-  padding: 5px 6px;
-  border-radius: 5px;
-  font-size: 9px;
+  margin-top: 6px;
+  padding: 4px 5px;
+  border-radius: 6px;
+  font-size: 8px;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.schedule-activity--break { background: #efb3e1; color: #6d2259; }
-.schedule-activity--lunch { background: #eee58a; color: #5a5413; }
-.teleopti-schedule-card { overflow-x: auto; }
+
+.schedule-activity--break {
+  background: #efb3e1;
+  color: #6d2259;
+}
+
+.schedule-activity--lunch {
+  background: #eee58a;
+  color: #5a5413;
+}
 
 @media (max-width: 800px) {
   .schedule-generator-panel__head,
@@ -2710,4 +2813,53 @@ table.data-table {
 @media (max-width:520px) {
   .ai-mode-grid { grid-template-columns:1fr; }
   .ai-snapshot-grid { grid-template-columns:1fr 1fr; }
+}
+
+
+/* Dense weekly schedule board */
+.teleopti-schedule-card__toolbar {
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.teleopti-schedule-card__toolbar h2 {
+  font-size: 20px;
+  letter-spacing: -.025em;
+}
+
+.schedule-toolbar-legend {
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.schedule-toolbar-legend > span {
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+}
+
+.schedule-toolbar-legend > span:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+@media (max-width: 1100px) {
+  .teleopti-grid {
+    min-width: 1240px;
+  }
+}
+
+@media (max-width: 800px) {
+  .teleopti-grid {
+    min-width: 1180px;
+  }
+  .teleopti-grid__corner,
+  .teleopti-grid__day {
+    position: static;
+  }
+  .teleopti-agent {
+    position: static;
+  }
 }
