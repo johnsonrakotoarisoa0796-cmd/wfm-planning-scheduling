@@ -6,14 +6,11 @@ from datetime import date, datetime, time, timedelta
 
 from sqlmodel import Session, select
 
-from app.core.config import get_settings
 from app.models.employee import Employee, EmployeeAbsence, EmployeeSkill
 from app.models.enums import EmployeeStatus
 from app.models.schedule import ScheduleEntry
 from app.models.shift import Shift
 from app.services import client_stf_service, compliance_service, intraday_service, scheduling_service, workforce_service
-
-settings = get_settings()
 
 
 @dataclass(frozen=True)
@@ -448,6 +445,8 @@ def generate_schedule(
             generated.append(GeneratedEntry(employee, entry, shift))
             assigned_days[employee.id].add(day)
             scheduled_hours[employee.id] += paid
+            for slot in productive_slots_by_day_and_shift[day].get(shift.id, ()):
+                current_hc[slot] = current_hc.get(slot, 0.0) + 1.0
             if compliance_policy is not None:
                 candidate_start = datetime.combine(day, shift.start_time)
                 candidate_end_date = day if shift.end_time > shift.start_time else day + timedelta(days=1)
